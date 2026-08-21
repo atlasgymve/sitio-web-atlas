@@ -107,6 +107,6 @@ ON DUPLICATE KEY UPDATE id_usuario=id_usuario;
 -- Recursos de prueba de Material y Contenido Adicional
 INSERT INTO recursos_apoyo (titulo, descripcion, categoria, tipo_recurso, url_recurso, nombre_archivo_orig)
 VALUES 
-('🥗 Guía de Nutrición e Hidratación Deportivo', 'Recomendaciones nutricionales básicas para optimizar el rendimiento y la recuperación muscular.', 'Nutrición', 'enlace', 'https://www.google.com', NULL),
-('📖 Reglamento y Normas del Gimnasio ATLAS', 'Normativa interna de uso de equipos, horarios y buena convivencia en las instalaciones.', 'Reglamento', 'enlace', 'https://www.google.com', NULL)
+('Guía de Nutrición e Hidratación Deportivo', 'Recomendaciones nutricionales básicas para optimizar el rendimiento y la recuperación muscular.', 'Nutrición', 'enlace', 'https://www.google.com', NULL),
+('Reglamento y Normas del Gimnasio ATLAS', 'Normativa interna de uso de equipos, horarios y buena convivencia en las instalaciones.', 'Reglamento', 'enlace', 'https://www.google.com', NULL)
 ON DUPLICATE KEY UPDATE id_recurso=id_recurso;

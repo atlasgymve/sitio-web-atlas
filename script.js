@@ -1970,26 +1970,26 @@ function toggleAdminResourcesSection() {
 function getCategoryBadge(cat) {
   switch (cat) {
     case 'Nutrición':
-      return `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4);">🥗 Nutrición</span>`;
+      return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">Nutrición</span>`;
     case 'Entrenamiento':
-      return `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4);">🏋️ Guía</span>`;
+      return `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3);">Guía</span>`;
     case 'Suplementación':
-      return `<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">💊 Suplementos</span>`;
+      return `<span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.3);">Suplementos</span>`;
     case 'Reglamento':
-      return `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">📖 Reglamento</span>`;
+      return `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3);">Reglamento</span>`;
     default:
-      return `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4);">💡 Consejos</span>`;
+      return `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3);">Consejos</span>`;
   }
 }
 
 function getResourceIcon(tipo, url) {
   if (tipo === 'archivo') {
-    if (url.endsWith('.pdf')) return '📄 Documento PDF';
-    if (url.match(/\.(png|jpg|jpeg|webp)$/i)) return '🖼️ Imagen';
-    return '📎 Archivo Adjunto';
+    if (url.endsWith('.pdf')) return 'Documento PDF';
+    if (url.match(/\.(png|jpg|jpeg|webp)$/i)) return 'Imagen';
+    return 'Archivo Adjunto';
   }
-  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return '🎥 Video YouTube';
-  return '🌐 Enlace Web';
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return 'Video YouTube';
+  return 'Enlace Web';
 }
 
 function loadAdminResources() {
@@ -2024,9 +2024,9 @@ function filterAdminResourcesByCategory() {
   if (list.length === 0) {
     grid.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
-        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay material registrado en esta categoría aún. 📚</p>
+        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay material registrado en esta categoría aún.</p>
         <button class="btn-primary" onclick="openCreateResourceModal()" style="width: auto; margin: 0 auto; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-          + Subir Primer Material 📄
+          + Subir Primer Material
         </button>
       </div>
     `;
@@ -2058,10 +2058,10 @@ function filterAdminResourcesByCategory() {
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <a href="${hrefUrl}" target="_blank" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);">
-          👁️ Ver / Abrir
+          Ver / Abrir
         </a>
         <button class="btn-danger" onclick="deleteResourceByAdmin(${r.id_recurso})" title="Eliminar material" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
-          🗑️ Eliminar
+          Eliminar
         </button>
       </div>
     `;
@@ -2145,7 +2145,7 @@ function saveResource(e) {
     .then(res => {
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Guardar Material 💾";
+        submitBtn.textContent = "Guardar Material";
       }
       if (res.ok) {
         closeCreateResourceModal();
@@ -2157,7 +2157,7 @@ function saveResource(e) {
     .catch(err => {
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Guardar Material 💾";
+        submitBtn.textContent = "Guardar Material";
       }
       console.error("Error guardando recurso:", err);
       alert("Error al conectar con el servidor.");
@@ -2212,7 +2212,7 @@ function filterUserResourcesByCategory() {
   if (list.length === 0) {
     grid.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
-        <p style="font-size: 1rem; color: var(--text-muted); margin: 0;">No hay contenido adicional disponible en esta categoría por ahora. 📚</p>
+        <p style="font-size: 1rem; color: var(--text-muted); margin: 0;">No hay contenido adicional disponible en esta categoría por ahora.</p>
       </div>
     `;
     return;
@@ -2243,7 +2243,7 @@ function filterUserResourcesByCategory() {
 
       <div>
         <a href="${hrefUrl}" target="_blank" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-          📖 Abrir / Descargar
+          Abrir / Descargar
         </a>
       </div>
     `;
