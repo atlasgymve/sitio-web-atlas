@@ -241,7 +241,7 @@ app.get('/api/usuario/:id', async (req, res) => {
   const userId = req.params.id;
   try {
     const [userRows] = await pool.execute(
-      'SELECT nombre_completo, correo, telefono FROM usuarios WHERE id_usuario = ?',
+      'SELECT nombre_completo, correo, telefono, membresia_estado, membresia_vence FROM usuarios WHERE id_usuario = ?',
       [userId]
     );
     if (userRows.length === 0) {
@@ -249,30 +249,48 @@ app.get('/api/usuario/:id', async (req, res) => {
     }
     const user = userRows[0];
 
-    // Membresía
-    const [memRows] = await pool.execute(
-      "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
-      [userId]
-    );
-    const membresia = memRows.length ? memRows[0] : { estado: 'sin membresía', vence: '-' };
+    // Membresía con fallback seguro
+    let membresia = { estado: user.membresia_estado || 'activa', vence: user.membresia_vence ? formatYYYYMMDD(new Date(user.membresia_vence)) : 'Activa' };
+    try {
+      const [memRows] = await pool.execute(
+        "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+        [userId]
+      );
+      if (memRows.length > 0 && memRows[0].vence) {
+        membresia = memRows[0];
+      }
+    } catch (e) {
+      // Usar fallback de campos de usuario en caso de excepción
+    }
 
     // Rutinas
-    const [rutRows] = await pool.execute(
-      'SELECT id_rutina, titulo, descripcion, horario FROM rutinas WHERE id_usuario = ? ORDER BY id_rutina DESC',
-      [userId]
-    );
+    let rutRows = [];
+    try {
+      const [rRows] = await pool.execute(
+        'SELECT id_rutina, titulo, descripcion, horario FROM rutinas WHERE id_usuario = ? ORDER BY id_rutina DESC',
+        [userId]
+      );
+      rutRows = rRows;
+    } catch (rErr) {
+      console.error('Error al obtener rutinas:', rErr.message);
+    }
 
     // Cargar ejercicios para cada rutina
     const rutinasConEjercicios = await Promise.all(
       rutRows.map(async (r) => {
-        const [ejercicios] = await pool.execute(
-          'SELECT id_ejercicio, nombre_ejercicio, series, repeticiones, peso_kg, series_detalle_json, orden FROM ejercicios_rutina WHERE id_rutina = ? ORDER BY orden ASC, id_ejercicio ASC',
-          [r.id_rutina]
-        );
-        return {
-          ...r,
-          ejercicios
-        };
+        try {
+          const [ejercicios] = await pool.execute(
+            'SELECT id_ejercicio, nombre_ejercicio, series, repeticiones, peso_kg, series_detalle_json, orden FROM ejercicios_rutina WHERE id_rutina = ? ORDER BY orden ASC, id_ejercicio ASC',
+            [r.id_rutina]
+          );
+          return {
+            ...r,
+            ejercicios: ejercicios || []
+          };
+        } catch (ejErr) {
+          console.error(`Error cargando ejercicios para rutina ${r.id_rutina}:`, ejErr.message);
+          return { ...r, ejercicios: [] };
+        }
       })
     );
 
