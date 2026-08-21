@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATLAS - Dashboard de Entrenamiento</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body onload="loadDashboard()">
+
+  <!-- NAVBAR -->
+  <header class="app-header">
+    <div class="header-container">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <span id="userGreeting" style="font-weight: 600;">Cargando...</span>
+        <span id="membershipStatus" class="badge badge-active">-</span>
+        <button type="button" class="btn-primary" onclick="openNewRoutineModal()"
+          style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+          + Nueva Rutina
+        </button>
+        <button type="button" class="btn-secondary" onclick="logout()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+          Salir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main-content">
+
+    <!-- SECCIÓN: ENTRENAMIENTO ACTIVO (RUTINA DE HOY) -->
+    <section id="activeSessionSection" class="session-card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="badge badge-active" style="margin-bottom: 0.5rem;">Sesión Activa</span>
+            <span id="restoredSessionBadge" class="badge hidden"
+              style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); margin-bottom: 0.5rem;">↺
+              Reanudada automáticamente</span>
+          </div>
+          <h2 id="sessionRoutineTitle" style="font-size: 1.8rem; font-weight: 700; color: var(--text-main);">
+            Cargando Rutina...
+          </h2>
+          <p id="sessionRoutineDesc" style="color: var(--text-muted); font-size: 0.95rem;"></p>
+        </div>
+        <button type="button" class="btn-secondary" onclick="cancelSession()" style="font-size: 0.85rem;">
+          Cancelar Sesión
+        </button>
+      </div>
+
+      <!-- Barra de Progreso -->
+      <div class="workout-progress-bar">
+        <div id="sessionProgressFill" class="workout-progress-fill"></div>
+      </div>
+      <div
+        style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-top: -1.5rem; margin-bottom: 1.5rem;">
+        <span>Progreso del Entrenamiento</span>
+        <span id="sessionProgressText">0 / 0 series completadas (0%)</span>
+      </div>
+
+      <!-- Lista de Ejercicios Interactivas -->
+      <div id="sessionExercisesList"></div>
+
+      <!-- Acciones de Fin de Sesión -->
+      <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+        <button type="button" class="btn-primary" onclick="finishWorkoutSession()" style="max-width: 320px;">
+          Finalizar y Guardar Entrenamiento
+        </button>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: MIS RUTINAS -->
+    <section>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-size: 1.6rem; font-weight: 700;">Mis Rutinas de Entrenamiento</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Selecciona tu rutina de hoy para comenzar a registrar
+            tus series y pesos.</p>
+        </div>
+        <div style="display: flex; gap: 0.8rem; align-items: center;">
+          <button type="button" class="btn-primary" onclick="openNewRoutineModal()" style="font-size: 0.88rem; padding: 0.6rem 1rem;">
+            + Crear Rutina
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid de Rutinas -->
+      <div id="routinesGrid" class="routines-grid">
+        <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 3rem;">
+          Cargando tus rutinas desde la base de datos...
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: CREAR NUEVA RUTINA -->
+  <div id="routineModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 id="routineModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Crear Nueva Rutina</h3>
+        <button type="button" onclick="closeNewRoutineModal()"
+          style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <form id="createRoutineForm" onsubmit="saveRoutine(event)">
+        <!-- Opción de Rutinas Sugeridas -->
+        <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); padding: 0.8rem 1rem; border-radius: 12px; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <span style="color: #C084FC; font-weight: 700; font-size: 0.95rem; display: block; margin-bottom: 0.2rem;">¿Quieres usar una guía preparada?</span>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Explora las opciones recomendadas e impórtalas a tu rutina.</p>
+          </div>
+          <button type="button" class="btn-secondary" onclick="openTemplateSelectorModal()" style="border-color: #C084FC; color: #C084FC; font-weight: 600; padding: 0.5rem 1rem; font-size: 0.88rem; width: auto; white-space: nowrap;">
+            📌 Rutinas Sugeridas
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Título de la Rutina</label>
+          <input type="text" id="routineTitle" class="form-input" placeholder="Ej: Tren Superior" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Descripción / Notas</label>
+          <input type="text" id="routineDesc" class="form-input" placeholder="">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Horario Preferido</label>
+          <input type="text" id="routineHorario" class="form-input" placeholder="Ej: Lunes y Jueves">
+        </div>
+
+        <div
+          style="margin-top: 1.5rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="font-size: 1rem; font-weight: 600; color: var(--text-main);">Ejercicios de la Rutina</h4>
+          <button type="button" class="btn-secondary" onclick="addExerciseRow()"
+            style="padding: 0.3rem 0.8rem; font-size: 0.85rem;">
+            + Agregar Ejercicio
+          </button>
+        </div>
+
+        <div id="exerciseInputsContainer"
+          style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.5rem;">
+          <!-- Filas de ejercicios se agregan dinámicamente aquí -->
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+          <button type="button" class="btn-secondary" onclick="closeNewRoutineModal()">Cancelar</button>
+          <button type="submit" id="routineModalSubmitBtn" class="btn-primary" style="width: auto; padding: 0.7rem 1.5rem;">Guardar Rutina</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VENTANA VISUAL DE PLANTILLAS PREDEFINIDAS -->
+  <div id="templateSelectorModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
+        <div>
+          <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); margin-bottom: 0.5rem;">Sugerencias Recomendadas</span>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Rutinas Sugeridas</h3>
+          <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">Selecciona una rutina sugerida para cargar sus ejercicios e integrarla a tu rutina.</p>
+        </div>
+        <button type="button" onclick="closeTemplateSelectorModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <!-- Grid Visual de Tarjetas ("Cuadritos") de Plantillas -->
+      <div id="visualTemplateCardsGrid" class="routines-grid" style="margin-bottom: 1rem;">
+        <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 2rem;">
+          Cargando plantillas predefinidas...
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+        <button type="button" class="btn-secondary" onclick="closeTemplateSelectorModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

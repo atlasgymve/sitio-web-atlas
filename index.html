@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATLAS - Plataforma de Entrenamiento</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <img src="assets/logo-white.png" alt="ATLAS GYM" style="max-height: 60px; width: auto;">
+      </div>
+      <p class="auth-subtitle">Ingresa tu correo registrado para acceder al portal</p>
+
+      <!-- Banner de Error -->
+      <div id="errorMsg" class="error-banner hidden"></div>
+
+      <!-- FORMULARIO LOGIN -->
+      <form id="loginForm" onsubmit="login(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Correo Electrónico</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="ejemplo@correo.com" oninput="checkEmailForAdmin()" required>
+        </div>
+
+        <div id="adminPasswordGroup" class="form-group hidden">
+          <label class="form-label" for="loginPassword" style="color: #60A5FA;">Contraseña de Administrador</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" style="border-color: rgba(59, 130, 246, 0.5);">
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top: 1.5rem;">
+          Ingresar al Portal
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
