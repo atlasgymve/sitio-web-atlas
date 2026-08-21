@@ -75,13 +75,15 @@
       </div>
     </section>
 
-    <!-- SECCIÓN: MIS RUTINAS -->
-    <section>
+    <!-- SECCIÓN: MIS RUTINAS DE ENTRENAMIENTO (Tarjeta) -->
+    <section class="glass-card" style="margin-top: 2rem; padding: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h2 style="font-size: 1.6rem; font-weight: 700;">Mis Rutinas de Entrenamiento</h2>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">Selecciona tu rutina de hoy para comenzar a registrar
-            tus series y pesos.</p>
+          <span class="badge" style="background: rgba(96, 165, 250, 0.15); color: #60A5FA; border: 1px solid rgba(96, 165, 250, 0.3); margin-bottom: 0.5rem; display: inline-block;">Entrenamiento</span>
+          <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0;">Mis Rutinas de Entrenamiento</h2>
+          <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.3rem; margin-bottom: 0;">
+            Selecciona tu rutina de hoy para comenzar a registrar tus series y pesos.
+          </p>
         </div>
         <div style="display: flex; gap: 0.8rem; align-items: center;">
           <button type="button" class="btn-primary" onclick="openNewRoutineModal()" style="font-size: 0.88rem; padding: 0.6rem 1rem;">
@@ -91,7 +93,7 @@
       </div>
 
       <!-- Grid de Rutinas -->
-      <div id="routinesGrid" class="routines-grid">
+      <div id="routinesGrid" class="routines-grid" style="margin-top: 1rem;">
         <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 3rem;">
           Cargando tus rutinas desde la base de datos...
         </div>
