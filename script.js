@@ -2296,3 +2296,291 @@ function filterUserResourcesByCategory() {
     grid.appendChild(card);
   });
 }
+
+// ==========================================
+// MÓDULO: PLANTILLAS DE RUTINAS PREDEFINIDAS
+// ==========================================
+
+let adminTemplatesData = [];
+let currentEditingTemplateId = null;
+
+function toggleAdminTemplatesSection() {
+  const section = $("#adminTemplatesSection");
+  if (!section) return;
+
+  if (section.classList.contains("hidden")) {
+    section.classList.remove("hidden");
+    loadAdminTemplates();
+    section.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    section.classList.add("hidden");
+  }
+}
+
+function loadAdminTemplates() {
+  const grid = $("#adminTemplatesGrid");
+  if (!grid) return;
+
+  fetch(`${API_BASE}/plantillas`)
+    .then(r => r.json())
+    .then(data => {
+      adminTemplatesData = data.plantillas || [];
+      renderAdminTemplatesGrid(adminTemplatesData);
+    })
+    .catch(err => {
+      console.error("Error cargando plantillas:", err);
+      grid.innerHTML = `<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 2rem;">Error al cargar las plantillas.</div>`;
+    });
+}
+
+function renderAdminTemplatesGrid(plantillas) {
+  const grid = $("#adminTemplatesGrid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+  if (plantillas.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+        <p style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay plantillas predefinidas registradas aún.</p>
+        <button type="button" class="btn-primary" onclick="openCreateTemplateModal()" style="width: auto; margin: 0 auto; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+          + Crear Primera Plantilla
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  plantillas.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "routine-card";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #C084FC;";
+
+    const cantEjercicios = p.ejercicios ? p.ejercicios.length : 0;
+    const listaEjerciciosNombres = p.ejercicios && p.ejercicios.length > 0
+      ? p.ejercicios.map(e => `• ${e.nombre_ejercicio} (${e.series}x${e.repeticiones} - ${formatExerciseWeights(e)})`).join("<br>")
+      : "Sin ejercicios en plantilla";
+
+    card.innerHTML = `
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 0.5rem;">
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: #C084FC; font-weight: 700;">${p.titulo}</h3>
+          <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">Plantilla</span>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${p.descripcion || "Sin descripción especificada."}</p>
+
+        <div style="background: rgba(15,23,42,0.5); padding: 0.8rem; border-radius: 8px; font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
+          <strong style="color: #C084FC;">Ejercicios incluidos (${cantEjercicios}):</strong><br>
+          <div style="margin-top: 0.4rem; line-height: 1.4;">${listaEjerciciosNombres}</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+          Horario: ${p.horario || "flexible"}
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-secondary" onclick="editTemplate(${p.id_plantilla})" title="Editar plantilla" style="flex: 1; padding: 0.55rem 0.8rem; font-size: 0.85rem; border-color: #C084FC; color: #C084FC;">
+            Editar
+          </button>
+          <button class="btn-danger" onclick="deleteTemplate(${p.id_plantilla})" title="Eliminar plantilla" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openCreateTemplateModal() {
+  currentEditingTemplateId = null;
+  const modal = $("#createTemplateModal");
+  if (modal) modal.classList.remove("hidden");
+
+  const titleModal = $("#createTemplateModalTitle");
+  if (titleModal) titleModal.textContent = "Nueva Plantilla de Rutina";
+
+  const submitBtn = $("#createTemplateModalSubmitBtn");
+  if (submitBtn) submitBtn.textContent = "Guardar Plantilla";
+
+  const form = $("#createTemplateForm");
+  if (form) form.reset();
+
+  const container = $("#templateExercisesContainer");
+  if (container) {
+    container.innerHTML = "";
+    addTemplateExerciseRow();
+  }
+}
+
+function closeCreateTemplateModal() {
+  const modal = $("#createTemplateModal");
+  if (modal) modal.classList.add("hidden");
+  currentEditingTemplateId = null;
+}
+
+function addTemplateExerciseRow(ej = null) {
+  const container = $("#templateExercisesContainer");
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "template-exercise-row";
+  row.style.cssText = "display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 0.5rem; align-items: center; background: rgba(15,23,42,0.5); padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-light);";
+
+  const nombreVal = ej ? ej.nombre_ejercicio : "";
+  const seriesVal = ej ? (ej.series || 3) : 3;
+  const repsVal = ej ? (ej.repeticiones || 10) : 10;
+  const pesoVal = ej ? (ej.peso_kg || 0) : 0;
+
+  row.innerHTML = `
+    <input type="text" class="form-input template-ej-nombre" placeholder="Nombre Ejercicio" value="${nombreVal}" required style="padding: 0.4rem 0.6rem; font-size: 0.85rem;">
+    <input type="number" class="form-input template-ej-series" placeholder="Series" value="${seriesVal}" min="1" required style="padding: 0.4rem 0.6rem; font-size: 0.85rem;">
+    <input type="number" class="form-input template-ej-reps" placeholder="Reps" value="${repsVal}" min="1" required style="padding: 0.4rem 0.6rem; font-size: 0.85rem;">
+    <input type="number" class="form-input template-ej-peso" placeholder="Peso kg" value="${pesoVal}" step="0.5" min="0" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;">
+    <button type="button" class="btn-danger" onclick="removeTemplateExerciseRow(this)" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; height: 100%;">✕</button>
+  `;
+
+  container.appendChild(row);
+}
+
+function removeTemplateExerciseRow(btn) {
+  const row = btn.closest(".template-exercise-row");
+  if (row) row.remove();
+}
+
+function saveNewTemplate(e) {
+  e.preventDefault();
+
+  const titleInput = $("#templateTitle");
+  const descInput = $("#templateDesc");
+  const horarioInput = $("#templateHorario");
+
+  if (!titleInput || !titleInput.value.trim()) {
+    alert("Por favor ingresa un nombre para la plantilla.");
+    return;
+  }
+
+  const rows = document.querySelectorAll(".template-exercise-row");
+  if (rows.length === 0) {
+    alert("Debes agregar al menos un ejercicio a la plantilla.");
+    return;
+  }
+
+  const ejercicios = [];
+  let errorEj = false;
+
+  rows.forEach(r => {
+    const nombre = r.querySelector(".template-ej-nombre")?.value.trim();
+    const series = parseInt(r.querySelector(".template-ej-series")?.value) || 3;
+    const reps = parseInt(r.querySelector(".template-ej-reps")?.value) || 10;
+    const peso = parseFloat(r.querySelector(".template-ej-peso")?.value) || 0;
+
+    if (!nombre) {
+      errorEj = true;
+    } else {
+      ejercicios.push({
+        nombre_ejercicio: nombre,
+        series: series,
+        repeticiones: reps,
+        peso_kg: peso
+      });
+    }
+  });
+
+  if (errorEj || ejercicios.length === 0) {
+    alert("Todos los ejercicios incluidos en la plantilla deben tener un nombre.");
+    return;
+  }
+
+  const payload = {
+    titulo: titleInput.value.trim(),
+    descripcion: descInput ? descInput.value.trim() : "",
+    horario: horarioInput ? horarioInput.value.trim() : "",
+    ejercicios: ejercicios
+  };
+
+  const submitBtn = $("#createTemplateModalSubmitBtn");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Guardando...";
+  }
+
+  const url = currentEditingTemplateId
+    ? `${API_BASE}/admin/plantillas/${currentEditingTemplateId}`
+    : `${API_BASE}/admin/plantillas`;
+  const method = currentEditingTemplateId ? "PUT" : "POST";
+
+  fetch(url, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (submitBtn) submitBtn.disabled = false;
+      if (res.ok) {
+        alert(res.msg || "Plantilla guardada con éxito.");
+        closeCreateTemplateModal();
+        loadAdminTemplates();
+      } else {
+        alert(res.msg || "Error al guardar la plantilla.");
+        if (submitBtn) submitBtn.textContent = currentEditingTemplateId ? "Actualizar Plantilla" : "Guardar Plantilla";
+      }
+    })
+    .catch(err => {
+      console.error("Error guardando plantilla:", err);
+      if (submitBtn) submitBtn.disabled = false;
+      alert("Ocurrió un error al guardar la plantilla.");
+    });
+}
+
+function editTemplate(templateId) {
+  const plantilla = adminTemplatesData.find(p => p.id_plantilla === templateId);
+  if (!plantilla) {
+    alert("No se encontró la información de la plantilla.");
+    return;
+  }
+
+  currentEditingTemplateId = templateId;
+  const modal = $("#createTemplateModal");
+  if (modal) modal.classList.remove("hidden");
+
+  const titleModal = $("#createTemplateModalTitle");
+  if (titleModal) titleModal.textContent = "Editar Plantilla de Rutina";
+
+  const submitBtn = $("#createTemplateModalSubmitBtn");
+  if (submitBtn) submitBtn.textContent = "Actualizar Plantilla";
+
+  $("#templateTitle").value = plantilla.titulo || "";
+  $("#templateDesc").value = plantilla.descripcion || "";
+  $("#templateHorario").value = plantilla.horario || "";
+
+  const container = $("#templateExercisesContainer");
+  if (container) {
+    container.innerHTML = "";
+    if (plantilla.ejercicios && plantilla.ejercicios.length > 0) {
+      plantilla.ejercicios.forEach(ej => addTemplateExerciseRow(ej));
+    } else {
+      addTemplateExerciseRow();
+    }
+  }
+}
+
+function deleteTemplate(templateId) {
+  if (!confirm("¿Estás seguro de que deseas eliminar esta plantilla de rutina?")) return;
+
+  fetch(`${API_BASE}/admin/plantillas/${templateId}`, {
+    method: "DELETE"
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        alert(res.msg || "Plantilla eliminada con éxito.");
+        loadAdminTemplates();
+      } else {
+        alert(res.msg || "Error al eliminar la plantilla.");
+      }
+    })
+    .catch(err => console.error("Error eliminando plantilla:", err));
+}
