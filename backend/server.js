@@ -28,10 +28,12 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // Servir archivos estáticos del frontend (HTML, CSS, JS, imágenes)
-app.use(express.static(path.join(__dirname, '../')));
+const publicPath = path.join(__dirname, '..');
+app.use(express.static(publicPath));
+app.use('/assets', express.static(path.join(publicPath, 'assets')));
 
 // Carpeta de archivos subidos
-const uploadsDir = path.join(__dirname, '../uploads');
+const uploadsDir = path.join(publicPath, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -106,7 +108,7 @@ pool.execute(`
   try {
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
-  } catch (e) {}
+  } catch (e) { }
   console.log('✅ Tabla "pagos" verificada en MySQL');
 }).catch(err => console.error('Error al verificar tabla pagos:', err.message));
 
@@ -915,11 +917,22 @@ app.get('/api/ping', (req, res) => {
   res.json({ ok: true, message: 'Backend ATLAS activo con MySQL' });
 });
 
-// Ruta de fallback para servir la aplicación en la raíz
+// ---------- RUTAS DE PÁGINAS Y FALLBACK ----------
+app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
+app.get('/index', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
+
+app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
+app.get('/admin.html', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
+
+app.get('/dashboard', (req, res) => res.sendFile(path.join(publicPath, 'dashboard.html')));
+app.get('/dashboard.html', (req, res) => res.sendFile(path.join(publicPath, 'dashboard.html')));
+
 app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../index.html'));
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ ok: false, msg: 'Ruta API no encontrada' });
   }
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
