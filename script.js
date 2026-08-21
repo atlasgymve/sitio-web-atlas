@@ -2184,6 +2184,28 @@ function deleteResourceByAdmin(id) {
     .catch(err => console.error("Error eliminando recurso:", err));
 }
 
+// Plegar / Desplegar sección de recursos en Dashboard del Cliente
+function toggleUserResourcesSection() {
+  const body = $("#userResourcesBody");
+  const btnText = $("#userResourcesToggleBtnText");
+  const chevron = $("#userResourcesChevron");
+
+  if (!body) return;
+
+  if (body.classList.contains("hidden")) {
+    body.classList.remove("hidden");
+    if (btnText) btnText.textContent = "Ocultar Contenido";
+    if (chevron) chevron.textContent = "▲";
+    if (userResourcesData.length === 0) {
+      loadUserDashboardResources();
+    }
+  } else {
+    body.classList.add("hidden");
+    if (btnText) btnText.textContent = "Ver Contenido";
+    if (chevron) chevron.textContent = "▼";
+  }
+}
+
 // Carga en el Dashboard del Cliente (Atleta)
 function loadUserDashboardResources() {
   const grid = $("#userResourcesGrid");
@@ -2248,7 +2270,7 @@ function filterUserResourcesByCategory() {
 
       <div>
         <a href="${hrefUrl}" target="_blank" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-          Abrir / Descargar
+          Ver Contenido
         </a>
       </div>
     `;
