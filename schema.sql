@@ -5,10 +5,13 @@ USE atlas;
 -- 1. Tabla: usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
   id_usuario BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_usuario VARCHAR(100) NULL,
   nombre_completo VARCHAR(150) NOT NULL,
   correo VARCHAR(150) NOT NULL UNIQUE,
   telefono VARCHAR(20) NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  hash_contrasena VARCHAR(255) NULL,
+  password_hash VARCHAR(255) NULL,
+  id_rol INT NOT NULL DEFAULT 2,
   rol ENUM('cliente', 'administrador') DEFAULT 'cliente',
   membresia_vence DATE NULL,
   membresia_estado ENUM('activa', 'inactiva', 'vencida') DEFAULT 'inactiva',
