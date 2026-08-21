@@ -122,8 +122,8 @@ pool.execute(`
     const [rows] = await pool.execute('SELECT id_usuario FROM usuarios WHERE correo = ?', [adminEmail]);
     if (rows.length === 0) {
       await pool.execute(
-        'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, 1, "administrador")',
-        ['admin_atlas', adminEmail, hash, hash, 'Administrador ATLAS']
+        'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, 1, ?)',
+        ['admin_atlas', adminEmail, hash, hash, 'Administrador ATLAS', 'administrador']
       );
       console.log('✅ Cuenta de Administrador creada (atlasgymve@gmail.com).');
     } else {
@@ -157,8 +157,8 @@ app.post('/api/registro', async (req, res) => {
     const nombre_usuario = correo.split('@')[0] + Math.floor(Math.random() * 1000);
 
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, "cliente")',
-      [nombre_usuario, correo, telefono || null, hash, hash, nombre_completo]
+      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, ?)',
+      [nombre_usuario, correo, telefono || null, hash, hash, nombre_completo, 'cliente']
     );
 
     const newUserId = result.insertId;
@@ -573,8 +573,8 @@ app.post('/api/admin/usuarios', async (req, res) => {
     const nombre_usuario = cleanEmail.split('@')[0] + Math.floor(Math.random() * 1000);
 
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, "cliente")',
-      [nombre_usuario, cleanEmail, telefono || null, dummyHash, dummyHash, nombre_completo]
+      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, ?)',
+      [nombre_usuario, cleanEmail, telefono || null, dummyHash, dummyHash, nombre_completo, 'cliente']
     );
 
     const newUserId = result.insertId;
