@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
@@ -28,6 +30,26 @@ app.use(express.json());
 // Servir archivos estáticos del frontend (HTML, CSS, JS, imágenes)
 app.use(express.static(path.join(__dirname, '../')));
 
+// Carpeta de archivos subidos
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
+// Configuración de Multer para carga de archivos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'recurso-' + uniqueSuffix + ext);
+  }
+});
+const upload = multer({ storage: storage });
+
 // Pool de conexión MySQL (Soporta Variables de Entorno para Render / Cloud DB)
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
@@ -41,6 +63,21 @@ const pool = mysql.createPool({
   charset: 'utf8mb4',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
+
+// Asegurar que la tabla recursos_apoyo exista
+pool.execute(`
+  CREATE TABLE IF NOT EXISTS recursos_apoyo (
+    id_recurso INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(150) NOT NULL,
+    descripcion TEXT NULL,
+    categoria VARCHAR(50) NOT NULL DEFAULT 'General',
+    tipo_recurso ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
+    url_recurso TEXT NOT NULL,
+    nombre_archivo_orig VARCHAR(255) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`).then(() => console.log('✅ Tabla "recursos_apoyo" verificada'))
+  .catch(err => console.error('Error verificando recursos_apoyo:', err.message));
 
 // Asegurar que la columna series_detalle_json exista
 pool.execute('ALTER TABLE ejercicios_rutina ADD COLUMN series_detalle_json TEXT NULL AFTER peso_kg')
@@ -791,6 +828,85 @@ app.delete('/api/admin/plantillas/:id', async (req, res) => {
   } catch (err) {
     console.error('Error en DELETE /api/admin/plantillas:', err);
     res.status(500).json({ msg: `Error al eliminar plantilla: ${err.message}` });
+  }
+});
+
+// ---------- RUTAS: MATERIAL Y CONTENIDO ADICIONAL ----------
+
+// Listar recursos de apoyo
+app.get('/api/recursos', async (req, res) => {
+  const { categoria } = req.query;
+  try {
+    let query = 'SELECT * FROM recursos_apoyo';
+    let params = [];
+    if (categoria && categoria !== 'todas') {
+      query += ' WHERE categoria = ?';
+      params.push(categoria);
+    }
+    query += ' ORDER BY id_recurso DESC';
+    const [rows] = await pool.execute(query, params);
+    res.json({ ok: true, recursos: rows });
+  } catch (err) {
+    console.error('Error en GET /api/recursos:', err);
+    res.status(500).json({ msg: 'Error al obtener contenido adicional.' });
+  }
+});
+
+// Crear recurso de apoyo (Archivo o Enlace)
+app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
+  const { titulo, descripcion, categoria, tipo_recurso, url_enlace } = req.body;
+
+  if (!titulo || !titulo.trim()) {
+    return res.status(400).json({ msg: 'El título del material es obligatorio.' });
+  }
+
+  let finalTipo = tipo_recurso || 'enlace';
+  let finalUrl = '';
+  let nombreOrig = null;
+
+  if (req.file) {
+    finalTipo = 'archivo';
+    finalUrl = `/uploads/${req.file.filename}`;
+    nombreOrig = req.file.originalname;
+  } else if (url_enlace && url_enlace.trim()) {
+    finalTipo = 'enlace';
+    finalUrl = url_enlace.trim();
+  } else {
+    return res.status(400).json({ msg: 'Debes adjuntar un archivo o ingresar una URL de enlace.' });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO recursos_apoyo (titulo, descripcion, categoria, tipo_recurso, url_recurso, nombre_archivo_orig) VALUES (?, ?, ?, ?, ?, ?)',
+      [titulo.trim(), descripcion || null, categoria || 'General', finalTipo, finalUrl, nombreOrig]
+    );
+
+    res.json({ ok: true, id_recurso: result.insertId, msg: 'Material y Contenido Adicional agregado con éxito.' });
+  } catch (err) {
+    console.error('Error en POST /api/admin/recursos:', err);
+    res.status(500).json({ msg: `Error al guardar material: ${err.message}` });
+  }
+});
+
+// Eliminar recurso de apoyo
+app.delete('/api/admin/recursos/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const [rows] = await pool.execute('SELECT * FROM recursos_apoyo WHERE id_recurso = ?', [id]);
+    if (rows.length > 0) {
+      const recurso = rows[0];
+      if (recurso.tipo_recurso === 'archivo' && recurso.url_recurso.startsWith('/uploads/')) {
+        const filePath = path.join(__dirname, '..', recurso.url_recurso);
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch (e) { console.error('Error eliminando archivo físico:', e); }
+        }
+      }
+      await pool.execute('DELETE FROM recursos_apoyo WHERE id_recurso = ?', [id]);
+    }
+    res.json({ ok: true, msg: 'Material eliminado con éxito.' });
+  } catch (err) {
+    console.error('Error en DELETE /api/admin/recursos:', err);
+    res.status(500).json({ msg: `Error al eliminar material: ${err.message}` });
   }
 });
 

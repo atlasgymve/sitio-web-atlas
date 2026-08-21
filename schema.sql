@@ -87,7 +87,26 @@ CREATE TABLE IF NOT EXISTS ejercicios_plantilla (
   CONSTRAINT fk_ejercicio_plantilla FOREIGN KEY (id_plantilla) REFERENCES plantillas_rutinas(id_plantilla) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 8. Tabla: recursos_apoyo (Material y Contenido Adicional)
+CREATE TABLE IF NOT EXISTS recursos_apoyo (
+  id_recurso INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(150) NOT NULL,
+  descripcion TEXT NULL,
+  categoria VARCHAR(50) NOT NULL DEFAULT 'General',
+  tipo_recurso ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
+  url_recurso TEXT NOT NULL,
+  nombre_archivo_orig VARCHAR(255) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Usuario Administrador por Defecto (Password Hash para pass123 / admin)
 INSERT INTO usuarios (nombre_completo, correo, telefono, password_hash, rol, membresia_estado)
 VALUES ('Administrador ATLAS', 'admin@atlas.com', '+584140000000', '$2b$10$wK1J0hWcT1W4mJmD5bQ7u.51w33tL.u/gG7E3Q9N.o4K5xZ2L0nS2', 'administrador', 'activa')
 ON DUPLICATE KEY UPDATE id_usuario=id_usuario;
+
+-- Recursos de prueba de Material y Contenido Adicional
+INSERT INTO recursos_apoyo (titulo, descripcion, categoria, tipo_recurso, url_recurso, nombre_archivo_orig)
+VALUES 
+('🥗 Guía de Nutrición e Hidratación Deportivo', 'Recomendaciones nutricionales básicas para optimizar el rendimiento y la recuperación muscular.', 'Nutrición', 'enlace', 'https://www.google.com', NULL),
+('📖 Reglamento y Normas del Gimnasio ATLAS', 'Normativa interna de uso de equipos, horarios y buena convivencia en las instalaciones.', 'Reglamento', 'enlace', 'https://www.google.com', NULL)
+ON DUPLICATE KEY UPDATE id_recurso=id_recurso;

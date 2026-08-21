@@ -97,6 +97,36 @@
       </div>
     </section>
 
+    <!-- SECCIÓN: MATERIAL Y CONTENIDO ADICIONAL -->
+    <section style="margin-top: 3rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
+        <div>
+          <h2 style="font-size: 1.6rem; font-weight: 700; color: #FBBF24;">📚 Material y Contenido Adicional</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Explora guías de nutrición, reglamentos, videos y recursos de apoyo para potenciar tus resultados.</p>
+        </div>
+
+        <!-- Filtro por Categorías de Contenido -->
+        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+          <select id="userResourceCategorySelect" class="form-input" onchange="filterUserResourcesByCategory()"
+            style="width: auto; padding: 0.45rem 0.9rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.85rem;">
+            <option value="todas" selected>📂 Todas las Categorías</option>
+            <option value="Nutrición">🥗 Nutrición</option>
+            <option value="Entrenamiento">🏋️ Guías de Entrenamiento</option>
+            <option value="Suplementación">💊 Suplementación</option>
+            <option value="Reglamento">📖 Reglamento y Normas</option>
+            <option value="General">💡 Consejos Generales</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid de Material de Apoyo del Cliente -->
+      <div id="userResourcesGrid" class="routines-grid">
+        <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px;">
+          Cargando contenido adicional...
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- MODAL: CREAR NUEVA RUTINA -->

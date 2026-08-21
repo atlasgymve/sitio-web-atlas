@@ -121,6 +121,23 @@
         </button>
       </div>
 
+      <!-- Card 5: Material y Contenido Adicional -->
+      <div class="glass-card"
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+        <div>
+          <span class="badge"
+            style="background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); margin-bottom: 0.5rem;">📚 Biblioteca</span>
+          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
+            Sube archivos de soporte (PDFs, guías, imágenes) y enlaces de interés para que tus atletas consulten.
+          </p>
+        </div>
+        <button type="button" class="btn-secondary" onclick="toggleAdminResourcesSection()"
+          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
+          📂 Gestionar Contenido
+        </button>
+      </div>
+
     </div>
 
     <!-- SECCIÓN: LISTADO DE CLIENTES (OCULTA POR DEFECTO UNTIL BOTÓN CLICKEADO) -->
@@ -255,6 +272,40 @@
       <div id="adminTemplatesGrid" class="routines-grid">
         <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 2rem;">
           Cargando plantillas de rutinas...
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: MATERIAL Y CONTENIDO ADICIONAL -->
+    <section id="adminResourcesSection" class="glass-card hidden" style="margin-top: 2rem;">
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">📚 Material y Contenido Adicional</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Sube PDFs, guías nutricionales, imágenes y enlaces de interés para que tus atletas consulten en su panel.</p>
+        </div>
+
+        <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+          <select id="adminResourceCategoryFilter" class="form-input" onchange="filterAdminResourcesByCategory()"
+            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            <option value="todas" selected>📂 Todas las Categorías</option>
+            <option value="Nutrición">🥗 Nutrición</option>
+            <option value="Entrenamiento">🏋️ Guías de Entrenamiento</option>
+            <option value="Suplementación">💊 Suplementación</option>
+            <option value="Reglamento">📖 Reglamento y Normas</option>
+            <option value="General">💡 Consejos Generales</option>
+          </select>
+
+          <button type="button" class="btn-primary" onclick="openCreateResourceModal()"
+            style="width: auto; padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            + Subir Nuevo Material 📄
+          </button>
+        </div>
+      </div>
+
+      <div id="adminResourcesGrid" class="routines-grid">
+        <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 2rem;">
+          Cargando contenido adicional...
         </div>
       </div>
     </section>
@@ -562,6 +613,74 @@
           <button type="submit" id="createTemplateModalSubmitBtn" class="btn-primary"
             style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
             Guardar Plantilla
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBIR / REGISTRAR MATERIAL Y CONTENIDO ADICIONAL -->
+  <div id="createResourceModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 540px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #FBBF24;">📚 Subir Material y Contenido Adicional</h3>
+        <button type="button" onclick="closeCreateResourceModal()"
+          style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <form id="createResourceForm" onsubmit="saveResource(event)">
+        <div class="form-group">
+          <label class="form-label" for="resourceTitle">📌 Título del Material</label>
+          <input type="text" id="resourceTitle" class="form-input" placeholder="Ej: Guía de Alimentación e Hidratación" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="resourceCategory">🏷️ Categoría</label>
+          <select id="resourceCategory" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;">
+            <option value="Nutrición" selected>🥗 Nutrición</option>
+            <option value="Entrenamiento">🏋️ Guías de Entrenamiento</option>
+            <option value="Suplementación">💊 Suplementación</option>
+            <option value="Reglamento">📖 Reglamento y Normas</option>
+            <option value="General">💡 Consejos Generales</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📂 Tipo de Contenido</label>
+          <div style="display: flex; gap: 1.5rem; margin-top: 0.4rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
+              <input type="radio" name="resourceType" value="archivo" checked onchange="toggleResourceTypeInput()">
+              📄 Adjuntar Archivo (PDF / Imagen)
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
+              <input type="radio" name="resourceType" value="enlace" onchange="toggleResourceTypeInput()">
+              🔗 Enlace Web / Video
+            </label>
+          </div>
+        </div>
+
+        <!-- Opción A: Archivo Local (PDF, Imagen, Doc) -->
+        <div id="resourceFileInputContainer" class="form-group">
+          <label class="form-label" for="resourceFile">📎 Seleccionar Archivo (PDF, JPG, PNG)</label>
+          <input type="file" id="resourceFile" class="form-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="padding: 0.4rem;">
+        </div>
+
+        <!-- Opción B: Enlace URL -->
+        <div id="resourceLinkInputContainer" class="form-group hidden">
+          <label class="form-label" for="resourceLink">🌐 Dirección URL del Enlace</label>
+          <input type="url" id="resourceLink" class="form-input" placeholder="https://youtube.com/watch?v=...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="resourceDesc">📝 Descripción / Notas adicionales</label>
+          <textarea id="resourceDesc" class="form-input" rows="3" placeholder="Información útil o recomendaciones sobre este contenido..."></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+          <button type="button" class="btn-secondary" onclick="closeCreateResourceModal()">Cancelar</button>
+          <button type="submit" id="createResourceModalSubmitBtn" class="btn-primary"
+            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            Guardar Material 💾
           </button>
         </div>
       </form>

@@ -131,6 +131,7 @@ function loadDashboard() {
 
       renderRoutinesGrid(data.rutinas || []);
       restoreActiveSessionIfAny();
+      loadUserDashboardResources();
     })
     .catch(err => {
       console.error("Error al cargar dashboard:", err);
@@ -1938,4 +1939,314 @@ function selectTemplateForRoutine(id_plantilla) {
   }
 
   loadTemplateIntoRoutineForm(id_plantilla);
+}
+
+/* ---------- MATERIAL Y CONTENIDO ADICIONAL 📚 ---------- */
+
+let adminResourcesData = [];
+let userResourcesData = [];
+
+function toggleAdminResourcesSection() {
+  const sec = $("#adminResourcesSection");
+  if (!sec) return;
+
+  if (sec.classList.contains("hidden")) {
+    const clientsSection = $("#adminClientsSection");
+    const paymentsSection = $("#adminPaymentsSection");
+    const templatesSection = $("#adminTemplatesSection");
+
+    if (clientsSection) clientsSection.classList.add("hidden");
+    if (paymentsSection) paymentsSection.classList.add("hidden");
+    if (templatesSection) templatesSection.classList.add("hidden");
+
+    sec.classList.remove("hidden");
+    loadAdminResources();
+    sec.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    sec.classList.add("hidden");
+  }
+}
+
+function getCategoryBadge(cat) {
+  switch (cat) {
+    case 'Nutrición':
+      return `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4);">🥗 Nutrición</span>`;
+    case 'Entrenamiento':
+      return `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4);">🏋️ Guía</span>`;
+    case 'Suplementación':
+      return `<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">💊 Suplementos</span>`;
+    case 'Reglamento':
+      return `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">📖 Reglamento</span>`;
+    default:
+      return `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4);">💡 Consejos</span>`;
+  }
+}
+
+function getResourceIcon(tipo, url) {
+  if (tipo === 'archivo') {
+    if (url.endsWith('.pdf')) return '📄 Documento PDF';
+    if (url.match(/\.(png|jpg|jpeg|webp)$/i)) return '🖼️ Imagen';
+    return '📎 Archivo Adjunto';
+  }
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return '🎥 Video YouTube';
+  return '🌐 Enlace Web';
+}
+
+function loadAdminResources() {
+  const grid = $("#adminResourcesGrid");
+  if (!grid) return;
+
+  fetch(`${API_BASE}/recursos`)
+    .then(r => r.json())
+    .then(data => {
+      adminResourcesData = data.recursos || [];
+      filterAdminResourcesByCategory();
+    })
+    .catch(err => {
+      console.error("Error cargando materiales de apoyo admin:", err);
+      grid.innerHTML = `<div style="grid-column: 1 / -1; color: #EF4444; text-align: center;">Error al cargar contenidos.</div>`;
+    });
+}
+
+function filterAdminResourcesByCategory() {
+  const grid = $("#adminResourcesGrid");
+  if (!grid) return;
+
+  const select = $("#adminResourceCategoryFilter");
+  const catFilter = select ? select.value : 'todas';
+
+  let list = [...adminResourcesData];
+  if (catFilter !== 'todas') {
+    list = list.filter(r => r.categoria === catFilter);
+  }
+
+  grid.innerHTML = "";
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
+        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay material registrado en esta categoría aún. 📚</p>
+        <button class="btn-primary" onclick="openCreateResourceModal()" style="width: auto; margin: 0 auto; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+          + Subir Primer Material 📄
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  list.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "routine-card";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #F59E0B;";
+
+    const catBadge = getCategoryBadge(r.categoria);
+    const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
+    const hrefUrl = r.url_recurso.startsWith('/uploads/') ? `${window.location.origin}${r.url_recurso}` : r.url_recurso;
+
+    card.innerHTML = `
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 0.5rem;">
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${r.titulo}</h3>
+          ${catBadge}
+        </div>
+        
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
+
+        <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.04);">
+          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || r.url_recurso}</strong>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="${hrefUrl}" target="_blank" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);">
+          👁️ Ver / Abrir
+        </a>
+        <button class="btn-danger" onclick="deleteResourceByAdmin(${r.id_recurso})" title="Eliminar material" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
+          🗑️ Eliminar
+        </button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openCreateResourceModal() {
+  const modal = $("#createResourceModal");
+  if (modal) modal.classList.remove("hidden");
+  const form = $("#createResourceForm");
+  if (form) form.reset();
+  toggleResourceTypeInput();
+}
+
+function closeCreateResourceModal() {
+  const modal = $("#createResourceModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function toggleResourceTypeInput() {
+  const selectedType = document.querySelector('input[name="resourceType"]:checked');
+  const typeVal = selectedType ? selectedType.value : 'archivo';
+
+  const fileContainer = $("#resourceFileInputContainer");
+  const linkContainer = $("#resourceLinkInputContainer");
+
+  if (typeVal === 'archivo') {
+    if (fileContainer) fileContainer.classList.remove("hidden");
+    if (linkContainer) linkContainer.classList.add("hidden");
+  } else {
+    if (fileContainer) fileContainer.classList.add("hidden");
+    if (linkContainer) linkContainer.classList.remove("hidden");
+  }
+}
+
+function saveResource(e) {
+  e.preventDefault();
+
+  const titleInput = $("#resourceTitle");
+  const catInput = $("#resourceCategory");
+  const descInput = $("#resourceDesc");
+
+  const selectedType = document.querySelector('input[name="resourceType"]:checked');
+  const typeVal = selectedType ? selectedType.value : 'archivo';
+
+  const fileInput = $("#resourceFile");
+  const linkInput = $("#resourceLink");
+
+  const formData = new FormData();
+  formData.append('titulo', titleInput.value.trim());
+  formData.append('categoria', catInput.value);
+  formData.append('descripcion', descInput.value.trim());
+  formData.append('tipo_recurso', typeVal);
+
+  if (typeVal === 'archivo') {
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      alert("Por favor selecciona un archivo (PDF, Imagen, etc.).");
+      return;
+    }
+    formData.append('archivo', fileInput.files[0]);
+  } else {
+    if (!linkInput || !linkInput.value.trim()) {
+      alert("Por favor ingresa la URL del enlace o video.");
+      return;
+    }
+    formData.append('url_enlace', linkInput.value.trim());
+  }
+
+  const submitBtn = $("#createResourceModalSubmitBtn");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Guardando...";
+  }
+
+  fetch(`${API_BASE}/admin/recursos`, {
+    method: 'POST',
+    body: formData
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Guardar Material 💾";
+      }
+      if (res.ok) {
+        closeCreateResourceModal();
+        loadAdminResources();
+      } else {
+        alert(res.msg || "Error al guardar el material de apoyo.");
+      }
+    })
+    .catch(err => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Guardar Material 💾";
+      }
+      console.error("Error guardando recurso:", err);
+      alert("Error al conectar con el servidor.");
+    });
+}
+
+function deleteResourceByAdmin(id) {
+  if (!confirm("¿Estás seguro de eliminar este material de apoyo?")) return;
+
+  fetch(`${API_BASE}/admin/recursos/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        loadAdminResources();
+      } else {
+        alert(res.msg || "Error al eliminar el material.");
+      }
+    })
+    .catch(err => console.error("Error eliminando recurso:", err));
+}
+
+// Carga en el Dashboard del Cliente (Atleta)
+function loadUserDashboardResources() {
+  const grid = $("#userResourcesGrid");
+  if (!grid) return;
+
+  fetch(`${API_BASE}/recursos`)
+    .then(r => r.json())
+    .then(data => {
+      userResourcesData = data.recursos || [];
+      filterUserResourcesByCategory();
+    })
+    .catch(err => {
+      console.error("Error cargando recursos cliente:", err);
+      grid.innerHTML = `<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 2rem;">No se pudo cargar el contenido adicional.</div>`;
+    });
+}
+
+function filterUserResourcesByCategory() {
+  const grid = $("#userResourcesGrid");
+  if (!grid) return;
+
+  const select = $("#userResourceCategorySelect");
+  const catFilter = select ? select.value : 'todas';
+
+  let list = [...userResourcesData];
+  if (catFilter !== 'todas') {
+    list = list.filter(r => r.categoria === catFilter);
+  }
+
+  grid.innerHTML = "";
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+        <p style="font-size: 1rem; color: var(--text-muted); margin: 0;">No hay contenido adicional disponible en esta categoría por ahora. 📚</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "routine-card";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #F59E0B;";
+
+    const catBadge = getCategoryBadge(r.categoria);
+    const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
+    const hrefUrl = r.url_recurso.startsWith('/uploads/') ? `${window.location.origin}${r.url_recurso}` : r.url_recurso;
+
+    card.innerHTML = `
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 0.5rem;">
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${r.titulo}</h3>
+          ${catBadge}
+        </div>
+        
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
+
+        <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
+          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || 'Ver Recurso'}</strong>
+        </div>
+      </div>
+
+      <div>
+        <a href="${hrefUrl}" target="_blank" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+          📖 Abrir / Descargar
+        </a>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
