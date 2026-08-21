@@ -448,56 +448,81 @@ app.post('/api/sesiones', async (req, res) => {
 app.get('/api/admin/usuarios', async (req, res) => {
   try {
     const [users] = await pool.execute(
-      'SELECT id_usuario, nombre_completo, correo, telefono FROM usuarios WHERE id_rol != 1 ORDER BY id_usuario DESC'
+      'SELECT id_usuario, nombre_completo, correo, telefono, membresia_estado, DATE_FORMAT(membresia_vence, "%Y-%m-%d") as membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != "administrador" OR rol IS NULL) ORDER BY id_usuario DESC'
     );
 
     const usuariosCompletos = await Promise.all(
       users.map(async (u) => {
-        // Membresía
-        const [memRows] = await pool.execute(
-          "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
-          [u.id_usuario]
-        );
-        const membresia = memRows.length ? memRows[0] : { estado: 'sin membresía', vence: '-' };
+        // Membresía con fallback seguro
+        let membresia = {
+          estado: u.membresia_estado || 'activa',
+          vence: u.membresia_vence || '-'
+        };
+
+        try {
+          const [memRows] = await pool.execute(
+            "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+            [u.id_usuario]
+          );
+          if (memRows.length > 0 && memRows[0].vence) {
+            membresia = memRows[0];
+          }
+        } catch (e) {}
 
         // Último Pago registrado para ordenar por fecha de pago
-        const [payRows] = await pool.execute(
-          "SELECT DATE_FORMAT(MAX(fecha_pago), '%Y-%m-%d') as ultimo_pago FROM pagos WHERE id_usuario = ?",
-          [u.id_usuario]
-        );
-        const ultimo_pago = (payRows.length && payRows[0].ultimo_pago) ? payRows[0].ultimo_pago : null;
+        let ultimo_pago = null;
+        try {
+          const [payRows] = await pool.execute(
+            "SELECT DATE_FORMAT(MAX(fecha_pago), '%Y-%m-%d') as ultimo_pago FROM pagos WHERE id_usuario = ?",
+            [u.id_usuario]
+          );
+          if (payRows.length && payRows[0].ultimo_pago) {
+            ultimo_pago = payRows[0].ultimo_pago;
+          }
+        } catch (pErr) {}
 
         // Rutinas del usuario
-        const [rutRows] = await pool.execute(
-          'SELECT id_rutina, titulo, descripcion, horario FROM rutinas WHERE id_usuario = ? ORDER BY id_rutina DESC',
-          [u.id_usuario]
-        );
+        let rutinasConEjercicios = [];
+        try {
+          const [rutRows] = await pool.execute(
+            'SELECT id_rutina, titulo, descripcion, horario FROM rutinas WHERE id_usuario = ? ORDER BY id_rutina DESC',
+            [u.id_usuario]
+          );
 
-        const rutinasConEjercicios = await Promise.all(
-          rutRows.map(async (r) => {
-            const [ejercicios] = await pool.execute(
-              'SELECT id_ejercicio, nombre_ejercicio, series, repeticiones, peso_kg, series_detalle_json FROM ejercicios_rutina WHERE id_rutina = ? ORDER BY orden ASC, id_ejercicio ASC',
-              [r.id_rutina]
-            );
-            return { ...r, ejercicios };
-          })
-        );
+          rutinasConEjercicios = await Promise.all(
+            rutRows.map(async (r) => {
+              try {
+                const [ejercicios] = await pool.execute(
+                  'SELECT id_ejercicio, nombre_ejercicio, series, repeticiones, peso_kg, series_detalle_json FROM ejercicios_rutina WHERE id_rutina = ? ORDER BY orden ASC, id_ejercicio ASC',
+                  [r.id_rutina]
+                );
+                return { ...r, ejercicios: ejercicios || [] };
+              } catch (ejE) {
+                return { ...r, ejercicios: [] };
+              }
+            })
+          );
+        } catch (rErr) {}
 
         // Historial de sesiones
-        const [sesiones] = await pool.execute(
-          'SELECT id_sesion, fecha, detalle_json FROM historial_sesiones WHERE id_usuario = ? ORDER BY fecha DESC LIMIT 10',
-          [u.id_usuario]
-        );
+        let sesiones = [];
+        try {
+          const [sesRows] = await pool.execute(
+            'SELECT id_sesion, fecha, detalle_json FROM historial_sesiones WHERE id_usuario = ? ORDER BY fecha DESC LIMIT 10',
+            [u.id_usuario]
+          );
+          sesiones = sesRows.map(s => ({
+            ...s,
+            detalle: typeof s.detalle_json === 'string' ? JSON.parse(s.detalle_json) : s.detalle_json
+          }));
+        } catch (sErr) {}
 
         return {
           ...u,
           membresia,
           ultimo_pago,
           rutinas: rutinasConEjercicios,
-          sesiones: sesiones.map(s => ({
-            ...s,
-            detalle: typeof s.detalle_json === 'string' ? JSON.parse(s.detalle_json) : s.detalle_json
-          }))
+          sesiones
         };
       })
     );
