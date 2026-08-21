@@ -2184,6 +2184,25 @@ function deleteResourceByAdmin(id) {
     .catch(err => console.error("Error eliminando recurso:", err));
 }
 
+// Plegar / Desplegar sección de rutinas en Dashboard del Cliente
+function toggleUserRoutinesSection() {
+  const body = $("#userRoutinesBody");
+  const btnText = $("#userRoutinesToggleBtnText");
+  const chevron = $("#userRoutinesChevron");
+
+  if (!body) return;
+
+  if (body.classList.contains("hidden")) {
+    body.classList.remove("hidden");
+    if (btnText) btnText.textContent = "Ocultar Rutinas";
+    if (chevron) chevron.textContent = "▲";
+  } else {
+    body.classList.add("hidden");
+    if (btnText) btnText.textContent = "Ver Rutinas";
+    if (chevron) chevron.textContent = "▼";
+  }
+}
+
 // Plegar / Desplegar sección de recursos en Dashboard del Cliente
 function toggleUserResourcesSection() {
   const body = $("#userResourcesBody");
