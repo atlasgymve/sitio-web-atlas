@@ -447,25 +447,44 @@ app.post('/api/sesiones', async (req, res) => {
 // Obtener todos los usuarios clientes con sus membresías, rutinas e historial de entrenamiento
 app.get('/api/admin/usuarios', async (req, res) => {
   try {
-    const [users] = await pool.execute(
-      'SELECT id_usuario, nombre_completo, correo, telefono, membresia_estado, DATE_FORMAT(membresia_vence, "%Y-%m-%d") as membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != "administrador" OR rol IS NULL) ORDER BY id_usuario DESC'
+    const [users] = await pool.query(
+      "SELECT id_usuario, nombre_completo, correo, telefono, membresia_estado, membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
 
     const usuariosCompletos = await Promise.all(
       users.map(async (u) => {
         // Membresía con fallback seguro
+        let venceDefault = '-';
+        if (u.membresia_vence) {
+          try {
+            venceDefault = formatYYYYMMDD(new Date(u.membresia_vence));
+          } catch (e) {
+            venceDefault = String(u.membresia_vence).split('T')[0];
+          }
+        }
+
         let membresia = {
           estado: u.membresia_estado || 'activa',
-          vence: u.membresia_vence || '-'
+          vence: venceDefault
         };
 
         try {
-          const [memRows] = await pool.execute(
-            "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+          const [memRows] = await pool.query(
+            "SELECT estado, fecha_fin AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
             [u.id_usuario]
           );
           if (memRows.length > 0 && memRows[0].vence) {
-            membresia = memRows[0];
+            const rawVence = memRows[0].vence;
+            let formattedVence = '-';
+            try {
+              formattedVence = formatYYYYMMDD(new Date(rawVence));
+            } catch (e2) {
+              formattedVence = String(rawVence).split('T')[0];
+            }
+            membresia = {
+              estado: memRows[0].estado || 'activa',
+              vence: formattedVence
+            };
           }
         } catch (e) {}
 
