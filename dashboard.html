@@ -14,17 +14,16 @@
   <!-- NAVBAR -->
   <header class="app-header">
     <div class="header-container">
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div class="header-logo-group">
         <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
       </div>
-      <div style="display: flex; align-items: center; gap: 1.5rem;">
+      <div class="header-nav-actions">
         <span id="userGreeting" style="font-weight: 600;">Cargando...</span>
         <span id="membershipStatus" class="badge badge-active">-</span>
-        <button type="button" class="btn-primary" onclick="openNewRoutineModal()"
-          style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+        <button type="button" class="btn-primary" onclick="openNewRoutineModal()">
           + Nueva Rutina
         </button>
-        <button type="button" class="btn-secondary" onclick="logout()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+        <button type="button" class="btn-secondary" onclick="logout()">
           Salir
         </button>
       </div>

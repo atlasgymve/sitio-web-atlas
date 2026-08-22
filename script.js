@@ -495,19 +495,21 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
         <span class="exercise-name">${ej.nombre_ejercicio || ej.titulo || "Ejercicio"}</span>
         <span style="font-size: 0.85rem; color: var(--text-muted);">${ej.series} Series × ${ej.repeticiones} Reps (${formatExerciseWeights(ej)})</span>
       </div>
-      <table class="sets-table">
-        <thead>
-          <tr>
-            <th>Serie</th>
-            <th>Peso Usado</th>
-            <th>Repeticiones</th>
-            <th>Culminada</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${setsHtml}
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="sets-table">
+          <thead>
+            <tr>
+              <th>Serie</th>
+              <th>Peso Usado</th>
+              <th>Repeticiones</th>
+              <th>Culminada</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${setsHtml}
+          </tbody>
+        </table>
+      </div>
     `;
     exercisesContainer.appendChild(block);
   });
@@ -766,8 +768,8 @@ function renderAdminUsersGrid(users) {
 
       <!-- Detalle desplegable (Oculto por defecto) -->
       <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem;">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${u.correo}</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${u.telefono || "Sin teléfono"}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${u.correo}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${u.telefono || "Sin teléfono"}</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: rgba(15,23,42,0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
           <div>
@@ -783,20 +785,20 @@ function renderAdminUsersGrid(users) {
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">🏋️ <strong style="color: #60A5FA;">Rutinas Asignadas:</strong> ${cantRutinas}</p>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
             Registrar Pago
           </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminder('${u.nombre_completo}', '${u.telefono || ''}', '${u.membresia.vence}', '${u.membresia.estado}')" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none;">
-            Recordar WhatsApp
+          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminder('${u.nombre_completo}', '${u.telefono || ''}', '${u.membresia.vence}', '${u.membresia.estado}')" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
+            WhatsApp
           </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem;">
+          <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 100px; text-align: center; justify-content: center;">
             Ver Rutinas
           </button>
-          <button class="btn-secondary" onclick="event.stopPropagation(); editUserByAdmin(${u.id_usuario})" title="Editar datos del cliente" style="font-size: 0.82rem; padding: 0.5rem 0.75rem;">
+          <button class="btn-secondary" onclick="event.stopPropagation(); editUserByAdmin(${u.id_usuario})" title="Editar datos del cliente" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 80px; text-align: center; justify-content: center;">
             Editar
           </button>
-          <button class="btn-danger" onclick="event.stopPropagation(); deleteUserByAdmin(${u.id_usuario})" title="Eliminar cliente" style="padding: 0.5rem 0.75rem; font-size: 0.82rem;">
-            Eliminar
+          <button class="btn-danger" onclick="event.stopPropagation(); deleteUserByAdmin(${u.id_usuario})" title="Eliminar cliente" style="padding: 0.5rem 0.75rem; font-size: 0.82rem; flex: 1 1 100%; text-align: center; justify-content: center;">
+            Eliminar Cliente
           </button>
         </div>
       </div>

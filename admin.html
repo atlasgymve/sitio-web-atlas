@@ -12,26 +12,24 @@
 <body onload="initAdminDashboard()">
 
   <!-- NAVBAR -->
+  <!-- NAVBAR -->
   <header class="app-header">
     <div class="header-container">
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div class="header-logo-group">
         <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
         <span class="badge"
-          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo
-          Administrador</span>
+          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo Administrador</span>
       </div>
-      <div style="display: flex; align-items: center; gap: 1rem;">
+      <div class="header-nav-actions">
         <span id="adminGreeting" style="font-weight: 600;">Administrador ATLAS</span>
         <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()"
-          style="padding: 0.5rem 1rem; font-size: 0.85rem; width: auto; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
           💳 Registrar Pago
         </button>
-        <button type="button" class="btn-primary" onclick="openCreateUserModal()"
-          style="padding: 0.5rem 1rem; font-size: 0.85rem; width: auto;">
+        <button type="button" class="btn-primary" onclick="openCreateUserModal()">
           + Nuevo Cliente
         </button>
-        <button type="button" class="btn-secondary" onclick="logout()"
-          style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+        <button type="button" class="btn-secondary" onclick="logout()">
           Salir
         </button>
       </div>
