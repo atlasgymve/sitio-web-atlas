@@ -146,9 +146,6 @@ pool.execute(`
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
   } catch (e) { }
-  try {
-    await pool.execute('UPDATE pagos SET fecha_pago = fecha_inicio_plan WHERE fecha_inicio_plan IS NOT NULL AND fecha_pago > fecha_inicio_plan');
-  } catch (e) { }
   console.log('✅ Tabla "pagos" verificada en MySQL');
 }).catch(err => console.error('Error al verificar tabla pagos:', err.message));
 
@@ -696,14 +693,20 @@ app.post('/api/admin/pagos', async (req, res) => {
     const planStartStr = formatYYYYMMDD(planStartObj);
     const newFinStr = formatYYYYMMDD(newFinDate);
 
+    // Fecha de realización del pago en la vida real (Hoy en la zona horaria local America/Caracas)
+    const fechaRealizacionStr = getTodayYMD();
+
     // Obtener nombre del cliente para respaldar el historial en caso de eliminación futura
     const [uRows] = await pool.execute('SELECT nombre_completo FROM usuarios WHERE id_usuario = ?', [id_usuario]);
     const nombreClienteStr = uRows.length > 0 ? uRows[0].nombre_completo : null;
 
-    // Guardar el pago: fecha_pago y fecha_inicio_plan corresponden a la fecha seleccionada por el administrador (planStartStr)
+    // Guardar el pago:
+    // - fecha_pago: El día en que se realiza la transacción (fechaRealizacionStr = Hoy)
+    // - fecha_inicio_plan: El día en que comienza a correr la membresía (planStartStr = Seleccionado en formulario)
+    // - fecha_fin_plan: El día en que vence la membresía (newFinStr)
     await pool.execute(
       'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, planStartStr, planStartStr, newFinStr]
+      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr]
     );
 
     if (memRows.length > 0) {
