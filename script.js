@@ -1287,7 +1287,7 @@ function savePayment(event) {
         renderAdminUsersGrid(adminUsersData);
       }
       if (!$("#adminPaymentsSection").classList.contains("hidden")) {
-        loadAdminPaymentsHistory();
+        loadAdminPaymentsHistory(fecha_pago);
       }
     })
     .catch(err => alert(err.message));
@@ -1353,12 +1353,21 @@ function getLocalTodayStr() {
 
 function formatYYYYMMDD(d) {
   if (!d) return getLocalTodayStr();
-  const dateObj = (d instanceof Date) ? d : new Date(d);
-  if (isNaN(dateObj.getTime())) return getLocalTodayStr();
-  const yyyy = dateObj.getFullYear();
-  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const dd = String(dateObj.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  if (typeof d === 'string') {
+    const clean = d.split('T')[0].split(' ')[0];
+    const parts = clean.split('-');
+    if (parts.length >= 3 && parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+  }
+  if (d instanceof Date) {
+    if (isNaN(d.getTime())) return getLocalTodayStr();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return String(d).split('T')[0].split(' ')[0];
 }
 
 function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
@@ -2029,13 +2038,88 @@ function getCategoryBadge(cat) {
   }
 }
 
+function getResourceUrl(url) {
+  if (!url) return '#';
+  if (url.startsWith('/uploads/') || url.startsWith('/')) {
+    const backendBase = API_BASE.replace(/\/api\/?$/, '');
+    return `${backendBase}${url}`;
+  }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+function openImagePreviewModal(url, title) {
+  let modal = $("#previewResourceModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "previewResourceModal";
+    modal.className = "modal-overlay hidden";
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 800px; text-align: center; background: #1e293b; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 id="previewResourceTitle" style="font-size: 1.25rem; font-weight: 700; color: #FBBF24; margin: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
+          <button type="button" onclick="closeImagePreviewModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 0.4rem;">&times;</button>
+        </div>
+        <div style="background: #0f172a; border-radius: 12px; padding: 0.5rem; display: flex; justify-content: center; align-items: center; min-height: 250px; max-height: 70vh; overflow: auto; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.05);">
+          <img id="previewResourceImg" src="" alt="Vista previa" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 8px;" />
+        </div>
+        <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex-wrap: wrap;">
+          <a id="previewResourceOpenBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="text-decoration: none; padding: 0.55rem 1.2rem; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.4rem;">🔗 Abrir Pestaña</a>
+          <a id="previewResourceDownloadBtn" href="#" download class="btn-primary" style="text-decoration: none; padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">📥 Descargar</a>
+          <button type="button" class="btn-secondary" onclick="closeImagePreviewModal()" style="padding: 0.55rem 1.2rem; font-size: 0.88rem;">Cerrar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.addEventListener("click", function(e) {
+      if (e.target === modal) closeImagePreviewModal();
+    });
+  }
+
+  const hrefUrl = getResourceUrl(url);
+  const relativeUrl = (url && url.startsWith('/uploads/')) ? url : '';
+  const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
+
+  const img = $("#previewResourceImg");
+  if (img) {
+    img.src = hrefUrl;
+    img.onerror = function() {
+      if (this.src !== fallbackUrl) {
+        this.src = fallbackUrl;
+      }
+    };
+  }
+
+  const titleEl = $("#previewResourceTitle");
+  if (titleEl) titleEl.textContent = title || "Vista Previa del Contenido";
+
+  const openBtn = $("#previewResourceOpenBtn");
+  if (openBtn) openBtn.href = hrefUrl;
+
+  const downloadBtn = $("#previewResourceDownloadBtn");
+  if (downloadBtn) downloadBtn.href = hrefUrl;
+
+  modal.classList.remove("hidden");
+}
+
+function closeImagePreviewModal() {
+  const modal = $("#previewResourceModal");
+  if (modal) modal.classList.add("hidden");
+}
+
 function getResourceIcon(tipo, url) {
+  if (!url) return 'Recurso';
   if (tipo === 'archivo') {
-    if (url.endsWith('.pdf')) return 'Documento PDF';
-    if (url.match(/\.(png|jpg|jpeg|webp)$/i)) return 'Imagen';
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.endsWith('.pdf')) return 'Documento PDF';
+    if (lowerUrl.match(/\.(png|jpg|jpeg|webp|gif|svg)$/)) return 'Imagen';
+    if (lowerUrl.match(/\.(doc|docx)$/)) return 'Documento Word';
     return 'Archivo Adjunto';
   }
-  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return 'Video YouTube';
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'Video YouTube';
   return 'Enlace Web';
 }
 
@@ -2087,7 +2171,27 @@ function filterAdminResourcesByCategory() {
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
-    const hrefUrl = r.url_recurso.startsWith('/uploads/') ? `${window.location.origin}${r.url_recurso}` : r.url_recurso;
+    const hrefUrl = getResourceUrl(r.url_recurso);
+    const isImage = r.url_recurso && r.url_recurso.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i);
+    const relativeUrl = (r.url_recurso && r.url_recurso.startsWith('/uploads/')) ? r.url_recurso : '';
+    const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
+    const safeTitle = (r.titulo || 'Material').replace(/'/g, "\\'");
+
+    const thumbnailHtml = isImage ? `
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" title="Haz clic para ampliar">
+        <img src="${hrefUrl}" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      </div>
+    ` : '';
+
+    const actionBtn = isImage ? `
+      <button type="button" class="btn-primary" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        🖼️ Ver Imagen
+      </button>
+    ` : `
+      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);">
+        Ver / Abrir
+      </a>
+    `;
 
     card.innerHTML = `
       <div>
@@ -2096,6 +2200,8 @@ function filterAdminResourcesByCategory() {
           ${catBadge}
         </div>
         
+        ${thumbnailHtml}
+
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.04);">
@@ -2104,9 +2210,7 @@ function filterAdminResourcesByCategory() {
       </div>
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a href="${hrefUrl}" target="_blank" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);">
-          Ver / Abrir
-        </a>
+        ${actionBtn}
         <button class="btn-danger" onclick="deleteResourceByAdmin(${r.id_recurso})" title="Eliminar material" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
           Eliminar
         </button>
@@ -2313,7 +2417,27 @@ function filterUserResourcesByCategory() {
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
-    const hrefUrl = r.url_recurso.startsWith('/uploads/') ? `${window.location.origin}${r.url_recurso}` : r.url_recurso;
+    const hrefUrl = getResourceUrl(r.url_recurso);
+    const isImage = r.url_recurso && r.url_recurso.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i);
+    const relativeUrl = (r.url_recurso && r.url_recurso.startsWith('/uploads/')) ? r.url_recurso : '';
+    const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
+    const safeTitle = (r.titulo || 'Material').replace(/'/g, "\\'");
+
+    const thumbnailHtml = isImage ? `
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" title="Haz clic para ampliar">
+        <img src="${hrefUrl}" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      </div>
+    ` : '';
+
+    const userActionBtn = isImage ? `
+      <button type="button" class="btn-primary" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        🖼️ Ver Imagen
+      </button>
+    ` : `
+      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        Ver Contenido
+      </a>
+    `;
 
     card.innerHTML = `
       <div>
@@ -2322,6 +2446,8 @@ function filterUserResourcesByCategory() {
           ${catBadge}
         </div>
         
+        ${thumbnailHtml}
+
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
@@ -2330,9 +2456,7 @@ function filterUserResourcesByCategory() {
       </div>
 
       <div>
-        <a href="${hrefUrl}" target="_blank" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-          Ver Contenido
-        </a>
+        ${userActionBtn}
       </div>
     `;
     grid.appendChild(card);

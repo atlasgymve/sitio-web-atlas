@@ -6,19 +6,56 @@ const multer = require('multer');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
-/* Helper de Fechas sin desfase de Zona Horaria */
+/* Helper de Fechas en Zona Horaria Local (America/Caracas - UTC-4) */
+function getTodayYMD() {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' });
+    return formatter.format(now);
+  } catch (e) {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+}
+
 function formatYYYYMMDD(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const clean = d.split('T')[0].split(' ')[0];
+    const parts = clean.split('-');
+    if (parts.length >= 3 && parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+  }
+  if (d instanceof Date) {
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return String(d).split('T')[0].split(' ')[0];
 }
 
 function parseLocalYYYYMMDD(str) {
   if (!str) return new Date();
-  const parts = String(str).split('T')[0].split('-');
-  if (parts.length < 3) return new Date();
-  return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  if (str instanceof Date) {
+    return new Date(str.getFullYear(), str.getMonth(), str.getDate());
+  }
+  const strVal = String(str).split('T')[0].split(' ')[0];
+  const parts = strVal.split('-');
+  if (parts.length >= 3) {
+    const yyyy = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10) - 1;
+    const dd = parseInt(parts[2], 10);
+    if (!isNaN(yyyy) && !isNaN(mm) && !isNaN(dd)) {
+      return new Date(yyyy, mm, dd);
+    }
+  }
+  return new Date();
 }
 
 const app = express();
@@ -108,6 +145,9 @@ pool.execute(`
   try {
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
     await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
+  } catch (e) { }
+  try {
+    await pool.execute('UPDATE pagos SET fecha_pago = fecha_inicio_plan WHERE fecha_inicio_plan IS NOT NULL AND fecha_pago > fecha_inicio_plan');
   } catch (e) { }
   console.log('✅ Tabla "pagos" verificada en MySQL');
 }).catch(err => console.error('Error al verificar tabla pagos:', err.message));
@@ -456,11 +496,7 @@ app.get('/api/admin/usuarios', async (req, res) => {
         // Membresía con fallback seguro
         let venceDefault = '-';
         if (u.membresia_vence) {
-          try {
-            venceDefault = formatYYYYMMDD(new Date(u.membresia_vence));
-          } catch (e) {
-            venceDefault = String(u.membresia_vence).split('T')[0];
-          }
+          venceDefault = formatYYYYMMDD(u.membresia_vence);
         }
 
         let membresia = {
@@ -470,20 +506,13 @@ app.get('/api/admin/usuarios', async (req, res) => {
 
         try {
           const [memRows] = await pool.query(
-            "SELECT estado, fecha_fin AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+            "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
             [u.id_usuario]
           );
           if (memRows.length > 0 && memRows[0].vence) {
-            const rawVence = memRows[0].vence;
-            let formattedVence = '-';
-            try {
-              formattedVence = formatYYYYMMDD(new Date(rawVence));
-            } catch (e2) {
-              formattedVence = String(rawVence).split('T')[0];
-            }
             membresia = {
               estado: memRows[0].estado || 'activa',
-              vence: formattedVence
+              vence: formatYYYYMMDD(memRows[0].vence)
             };
           }
         } catch (e) {}
@@ -650,9 +679,6 @@ app.post('/api/admin/pagos', async (req, res) => {
       [id_usuario]
     );
 
-    // Fecha de realización del pago (Hoy al registrar)
-    const fechaRealizacionStr = formatYYYYMMDD(new Date());
-
     // Fecha en que corre el plan (La seleccionada por el administrador)
     const planStartObj = parseLocalYYYYMMDD(fecha_pago);
     let baseDate = new Date(planStartObj);
@@ -674,10 +700,10 @@ app.post('/api/admin/pagos', async (req, res) => {
     const [uRows] = await pool.execute('SELECT nombre_completo FROM usuarios WHERE id_usuario = ?', [id_usuario]);
     const nombreClienteStr = uRows.length > 0 ? uRows[0].nombre_completo : null;
 
-    // Guardar el pago: fecha_pago es la fecha del registro y fecha_inicio_plan es la fecha que corre el plan
+    // Guardar el pago: fecha_pago y fecha_inicio_plan corresponden a la fecha seleccionada por el administrador (planStartStr)
     await pool.execute(
       'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr]
+      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, planStartStr, planStartStr, newFinStr]
     );
 
     if (memRows.length > 0) {
@@ -731,7 +757,7 @@ app.get('/api/admin/pagos', async (req, res) => {
       querySql += ` WHERE DATE(p.fecha_pago) BETWEEN ? AND ? ORDER BY p.id_pago DESC`;
       queryParams.push(req.query.fecha_inicio, req.query.fecha_fin);
     } else {
-      const targetDate = fecha || formatYYYYMMDD(new Date());
+      const targetDate = fecha || getTodayYMD();
       querySql += ` WHERE DATE(p.fecha_pago) = ? ORDER BY p.id_pago DESC`;
       queryParams.push(targetDate);
     }
