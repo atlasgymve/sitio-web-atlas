@@ -13,6 +13,13 @@ let currentActiveRoutine = null;
 let completedSetsState = {}; // { "ex_0_set_0": true, ... }
 let editingRoutineId = null;
 
+/* ---------- ESTADO DEL TEMPORIZADOR DE DESCANSO ---------- */
+let restTimerDuration = 60; // 60 segundos por defecto
+let restTimerEnabled = true; // Activo por defecto
+let restTimerInterval = null;
+let restTimeRemaining = 0;
+let isTimerPaused = false;
+
 /* Helper */
 function $(sel) { return document.querySelector(sel); }
 
@@ -379,6 +386,8 @@ function saveActiveSessionState() {
     routine: currentActiveRoutine,
     completedSetsState: completedSetsState,
     inputs: inputs,
+    restTimerDuration: restTimerDuration,
+    restTimerEnabled: restTimerEnabled,
     savedAt: new Date().toISOString()
   };
 
@@ -433,6 +442,17 @@ function startWorkoutSession(id_rutina) {
 function renderActiveWorkoutSession(routine, restoredState = null) {
   currentActiveRoutine = routine;
   completedSetsState = restoredState && restoredState.completedSetsState ? restoredState.completedSetsState : {};
+
+  if (restoredState) {
+    if (restoredState.restTimerDuration) restTimerDuration = restoredState.restTimerDuration;
+    if (restoredState.restTimerEnabled !== undefined) restTimerEnabled = restoredState.restTimerEnabled;
+  }
+
+  const durationSelect = $("#restTimerSecondsSelect");
+  if (durationSelect) durationSelect.value = String(restTimerDuration);
+
+  const toggleCheckbox = $("#restTimerToggleCheckbox");
+  if (toggleCheckbox) toggleCheckbox.checked = restTimerEnabled;
 
   $("#sessionRoutineTitle").textContent = routine.titulo;
   $("#sessionRoutineDesc").textContent = routine.descripcion || "Ejecución de rutina serie a serie";
@@ -522,9 +542,11 @@ function toggleSetCompleted(setId) {
   if (completedSetsState[setId]) {
     delete completedSetsState[setId];
     btn.classList.remove("completed");
+    stopRestTimer();
   } else {
     completedSetsState[setId] = true;
     btn.classList.add("completed");
+    startRestTimer();
   }
 
   // Recalcular progreso
@@ -548,11 +570,140 @@ function updateSessionProgressBar(totalSets) {
 
 function cancelSession() {
   if (confirm("¿Deseas cancelar la sesión activa de hoy?")) {
+    stopRestTimer();
     $("#activeSessionSection").classList.add("hidden");
     currentActiveRoutine = null;
     completedSetsState = {};
     localStorage.removeItem("atlas_active_workout_session");
   }
+}
+
+/* ---------- FUNCIONES DEL TEMPORIZADOR DE DESCANSO ---------- */
+function setRestTimerDuration(val) {
+  restTimerDuration = parseInt(val, 10) || 60;
+  saveActiveSessionState();
+}
+
+function toggleRestTimerEnabled(enabled) {
+  restTimerEnabled = !!enabled;
+  if (!restTimerEnabled) {
+    stopRestTimer();
+  }
+  saveActiveSessionState();
+}
+
+function startRestTimer() {
+  if (!restTimerEnabled) return;
+
+  stopRestTimer();
+
+  restTimeRemaining = restTimerDuration;
+  isTimerPaused = false;
+
+  const timerWidget = $("#floatingRestTimer");
+  if (timerWidget) timerWidget.classList.remove("hidden");
+
+  updateRestTimerUI();
+
+  restTimerInterval = setInterval(() => {
+    if (!isTimerPaused) {
+      restTimeRemaining--;
+      updateRestTimerUI();
+
+      if (restTimeRemaining <= 0) {
+        finishRestTimer();
+      }
+    }
+  }, 1000);
+}
+
+function updateRestTimerUI() {
+  const timerText = $("#floatingTimerText");
+  const progressFill = $("#floatingTimerProgressFill");
+  const subtext = $("#floatingTimerSubtext");
+  const pauseBtn = $("#togglePauseTimerBtn");
+
+  if (timerText) {
+    const mins = Math.floor(Math.max(0, restTimeRemaining) / 60);
+    const secs = Math.max(0, restTimeRemaining) % 60;
+    timerText.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  if (progressFill) {
+    const pct = restTimerDuration > 0 ? (restTimeRemaining / restTimerDuration) * 100 : 0;
+    progressFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  }
+
+  if (pauseBtn) {
+    pauseBtn.textContent = isTimerPaused ? '▶️' : '⏸️';
+  }
+
+  if (subtext) {
+    subtext.textContent = isTimerPaused ? 'Temporizador pausado' : 'Recupérate para tu siguiente serie 💪';
+  }
+}
+
+function addRestTime(seconds) {
+  restTimeRemaining += seconds;
+  restTimerDuration += seconds;
+  updateRestTimerUI();
+}
+
+function togglePauseRestTimer() {
+  isTimerPaused = !isTimerPaused;
+  updateRestTimerUI();
+}
+
+function stopRestTimer() {
+  if (restTimerInterval) {
+    clearInterval(restTimerInterval);
+    restTimerInterval = null;
+  }
+  const timerWidget = $("#floatingRestTimer");
+  if (timerWidget) timerWidget.classList.add("hidden");
+}
+
+function finishRestTimer() {
+  stopRestTimer();
+  playTimerAlertSound();
+
+  const subtext = $("#floatingTimerSubtext");
+  if (subtext) subtext.textContent = '¡Tiempo cumplido! A por la siguiente serie 💪';
+
+  const timerWidget = $("#floatingRestTimer");
+  if (timerWidget) {
+    timerWidget.classList.remove("hidden");
+    const timerText = $("#floatingTimerText");
+    if (timerText) timerText.textContent = '00:00';
+    setTimeout(() => {
+      stopRestTimer();
+    }, 3500);
+  }
+}
+
+function playTimerAlertSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.35);
+
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
+    }
+  } catch (e) {}
 }
 
 function finishWorkoutSession() {
