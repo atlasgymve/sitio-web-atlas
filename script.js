@@ -2238,24 +2238,46 @@ function getCategoryBadge(cat) {
   }
 }
 
+function dataURItoBlob(dataURI) {
+  try {
+    const parts = dataURI.split(',');
+    const byteString = atob(parts[1]);
+    const mimeString = parts[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  } catch (e) {
+    return null;
+  }
+}
+
 function getResourceUrl(url) {
-  if (!url) return '#';
-  const strUrl = String(url).trim();
-  if (strUrl.startsWith('data:')) {
-    return strUrl;
+  if (!url) return '';
+  const cleanUrl = String(url).trim();
+  if (cleanUrl.startsWith('data:')) {
+    if (cleanUrl.startsWith('data:application/pdf')) {
+      const blob = dataURItoBlob(cleanUrl);
+      if (blob) {
+        return URL.createObjectURL(blob);
+      }
+    }
+    return cleanUrl;
   }
-  let cleanUrl = strUrl.replace(/\\/g, '/');
-  if (cleanUrl.startsWith('uploads/')) {
-    cleanUrl = '/' + cleanUrl;
+  let pathUrl = cleanUrl.replace(/\\/g, '/');
+  if (pathUrl.startsWith('uploads/')) {
+    pathUrl = '/' + pathUrl;
   }
-  if (cleanUrl.startsWith('/uploads/') || cleanUrl.startsWith('/')) {
+  if (pathUrl.startsWith('/uploads/') || pathUrl.startsWith('/')) {
     const backendBase = API_BASE.replace(/\/api\/?$/, '');
-    return `${backendBase}${cleanUrl}`;
+    return `${backendBase}${pathUrl}`;
   }
-  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-    return `https://${cleanUrl}`;
+  if (!pathUrl.startsWith('http://') && !pathUrl.startsWith('https://')) {
+    return `https://${pathUrl}`;
   }
-  return cleanUrl;
+  return pathUrl;
 }
 
 function openResourcePreviewById(id) {
@@ -2282,7 +2304,7 @@ function openImagePreviewModal(url, title) {
           <iframe id="previewResourceIframe" src="" style="width: 100%; height: 65vh; border: none; border-radius: 8px;" class="hidden"></iframe>
         </div>
         <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex-wrap: wrap;">
-          <button type="button" id="previewResourceFullBtn" class="btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">🔍 Ampliar en Pestaña</button>
+          <button type="button" id="previewResourceFullBtn" class="btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;"> Ampliar en Pestaña</button>
           <button type="button" class="btn-secondary" onclick="closeImagePreviewModal()" style="padding: 0.55rem 1.2rem; font-size: 0.88rem;">Cerrar</button>
         </div>
       </div>
@@ -2317,13 +2339,13 @@ function openImagePreviewModal(url, title) {
   const fullBtn = $("#previewResourceFullBtn");
   if (fullBtn) {
     fullBtn.onclick = function () {
-      const win = window.open();
-      if (win) {
-        if (hrefUrl.startsWith('data:image/')) {
+      if (hrefUrl.startsWith('data:image/')) {
+        const win = window.open();
+        if (win) {
           win.document.write(`<html><head><title>${title || 'Vista Previa'}</title></head><body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${hrefUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
-        } else {
-          win.location.href = hrefUrl;
         }
+      } else {
+        window.open(hrefUrl, '_blank');
       }
     };
   }
@@ -2401,18 +2423,29 @@ function filterAdminResourcesByCategory() {
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
     const hrefUrl = getResourceUrl(r.url_recurso);
     const isDataImg = r.url_recurso && String(r.url_recurso).startsWith('data:image/');
+    const isDataPdf = r.url_recurso && String(r.url_recurso).startsWith('data:application/pdf');
     const isImage = isDataImg || (r.url_recurso && String(r.url_recurso).match(/\.(png|jpg|jpeg|webp|gif|svg)$/i));
+    const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
       <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
         <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
       </div>
-    ` : '';
+    ` : (isPdf ? `
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ver PDF">
+        <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
+        <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
+      </div>
+    ` : '');
 
-    const actionBtn = `
+    const actionBtn = (isImage || isPdf) ? `
       <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        Ver Material
+        ${isImage ? 'Ver Imagen' : 'Ver PDF'}
       </button>
+    ` : `
+      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; justify-content: center;">
+        Abrir Enlace 🔗
+      </a>
     `;
 
     card.innerHTML = `
@@ -2704,21 +2737,28 @@ function filterUserResourcesByCategory() {
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
     const hrefUrl = getResourceUrl(r.url_recurso);
     const isDataImg = r.url_recurso && String(r.url_recurso).startsWith('data:image/');
+    const isDataPdf = r.url_recurso && String(r.url_recurso).startsWith('data:application/pdf');
     const isImage = isDataImg || (r.url_recurso && String(r.url_recurso).match(/\.(png|jpg|jpeg|webp|gif|svg)$/i));
+    const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
       <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
         <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
       </div>
-    ` : '';
+    ` : (isPdf ? `
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ver PDF">
+        <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
+        <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
+      </div>
+    ` : '');
 
-    const userActionBtn = isImage ? `
+    const userActionBtn = (isImage || isPdf) ? `
       <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        🖼️ Ver Imagen
+        ${isImage ? 'Ver Imagen' : 'Ver PDF'}
       </button>
     ` : `
       <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        Ver Contenido
+        Abrir Enlace 🔗
       </a>
     `;
 
