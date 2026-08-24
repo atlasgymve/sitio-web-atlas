@@ -2062,7 +2062,7 @@ function getResourceUrl(url) {
 
 function openResourcePreviewById(id) {
   const resource = (typeof adminResourcesData !== 'undefined' ? adminResourcesData : []).find(r => r.id_recurso == id) ||
-                   (typeof userResourcesData !== 'undefined' ? userResourcesData : []).find(r => r.id_recurso == id);
+    (typeof userResourcesData !== 'undefined' ? userResourcesData : []).find(r => r.id_recurso == id);
   if (!resource) return;
   openImagePreviewModal(resource.url_recurso, resource.titulo);
 }
@@ -2091,7 +2091,7 @@ function openImagePreviewModal(url, title) {
     `;
     document.body.appendChild(modal);
 
-    modal.addEventListener("click", function(e) {
+    modal.addEventListener("click", function (e) {
       if (e.target === modal) closeImagePreviewModal();
     });
   }
@@ -2118,7 +2118,7 @@ function openImagePreviewModal(url, title) {
 
   const fullBtn = $("#previewResourceFullBtn");
   if (fullBtn) {
-    fullBtn.onclick = function() {
+    fullBtn.onclick = function () {
       const win = window.open();
       if (win) {
         if (hrefUrl.startsWith('data:image/')) {
@@ -2213,7 +2213,7 @@ function filterAdminResourcesByCategory() {
 
     const actionBtn = `
       <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        👁️ Ver Material
+        Ver Material
       </button>
     `;
 
@@ -2376,7 +2376,7 @@ async function saveResource(e) {
       try {
         const errJson = JSON.parse(errText);
         if (errJson.msg) msg = errJson.msg;
-      } catch (e) {}
+      } catch (e) { }
       throw new Error(msg);
     }
 
