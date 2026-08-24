@@ -58,10 +58,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Proteccion Global contra desbordamiento de texto */
+/* Protección Global contra desbordamiento sin romper palabras de forma extraña */
 p, h1, h2, h3, h4, h5, h6, span, strong, a, label, div, td, th {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+}
+
+.badge, .btn-primary, .btn-secondary, .btn-danger, .routine-title, .exercise-name, .logo-text {
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 /* Containers */
@@ -461,47 +467,96 @@ p, h1, h2, h3, h4, h5, h6, span, strong, a, label, div, td, th {
   overflow-wrap: anywhere;
 }
 
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+/* Tarjetas de Series de Entrenamiento (Mobile-First) */
+.series-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
 }
 
-.sets-table {
-  width: 100%;
-  min-width: 270px;
-  border-collapse: collapse;
-}
-
-.sets-table th {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  text-align: center;
-  padding-bottom: 0.5rem;
-}
-
-.sets-table td {
-  padding: 0.5rem 0.2rem;
-  text-align: center;
-}
-
-.set-input {
-  width: 60px;
-  max-width: 100%;
-  padding: 0.4rem 0.2rem;
-  text-align: center;
-  background: rgba(15, 23, 42, 0.8);
+.series-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.75);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  color: #fff;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.series-row-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.series-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  min-width: 40px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.series-inputs-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.series-input-box {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.series-box-label {
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.series-field-inner {
+  display: flex;
+  align-items: center;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 0.25rem 0.45rem;
+}
+
+.series-field-inner input {
+  width: 52px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+
+.unit-tag {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-left: 0.2rem;
 }
 
 .btn-check-set {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border-radius: 50%;
   border: 2px solid var(--border-light);
   background: rgba(30, 41, 59, 0.6);
@@ -510,15 +565,25 @@ p, h1, h2, h3, h4, h5, h6, span, strong, a, label, div, td, th {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  transition: all 0.2s ease;
+  font-size: 1.2rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-check-set:active {
+  transform: scale(0.92);
 }
 
 .btn-check-set.completed {
   background: var(--success);
   border-color: var(--success);
   color: #fff;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+}
+
+.exercise-subinfo {
+  font-size: 0.88rem;
+  color: var(--text-muted);
 }
 
 /* Modals */

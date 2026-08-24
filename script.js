@@ -473,42 +473,37 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
       }
 
       setsHtml += `
-        <tr>
-          <td style="font-weight: 600; color: var(--text-muted);">Serie ${s + 1}</td>
-          <td>
-            <input type="number" step="0.5" class="set-input set-weight-input" data-ex="${exIdx}" data-set="${s}" value="${setWeight}" oninput="saveActiveSessionState()"> kg
-          </td>
-          <td>
-            <input type="number" class="set-input set-reps-input" data-ex="${exIdx}" data-set="${s}" value="${setReps}" oninput="saveActiveSessionState()"> reps
-          </td>
-          <td>
-            <button type="button" class="btn-check-set ${isCompleted ? 'completed' : ''}" id="btn_set_${setId}" onclick="toggleSetCompleted('${setId}')">
-              ✓
-            </button>
-          </td>
-        </tr>
+        <div class="series-row-card">
+          <div class="series-badge">S${s + 1}</div>
+          <div class="series-inputs-group">
+            <div class="series-input-box">
+              <span class="series-box-label">Peso</span>
+              <div class="series-field-inner">
+                <input type="number" step="0.5" class="set-input set-weight-input" data-ex="${exIdx}" data-set="${s}" value="${setWeight}" oninput="saveActiveSessionState()">
+                <span class="unit-tag">kg</span>
+              </div>
+            </div>
+            <div class="series-input-box">
+              <span class="series-box-label">Reps</span>
+              <div class="series-field-inner">
+                <input type="number" class="set-input set-reps-input" data-ex="${exIdx}" data-set="${s}" value="${setReps}" oninput="saveActiveSessionState()">
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-check-set ${isCompleted ? 'completed' : ''}" id="btn_set_${setId}" onclick="toggleSetCompleted('${setId}')" title="Marcar serie completada">
+            ✓
+          </button>
+        </div>
       `;
     }
 
     block.innerHTML = `
       <div class="exercise-header">
         <span class="exercise-name">${ej.nombre_ejercicio || ej.titulo || "Ejercicio"}</span>
-        <span style="font-size: 0.85rem; color: var(--text-muted);">${ej.series} Series × ${ej.repeticiones} Reps (${formatExerciseWeights(ej)})</span>
+        <span class="exercise-subinfo">${ej.series} Series × ${ej.repeticiones} Reps (${formatExerciseWeights(ej)})</span>
       </div>
-      <div class="table-responsive">
-        <table class="sets-table">
-          <thead>
-            <tr>
-              <th>Serie</th>
-              <th>Peso Usado</th>
-              <th>Repeticiones</th>
-              <th>Culminada</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${setsHtml}
-          </tbody>
-        </table>
+      <div class="series-list-container">
+        ${setsHtml}
       </div>
     `;
     exercisesContainer.appendChild(block);
