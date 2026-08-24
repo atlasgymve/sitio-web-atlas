@@ -19,6 +19,21 @@ let restTimerEnabled = true; // Activo por defecto
 let restTimerInterval = null;
 let restTimeRemaining = 0;
 let isTimerPaused = false;
+let userAudioCtx = null;
+
+function unlockAudioContext() {
+  try {
+    if (!userAudioCtx) {
+      userAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (userAudioCtx && userAudioCtx.state === 'suspended') {
+      userAudioCtx.resume();
+    }
+  } catch (e) {}
+}
+
+document.addEventListener('touchstart', unlockAudioContext, { passive: true });
+document.addEventListener('click', unlockAudioContext, { passive: true });
 
 /* Helper */
 function $(sel) { return document.querySelector(sel); }
@@ -536,6 +551,7 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
 }
 
 function toggleSetCompleted(setId) {
+  unlockAudioContext();
   const btn = $(`#btn_set_${setId}`);
   if (!btn) return;
 
@@ -683,27 +699,53 @@ function finishRestTimer() {
 
 function playTimerAlertSound() {
   try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    unlockAudioContext();
+    if (!userAudioCtx) return;
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+    const now = userAudioCtx.currentTime;
 
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+    // Tono 1 (587 Hz - D5)
+    const osc1 = userAudioCtx.createOscillator();
+    const gain1 = userAudioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.3, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(userAudioCtx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.15);
 
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    // Tono 2 (587 Hz - D5)
+    const osc2 = userAudioCtx.createOscillator();
+    const gain2 = userAudioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(587.33, now + 0.2);
+    gain2.gain.setValueAtTime(0.3, now + 0.2);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.connect(gain2);
+    gain2.connect(userAudioCtx.destination);
+    osc2.start(now + 0.2);
+    osc2.stop(now + 0.35);
 
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.35);
+    // Tono 3 largo (880 Hz - A5)
+    const osc3 = userAudioCtx.createOscillator();
+    const gain3 = userAudioCtx.createGain();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(880, now + 0.4);
+    gain3.gain.setValueAtTime(0.4, now + 0.4);
+    gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+    osc3.connect(gain3);
+    gain3.connect(userAudioCtx.destination);
+    osc3.start(now + 0.4);
+    osc3.stop(now + 0.95);
 
     if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200]);
+      navigator.vibrate([200, 100, 200, 100, 400]);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Error al reproducir audio de la alarma:", e);
+  }
 }
 
 function finishWorkoutSession() {
