@@ -100,10 +100,12 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   charset: 'utf8mb4',
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+  ssl: (process.env.DB_SSL === 'true' || (process.env.DB_HOST && process.env.DB_HOST.includes('aivencloud.com')))
+    ? { rejectUnauthorized: false }
+    : false
 });
 
-// Asegurar que la tabla recursos_apoyo exista
+// Asegurar que la tabla recursos_apoyo exista con columna LONGTEXT
 pool.execute(`
   CREATE TABLE IF NOT EXISTS recursos_apoyo (
     id_recurso INT AUTO_INCREMENT PRIMARY KEY,
@@ -111,11 +113,14 @@ pool.execute(`
     descripcion TEXT NULL,
     categoria VARCHAR(50) NOT NULL DEFAULT 'General',
     tipo_recurso ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
-    url_recurso TEXT NOT NULL,
+    url_recurso LONGTEXT NOT NULL,
     nombre_archivo_orig VARCHAR(255) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`).then(() => console.log('✅ Tabla "recursos_apoyo" verificada'))
+`).then(() => {
+  console.log('✅ Tabla "recursos_apoyo" verificada');
+  return pool.execute('ALTER TABLE recursos_apoyo MODIFY COLUMN url_recurso LONGTEXT NOT NULL');
+}).then(() => console.log('✅ Columna "url_recurso" ajustada a LONGTEXT para soporte Base64 en Aiven Cloud'))
   .catch(err => console.error('Error verificando recursos_apoyo:', err.message));
 
 // Asegurar que la columna series_detalle_json exista
@@ -959,7 +964,9 @@ app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
 
   if (req.file) {
     finalTipo = 'archivo';
-    finalUrl = `/uploads/${req.file.filename}`;
+    const mimeType = req.file.mimetype || 'image/png';
+    const base64Str = req.file.buffer.toString('base64');
+    finalUrl = `data:${mimeType};base64,${base64Str}`;
     nombreOrig = req.file.originalname;
   } else if (url_enlace && url_enlace.trim()) {
     finalTipo = 'enlace';

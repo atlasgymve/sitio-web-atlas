@@ -2042,14 +2042,29 @@ function getCategoryBadge(cat) {
 
 function getResourceUrl(url) {
   if (!url) return '#';
-  if (url.startsWith('/uploads/') || url.startsWith('/')) {
+  const strUrl = String(url).trim();
+  if (strUrl.startsWith('data:')) {
+    return strUrl;
+  }
+  let cleanUrl = strUrl.replace(/\\/g, '/');
+  if (cleanUrl.startsWith('uploads/')) {
+    cleanUrl = '/' + cleanUrl;
+  }
+  if (cleanUrl.startsWith('/uploads/') || cleanUrl.startsWith('/')) {
     const backendBase = API_BASE.replace(/\/api\/?$/, '');
-    return `${backendBase}${url}`;
+    return `${backendBase}${cleanUrl}`;
   }
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return `https://${url}`;
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    return `https://${cleanUrl}`;
   }
-  return url;
+  return cleanUrl;
+}
+
+function openResourcePreviewById(id) {
+  const resource = (typeof adminResourcesData !== 'undefined' ? adminResourcesData : []).find(r => r.id_recurso == id) ||
+                   (typeof userResourcesData !== 'undefined' ? userResourcesData : []).find(r => r.id_recurso == id);
+  if (!resource) return;
+  openImagePreviewModal(resource.url_recurso, resource.titulo);
 }
 
 function openImagePreviewModal(url, title) {
@@ -2059,17 +2074,17 @@ function openImagePreviewModal(url, title) {
     modal.id = "previewResourceModal";
     modal.className = "modal-overlay hidden";
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 800px; text-align: center; background: #1e293b; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+      <div class="modal-content" style="max-width: 850px; text-align: center; background: #1e293b; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h3 id="previewResourceTitle" style="font-size: 1.25rem; font-weight: 700; color: #FBBF24; margin: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
           <button type="button" onclick="closeImagePreviewModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 0.4rem;">&times;</button>
         </div>
-        <div style="background: #0f172a; border-radius: 12px; padding: 0.5rem; display: flex; justify-content: center; align-items: center; min-height: 250px; max-height: 70vh; overflow: auto; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="background: #0f172a; border-radius: 12px; padding: 0.5rem; display: flex; justify-content: center; align-items: center; min-height: 280px; max-height: 70vh; overflow: auto; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.05);">
           <img id="previewResourceImg" src="" alt="Vista previa" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 8px;" />
+          <iframe id="previewResourceIframe" src="" style="width: 100%; height: 65vh; border: none; border-radius: 8px;" class="hidden"></iframe>
         </div>
         <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex-wrap: wrap;">
-          <a id="previewResourceOpenBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="text-decoration: none; padding: 0.55rem 1.2rem; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.4rem;">🔗 Abrir Pestaña</a>
-          <a id="previewResourceDownloadBtn" href="#" download class="btn-primary" style="text-decoration: none; padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">📥 Descargar</a>
+          <button type="button" id="previewResourceFullBtn" class="btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">🔍 Ampliar en Pestaña</button>
           <button type="button" class="btn-secondary" onclick="closeImagePreviewModal()" style="padding: 0.55rem 1.2rem; font-size: 0.88rem;">Cerrar</button>
         </div>
       </div>
@@ -2082,27 +2097,38 @@ function openImagePreviewModal(url, title) {
   }
 
   const hrefUrl = getResourceUrl(url);
-  const relativeUrl = (url && url.startsWith('/uploads/')) ? url : '';
-  const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
+  const strUrl = String(url || '').toLowerCase();
+  const isPdf = strUrl.includes('application/pdf') || strUrl.endsWith('.pdf');
 
   const img = $("#previewResourceImg");
-  if (img) {
+  const iframe = $("#previewResourceIframe");
+
+  if (isPdf && iframe) {
+    if (img) img.classList.add("hidden");
+    iframe.classList.remove("hidden");
+    iframe.src = hrefUrl;
+  } else if (img) {
+    if (iframe) iframe.classList.add("hidden");
+    img.classList.remove("hidden");
     img.src = hrefUrl;
-    img.onerror = function() {
-      if (this.src !== fallbackUrl) {
-        this.src = fallbackUrl;
-      }
-    };
   }
 
   const titleEl = $("#previewResourceTitle");
   if (titleEl) titleEl.textContent = title || "Vista Previa del Contenido";
 
-  const openBtn = $("#previewResourceOpenBtn");
-  if (openBtn) openBtn.href = hrefUrl;
-
-  const downloadBtn = $("#previewResourceDownloadBtn");
-  if (downloadBtn) downloadBtn.href = hrefUrl;
+  const fullBtn = $("#previewResourceFullBtn");
+  if (fullBtn) {
+    fullBtn.onclick = function() {
+      const win = window.open();
+      if (win) {
+        if (hrefUrl.startsWith('data:image/')) {
+          win.document.write(`<html><head><title>${title || 'Vista Previa'}</title></head><body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${hrefUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
+        } else {
+          win.location.href = hrefUrl;
+        }
+      }
+    };
+  }
 
   modal.classList.remove("hidden");
 }
@@ -2114,14 +2140,16 @@ function closeImagePreviewModal() {
 
 function getResourceIcon(tipo, url) {
   if (!url) return 'Recurso';
+  const strUrl = String(url).toLowerCase();
+  if (strUrl.startsWith('data:image/')) return 'Imagen';
+  if (strUrl.startsWith('data:application/pdf')) return 'Documento PDF';
   if (tipo === 'archivo') {
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.endsWith('.pdf')) return 'Documento PDF';
-    if (lowerUrl.match(/\.(png|jpg|jpeg|webp|gif|svg)$/)) return 'Imagen';
-    if (lowerUrl.match(/\.(doc|docx)$/)) return 'Documento Word';
+    if (strUrl.endsWith('.pdf')) return 'Documento PDF';
+    if (strUrl.match(/\.(png|jpg|jpeg|webp|gif|svg)$/)) return 'Imagen';
+    if (strUrl.match(/\.(doc|docx)$/)) return 'Documento Word';
     return 'Archivo Adjunto';
   }
-  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'Video YouTube';
+  if (strUrl.includes('youtube.com') || strUrl.includes('youtu.be')) return 'Video YouTube';
   return 'Enlace Web';
 }
 
@@ -2174,25 +2202,19 @@ function filterAdminResourcesByCategory() {
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
     const hrefUrl = getResourceUrl(r.url_recurso);
-    const isImage = r.url_recurso && r.url_recurso.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i);
-    const relativeUrl = (r.url_recurso && r.url_recurso.startsWith('/uploads/')) ? r.url_recurso : '';
-    const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
-    const safeTitle = (r.titulo || 'Material').replace(/'/g, "\\'");
+    const isDataImg = r.url_recurso && String(r.url_recurso).startsWith('data:image/');
+    const isImage = isDataImg || (r.url_recurso && String(r.url_recurso).match(/\.(png|jpg|jpeg|webp|gif|svg)$/i));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" title="Haz clic para ampliar">
-        <img src="${hrefUrl}" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
+        <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
       </div>
     ` : '';
 
-    const actionBtn = isImage ? `
-      <button type="button" class="btn-primary" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        🖼️ Ver Imagen
+    const actionBtn = `
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        👁️ Ver Material
       </button>
-    ` : `
-      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);">
-        Ver / Abrir
-      </a>
     `;
 
     card.innerHTML = `
@@ -2207,7 +2229,7 @@ function filterAdminResourcesByCategory() {
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.04);">
-          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || r.url_recurso}</strong>
+          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : r.url_recurso)}</strong>
         </div>
       </div>
 
@@ -2420,19 +2442,17 @@ function filterUserResourcesByCategory() {
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
     const hrefUrl = getResourceUrl(r.url_recurso);
-    const isImage = r.url_recurso && r.url_recurso.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i);
-    const relativeUrl = (r.url_recurso && r.url_recurso.startsWith('/uploads/')) ? r.url_recurso : '';
-    const fallbackUrl = relativeUrl ? `${window.location.origin}${relativeUrl}` : hrefUrl;
-    const safeTitle = (r.titulo || 'Material').replace(/'/g, "\\'");
+    const isDataImg = r.url_recurso && String(r.url_recurso).startsWith('data:image/');
+    const isImage = isDataImg || (r.url_recurso && String(r.url_recurso).match(/\.(png|jpg|jpeg|webp|gif|svg)$/i));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" title="Haz clic para ampliar">
-        <img src="${hrefUrl}" onerror="if(this.src!=='${fallbackUrl}'){this.src='${fallbackUrl}';}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
+        <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
       </div>
     ` : '';
 
     const userActionBtn = isImage ? `
-      <button type="button" class="btn-primary" onclick="openImagePreviewModal('${r.url_recurso}', '${safeTitle}')" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
         🖼️ Ver Imagen
       </button>
     ` : `
@@ -2453,7 +2473,7 @@ function filterUserResourcesByCategory() {
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
-          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || 'Ver Recurso'}</strong>
+          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : 'Ver Recurso')}</strong>
         </div>
       </div>
 
