@@ -952,11 +952,19 @@ app.get('/api/recursos', async (req, res) => {
 });
 
 // Crear recurso de apoyo (Archivo o Enlace)
-app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
-  const { titulo, descripcion, categoria, tipo_recurso, url_enlace } = req.body;
+app.post('/api/admin/recursos', (req, res, next) => {
+  upload.single('archivo')(req, res, (err) => {
+    if (err) {
+      console.error('Error en Multer upload:', err);
+      return res.status(400).json({ ok: false, msg: `Error en la carga del archivo: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
+  const { titulo, descripcion, categoria, tipo_recurso, url_enlace } = req.body || {};
 
   if (!titulo || !titulo.trim()) {
-    return res.status(400).json({ msg: 'El título del material es obligatorio.' });
+    return res.status(400).json({ ok: false, msg: 'El título del material es obligatorio.' });
   }
 
   let finalTipo = tipo_recurso || 'enlace';
@@ -973,11 +981,16 @@ app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
     finalTipo = 'enlace';
     finalUrl = url_enlace.trim();
   } else {
-    return res.status(400).json({ msg: 'Debes adjuntar un archivo o ingresar una URL de enlace.' });
+    return res.status(400).json({ ok: false, msg: 'Debes adjuntar un archivo o ingresar una URL de enlace.' });
   }
 
   try {
-    const [result] = await pool.execute(
+    // Asegurar que la columna url_recurso sea LONGTEXT en Aiven MySQL
+    try {
+      await pool.query('ALTER TABLE recursos_apoyo MODIFY COLUMN url_recurso LONGTEXT NOT NULL');
+    } catch (e) { }
+
+    const [result] = await pool.query(
       'INSERT INTO recursos_apoyo (titulo, descripcion, categoria, tipo_recurso, url_recurso, nombre_archivo_orig) VALUES (?, ?, ?, ?, ?, ?)',
       [titulo.trim(), descripcion || null, categoria || 'General', finalTipo, finalUrl, nombreOrig]
     );
@@ -985,7 +998,7 @@ app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
     res.json({ ok: true, id_recurso: result.insertId, msg: 'Material y Contenido Adicional agregado con éxito.' });
   } catch (err) {
     console.error('Error en POST /api/admin/recursos:', err);
-    res.status(500).json({ msg: `Error al guardar material: ${err.message}` });
+    res.status(500).json({ ok: false, msg: `Error al guardar material: ${err.message}` });
   }
 });
 
@@ -993,7 +1006,7 @@ app.post('/api/admin/recursos', upload.single('archivo'), async (req, res) => {
 app.delete('/api/admin/recursos/:id', async (req, res) => {
   const id = req.params.id;
   try {
-    const [rows] = await pool.execute('SELECT * FROM recursos_apoyo WHERE id_recurso = ?', [id]);
+    const [rows] = await pool.query('SELECT * FROM recursos_apoyo WHERE id_recurso = ?', [id]);
     if (rows.length > 0) {
       const recurso = rows[0];
       if (recurso.tipo_recurso === 'archivo' && recurso.url_recurso.startsWith('/uploads/')) {
@@ -1002,12 +1015,12 @@ app.delete('/api/admin/recursos/:id', async (req, res) => {
           try { fs.unlinkSync(filePath); } catch (e) { console.error('Error eliminando archivo físico:', e); }
         }
       }
-      await pool.execute('DELETE FROM recursos_apoyo WHERE id_recurso = ?', [id]);
+      await pool.query('DELETE FROM recursos_apoyo WHERE id_recurso = ?', [id]);
     }
     res.json({ ok: true, msg: 'Material eliminado con éxito.' });
   } catch (err) {
     console.error('Error en DELETE /api/admin/recursos:', err);
-    res.status(500).json({ msg: `Error al eliminar material: ${err.message}` });
+    res.status(500).json({ ok: false, msg: `Error al eliminar material: ${err.message}` });
   }
 });
 
@@ -1032,6 +1045,12 @@ app.get('*', (req, res) => {
     return res.status(404).json({ ok: false, msg: 'Ruta API no encontrada' });
   }
   res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// Manejador global de errores Express para evitar cierres 502
+app.use((err, req, res, next) => {
+  console.error('❌ Error no controlado en Express:', err);
+  res.status(500).json({ ok: false, msg: err.message || 'Error interno del servidor' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
