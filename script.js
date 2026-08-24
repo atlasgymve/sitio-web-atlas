@@ -29,7 +29,7 @@ function unlockAudioContext() {
     if (userAudioCtx && userAudioCtx.state === 'suspended') {
       userAudioCtx.resume();
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 document.addEventListener('touchstart', unlockAudioContext, { passive: true });
@@ -655,7 +655,7 @@ function updateRestTimerUI() {
   }
 
   if (subtext) {
-    subtext.textContent = isTimerPaused ? 'Temporizador pausado' : 'Recupérate para tu siguiente serie 💪';
+    subtext.textContent = isTimerPaused ? 'Temporizador pausado' : 'Temporizador Activo';
   }
 }
 
@@ -676,25 +676,35 @@ function stopRestTimer() {
     restTimerInterval = null;
   }
   const timerWidget = $("#floatingRestTimer");
-  if (timerWidget) timerWidget.classList.add("hidden");
+  if (timerWidget) {
+    timerWidget.classList.add("hidden");
+    timerWidget.classList.remove("timer-finished-glow");
+  }
 }
 
 function finishRestTimer() {
-  stopRestTimer();
-  playTimerAlertSound();
+  if (restTimerInterval) {
+    clearInterval(restTimerInterval);
+    restTimerInterval = null;
+  }
 
+  restTimeRemaining = 0;
+
+  const timerText = $("#floatingTimerText");
+  const progressFill = $("#floatingTimerProgressFill");
   const subtext = $("#floatingTimerSubtext");
-  if (subtext) subtext.textContent = '¡Tiempo cumplido! A por la siguiente serie 💪';
-
   const timerWidget = $("#floatingRestTimer");
+
+  if (timerText) timerText.textContent = '00:00';
+  if (progressFill) progressFill.style.width = '0%';
+  if (subtext) subtext.textContent = '¡Tiempo cumplido!';
+
   if (timerWidget) {
     timerWidget.classList.remove("hidden");
-    const timerText = $("#floatingTimerText");
-    if (timerText) timerText.textContent = '00:00';
-    setTimeout(() => {
-      stopRestTimer();
-    }, 3500);
+    timerWidget.classList.add("timer-finished-glow");
   }
+
+  playTimerAlertSound();
 }
 
 function playTimerAlertSound() {
@@ -750,7 +760,7 @@ function playTimerAlertSound() {
 
 function finishWorkoutSession() {
   if (!currentActiveRoutine) return;
-
+  stopRestTimer()
   const token = localStorage.getItem("token");
   const totalSets = document.querySelectorAll(".btn-check-set").length;
   const completedCount = Object.keys(completedSetsState).length;
