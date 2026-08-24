@@ -2273,7 +2273,51 @@ function toggleResourceTypeInput() {
   }
 }
 
-function saveResource(e) {
+function compressImageFile(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+  return new Promise((resolve) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob || blob.size >= file.size) {
+            return resolve(file);
+          }
+          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+            type: "image/webp",
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        }, 'image/webp', quality);
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+}
+
+async function saveResource(e) {
   e.preventDefault();
 
   const titleInput = $("#resourceTitle");
@@ -2286,57 +2330,76 @@ function saveResource(e) {
   const fileInput = $("#resourceFile");
   const linkInput = $("#resourceLink");
 
-  const formData = new FormData();
-  formData.append('titulo', titleInput.value.trim());
-  formData.append('categoria', catInput.value);
-  formData.append('descripcion', descInput.value.trim());
-  formData.append('tipo_recurso', typeVal);
-
-  if (typeVal === 'archivo') {
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-      alert("Por favor selecciona un archivo (PDF, Imagen, etc.).");
-      return;
-    }
-    formData.append('archivo', fileInput.files[0]);
-  } else {
-    if (!linkInput || !linkInput.value.trim()) {
-      alert("Por favor ingresa la URL del enlace o video.");
-      return;
-    }
-    formData.append('url_enlace', linkInput.value.trim());
-  }
-
   const submitBtn = $("#createResourceModalSubmitBtn");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Guardando...";
+    submitBtn.textContent = "Procesando...";
   }
 
-  fetch(`${API_BASE}/admin/recursos`, {
-    method: 'POST',
-    body: formData
-  })
-    .then(r => r.json())
-    .then(res => {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Guardar Material";
+  try {
+    const formData = new FormData();
+    formData.append('titulo', titleInput.value.trim());
+    formData.append('categoria', catInput.value);
+    formData.append('descripcion', descInput.value.trim());
+    formData.append('tipo_recurso', typeVal);
+
+    if (typeVal === 'archivo') {
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor selecciona un archivo (PDF, Imagen, etc.).");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Guardar Material"; }
+        return;
       }
-      if (res.ok) {
-        closeCreateResourceModal();
-        loadAdminResources();
-      } else {
-        alert(res.msg || "Error al guardar el material de apoyo.");
+      const rawFile = fileInput.files[0];
+      const fileToUpload = await compressImageFile(rawFile);
+      formData.append('archivo', fileToUpload);
+    } else {
+      if (!linkInput || !linkInput.value.trim()) {
+        alert("Por favor ingresa la URL del enlace o video.");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Guardar Material"; }
+        return;
       }
-    })
-    .catch(err => {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Guardar Material";
-      }
-      console.error("Error guardando recurso:", err);
-      alert("Error al conectar con el servidor.");
+      formData.append('url_enlace', linkInput.value.trim());
+    }
+
+    if (submitBtn) {
+      submitBtn.textContent = "Guardando...";
+    }
+
+    const response = await fetch(`${API_BASE}/admin/recursos`, {
+      method: 'POST',
+      body: formData
     });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      let msg = `Error ${response.status}: ${response.statusText}`;
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.msg) msg = errJson.msg;
+      } catch (e) {}
+      throw new Error(msg);
+    }
+
+    const res = await response.json();
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Guardar Material";
+    }
+
+    if (res.ok) {
+      closeCreateResourceModal();
+      loadAdminResources();
+    } else {
+      alert(res.msg || "Error al guardar el material de apoyo.");
+    }
+  } catch (err) {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Guardar Material";
+    }
+    console.error("Error guardando recurso:", err);
+    alert(err.message || "Error al conectar con el servidor. Por favor reintenta.");
+  }
 }
 
 function deleteResourceByAdmin(id) {
