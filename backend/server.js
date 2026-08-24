@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 /* Helper de Fechas en Zona Horaria Local (America/Caracas - UTC-4) */
 function getTodayYMD() {
@@ -77,18 +77,12 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Configuración de Multer para carga de archivos
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'recurso-' + uniqueSuffix + ext);
-  }
+// Configuración de Multer para carga de archivos en memoria (almacenamiento permanente Base64)
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 15 * 1024 * 1024 }
 });
-const upload = multer({ storage: storage });
 
 // Pool de conexión MySQL (Soporta Variables de Entorno para Render / Cloud DB)
 const pool = mysql.createPool({
@@ -106,80 +100,87 @@ const pool = mysql.createPool({
     : false
 });
 
-// Asegurar que la tabla recursos_apoyo exista con columna LONGTEXT
-pool.execute(`
-  CREATE TABLE IF NOT EXISTS recursos_apoyo (
-    id_recurso INT AUTO_INCREMENT PRIMARY KEY,
-    titulo VARCHAR(150) NOT NULL,
-    descripcion TEXT NULL,
-    categoria VARCHAR(50) NOT NULL DEFAULT 'General',
-    tipo_recurso ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
-    url_recurso LONGTEXT NOT NULL,
-    nombre_archivo_orig VARCHAR(255) NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`).then(() => {
-  console.log('✅ Tabla "recursos_apoyo" verificada');
-  return pool.execute('ALTER TABLE recursos_apoyo MODIFY COLUMN url_recurso LONGTEXT NOT NULL');
-}).then(() => console.log('✅ Columna "url_recurso" ajustada a LONGTEXT para soporte Base64 en Aiven Cloud'))
-  .catch(err => console.error('Error verificando recursos_apoyo:', err.message));
-
-// Asegurar que la columna series_detalle_json exista
-pool.execute('ALTER TABLE ejercicios_rutina ADD COLUMN series_detalle_json TEXT NULL AFTER peso_kg')
-  .then(() => console.log('✅ Columna "series_detalle_json" verificada/agregada en ejercicios_rutina'))
-  .catch(err => {
-    if (err.code !== 'ER_DUP_FIELDNAME') {
-      console.error('Error al verificar columna series_detalle_json:', err.message);
-    }
-  });
-
-// Asegurar que la tabla pagos exista con las columnas de plan
-pool.execute(`
-  CREATE TABLE IF NOT EXISTS pagos (
-    id_pago INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario BIGINT UNSIGNED NOT NULL,
-    monto DECIMAL(10,2) NOT NULL,
-    moneda VARCHAR(10) NOT NULL,
-    plan VARCHAR(50) NOT NULL,
-    fecha_pago DATE NOT NULL,
-    fecha_inicio_plan DATE NULL,
-    fecha_fin_plan DATE NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`).then(async () => {
+// Inicialización segura de esquemas y tablas sin detener la app ante fallos de inicio
+async function initDatabaseSchema() {
   try {
-    await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
-    await pool.execute('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
-  } catch (e) { }
-  console.log('✅ Tabla "pagos" verificada en MySQL');
-}).catch(err => console.error('Error al verificar tabla pagos:', err.message));
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recursos_apoyo (
+        id_recurso INT AUTO_INCREMENT PRIMARY KEY,
+        titulo VARCHAR(150) NOT NULL,
+        descripcion TEXT NULL,
+        categoria VARCHAR(50) NOT NULL DEFAULT 'General',
+        tipo_recurso ENUM('archivo', 'enlace') NOT NULL DEFAULT 'enlace',
+        url_recurso LONGTEXT NOT NULL,
+        nombre_archivo_orig VARCHAR(255) NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    try {
+      await pool.query('ALTER TABLE recursos_apoyo MODIFY COLUMN url_recurso LONGTEXT NOT NULL');
+    } catch (e) {}
+    console.log('✅ Tabla "recursos_apoyo" verificada');
+  } catch (err) {
+    console.error('⚠️ Error verificando recursos_apoyo:', err.message);
+  }
 
-// Asegurar cuenta de Administrador por defecto (atlasgymve@gmail.com / atlas1297)
-(async function seedAdminUser() {
+  try {
+    await pool.query('ALTER TABLE ejercicios_rutina ADD COLUMN series_detalle_json TEXT NULL AFTER peso_kg');
+    console.log('✅ Columna "series_detalle_json" verificada/agregada en ejercicios_rutina');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna series_detalle_json:', err.message);
+    }
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pagos (
+        id_pago INT AUTO_INCREMENT PRIMARY KEY,
+        id_usuario BIGINT UNSIGNED NOT NULL,
+        monto DECIMAL(10,2) NOT NULL,
+        moneda VARCHAR(10) NOT NULL,
+        plan VARCHAR(50) NOT NULL,
+        fecha_pago DATE NOT NULL,
+        fecha_inicio_plan DATE NULL,
+        fecha_fin_plan DATE NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    try {
+      await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
+      await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
+    } catch (e) {}
+    console.log('✅ Tabla "pagos" verificada en MySQL');
+  } catch (err) {
+    console.error('⚠️ Error al verificar tabla pagos:', err.message);
+  }
+
   try {
     const adminEmail = 'atlasgymve@gmail.com';
     const adminPass = 'atlas1297';
     const hash = await bcrypt.hash(adminPass, 10);
 
-    const [rows] = await pool.execute('SELECT id_usuario FROM usuarios WHERE correo = ?', [adminEmail]);
+    const [rows] = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = ?', [adminEmail]);
     if (rows.length === 0) {
-      await pool.execute(
+      await pool.query(
         'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, 1, ?)',
         ['admin_atlas', adminEmail, hash, hash, 'Administrador ATLAS', 'administrador']
       );
       console.log('✅ Cuenta de Administrador creada (atlasgymve@gmail.com).');
     } else {
-      await pool.execute(
+      await pool.query(
         'UPDATE usuarios SET hash_contrasena = ?, id_rol = 1 WHERE correo = ?',
         [hash, adminEmail]
       );
       console.log('✅ Cuenta de Administrador verificada/actualizada.');
     }
   } catch (err) {
-    console.error('Error al sembrar usuario administrador:', err.message);
+    console.error('⚠️ Error al sembrar usuario administrador:', err.message);
   }
-})();
+}
+
+initDatabaseSchema();
 
 // ---------- REGISTRO DE USUARIO ----------
 app.post('/api/registro', async (req, res) => {
