@@ -1812,6 +1812,82 @@ function copyPaymentsSummaryToClipboard() {
     .catch(err => alert("Error al copiar resumen contable: " + err));
 }
 
+function exportPaymentsToExcel() {
+  if (!currentPaymentsData || currentPaymentsData.length === 0) {
+    alert("No hay registros de pagos en el historial actual para exportar.");
+    return;
+  }
+
+  const headers = [
+    "ID Transaccion",
+    "Fecha de Realizacion",
+    "Cliente",
+    "Cedula",
+    "Correo",
+    "Telefono",
+    "Plan Contratado",
+    "Monto",
+    "Moneda",
+    "Inicio de Membresia",
+    "Fin de Membresia (Vencimiento)"
+  ];
+
+  const escapeCsv = (str) => {
+    if (str === null || str === undefined) return '""';
+    const val = String(str).replace(/"/g, '""');
+    return `"${val}"`;
+  };
+
+  const rows = currentPaymentsData.map(p => [
+    escapeCsv(p.id_pago || ''),
+    escapeCsv(p.fecha_pago || ''),
+    escapeCsv(p.nombre_completo || 'Cliente'),
+    escapeCsv(p.cedula || 'Sin cedula'),
+    escapeCsv(p.correo || 'Sin correo'),
+    escapeCsv(p.telefono || 'Sin telefono'),
+    escapeCsv(p.plan || ''),
+    escapeCsv(p.monto || '0.00'),
+    escapeCsv(p.moneda || ''),
+    escapeCsv(p.fecha_inicio_plan || ''),
+    escapeCsv(p.fecha_fin_plan || '')
+  ]);
+
+  let csvContent = '\uFEFF' + headers.join(',') + '\n';
+  rows.forEach(rowArray => {
+    csvContent += rowArray.join(',') + '\n';
+  });
+
+  const dateInput = $("#historyDateFilter");
+  const dateFrom = $("#historyDateFrom");
+  const dateTo = $("#historyDateTo");
+  const dateMode = $("#paymentDateMode");
+
+  let fileNameSuffix = getLocalTodayStr();
+  if (dateMode && dateMode.value === 'rango' && dateFrom && dateFrom.value && dateTo && dateTo.value) {
+    fileNameSuffix = `Rango_${dateFrom.value}_a_${dateTo.value}`;
+  } else if (dateInput && dateInput.value) {
+    fileNameSuffix = dateInput.value;
+  }
+
+  const filename = `Historial_Pagos_ATLAS_${fileNameSuffix}.csv`;
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  if (navigator.msSaveBlob) {
+    navigator.msSaveBlob(blob, filename);
+  } else {
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+}
+
 /* ---------- GESTIÓN DE PLANTILLAS DE RUTINAS ---------- */
 let adminTemplatesData = [];
 

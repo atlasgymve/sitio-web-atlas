@@ -791,6 +791,7 @@ app.get('/api/admin/pagos', async (req, res) => {
              DATE_FORMAT(p.fecha_fin_plan, '%Y-%m-%d') as fecha_fin_plan,
              COALESCE(u.nombre_completo, p.nombre_cliente, 'Cliente Eliminado') as nombre_completo,
              COALESCE(u.correo, 'Cliente Eliminado') as correo,
+             COALESCE(u.cedula, 'Sin cédula') as cedula,
              COALESCE(u.telefono, 'Sin teléfono') as telefono
       FROM pagos p
       LEFT JOIN usuarios u ON p.id_usuario = u.id_usuario
@@ -802,8 +803,8 @@ app.get('/api/admin/pagos', async (req, res) => {
       queryParams.push(usuario_id);
     } else if (q && q.trim() !== '') {
       const searchTerm = `%${q.trim()}%`;
-      querySql += ` WHERE (u.nombre_completo LIKE ? OR p.nombre_cliente LIKE ? OR u.correo LIKE ? OR u.telefono LIKE ?) ORDER BY p.id_pago DESC LIMIT 100`;
-      queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      querySql += ` WHERE (u.nombre_completo LIKE ? OR p.nombre_cliente LIKE ? OR u.correo LIKE ? OR u.cedula LIKE ? OR u.telefono LIKE ?) ORDER BY p.id_pago DESC LIMIT 100`;
+      queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     } else if (req.query.fecha_inicio && req.query.fecha_fin) {
       querySql += ` WHERE DATE(p.fecha_pago) BETWEEN ? AND ? ORDER BY p.id_pago DESC`;
       queryParams.push(req.query.fecha_inicio, req.query.fecha_fin);
