@@ -18,7 +18,8 @@
       <div class="header-logo-group">
         <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
         <span class="badge"
-          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo Administrador</span>
+          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo
+          Administrador</span>
       </div>
       <div class="header-nav-actions">
         <span id="adminGreeting" style="font-weight: 600;">Administrador ATLAS</span>
@@ -164,7 +165,8 @@
       </div>
 
       <!-- Listado de Usuarios Clientes en Tarjetas Desplegables -->
-      <div id="adminUsersGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; align-items: start;">
+      <div id="adminUsersGrid"
+        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; align-items: start;">
         <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
           Cargando clientes...
         </div>
@@ -223,7 +225,7 @@
           <button type="button" class="btn-primary" onclick="exportPaymentsToExcel()"
             title="Descargar historial en formato Excel / CSV"
             style="padding: 0.5rem 0.9rem; font-size: 0.85rem; background: linear-gradient(135deg, #059669 0%, #10B981 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">
-            📊 Exportar a Excel
+            Exportar a Excel
           </button>
         </div>
       </div>
@@ -287,7 +289,8 @@
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
           <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Sube PDFs, guías nutricionales, imágenes y enlaces de interés para que tus atletas consulten en su panel.</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Sube PDFs, guías nutricionales, imágenes y enlaces de
+            interés para que tus atletas consulten en su panel.</p>
         </div>
 
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
@@ -633,7 +636,8 @@
   <div id="createResourceModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 540px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #FBBF24;">Subir Material y Contenido Adicional</h3>
+        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #FBBF24;">Subir Material y
+          Contenido Adicional</h3>
         <button type="button" onclick="closeCreateResourceModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -641,7 +645,8 @@
       <form id="createResourceForm" onsubmit="saveResource(event)">
         <div class="form-group">
           <label class="form-label" for="resourceTitle">Título del Material</label>
-          <input type="text" id="resourceTitle" class="form-input" placeholder="Ej: Guía de Alimentación e Hidratación" required>
+          <input type="text" id="resourceTitle" class="form-input" placeholder="Ej: Guía de Alimentación e Hidratación"
+            required>
         </div>
 
         <div class="form-group">
@@ -658,11 +663,13 @@
         <div class="form-group">
           <label class="form-label">Tipo de Contenido</label>
           <div style="display: flex; gap: 1.5rem; margin-top: 0.4rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
+            <label
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
               <input type="radio" name="resourceType" value="archivo" checked onchange="toggleResourceTypeInput()">
               Adjuntar Archivo (PDF / Imagen)
             </label>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
+            <label
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
               <input type="radio" name="resourceType" value="enlace" onchange="toggleResourceTypeInput()">
               Enlace Web / Video
             </label>
@@ -672,7 +679,8 @@
         <!-- Opción A: Archivo Local (PDF, Imagen, Doc) -->
         <div id="resourceFileInputContainer" class="form-group">
           <label class="form-label" for="resourceFile">Seleccionar Archivo (PDF, JPG, PNG)</label>
-          <input type="file" id="resourceFile" class="form-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="padding: 0.4rem;">
+          <input type="file" id="resourceFile" class="form-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+            style="padding: 0.4rem;">
         </div>
 
         <!-- Opción B: Enlace URL -->
@@ -683,7 +691,8 @@
 
         <div class="form-group">
           <label class="form-label" for="resourceDesc">Descripción / Notas adicionales</label>
-          <textarea id="resourceDesc" class="form-input" rows="3" placeholder="Información útil o recomendaciones sobre este contenido..."></textarea>
+          <textarea id="resourceDesc" class="form-input" rows="3"
+            placeholder="Información útil o recomendaciones sobre este contenido..."></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">

@@ -1818,18 +1818,14 @@ function exportPaymentsToExcel() {
     return;
   }
 
+  // Encabezados simplificados en las 6 columnas solicitadas
   const headers = [
-    "ID Transaccion",
-    "Fecha de Realizacion",
+    "Fecha",
     "Cliente",
     "Cedula",
-    "Correo",
-    "Telefono",
-    "Plan Contratado",
+    "Plan",
     "Monto",
-    "Moneda",
-    "Inicio de Membresia",
-    "Fin de Membresia (Vencimiento)"
+    "Moneda"
   ];
 
   const escapeCsv = (str) => {
@@ -1839,22 +1835,18 @@ function exportPaymentsToExcel() {
   };
 
   const rows = currentPaymentsData.map(p => [
-    escapeCsv(p.id_pago || ''),
     escapeCsv(p.fecha_pago || ''),
     escapeCsv(p.nombre_completo || 'Cliente'),
     escapeCsv(p.cedula || 'Sin cedula'),
-    escapeCsv(p.correo || 'Sin correo'),
-    escapeCsv(p.telefono || 'Sin telefono'),
     escapeCsv(p.plan || ''),
     escapeCsv(p.monto || '0.00'),
-    escapeCsv(p.moneda || ''),
-    escapeCsv(p.fecha_inicio_plan || ''),
-    escapeCsv(p.fecha_fin_plan || '')
+    escapeCsv(p.moneda || '')
   ]);
 
-  let csvContent = '\uFEFF' + headers.join(',') + '\n';
+  // Usar ';' como separador para que Microsoft Excel (en español) divida automáticamente en celdas/columnas
+  let csvContent = '\uFEFF' + headers.join(';') + '\n';
   rows.forEach(rowArray => {
-    csvContent += rowArray.join(',') + '\n';
+    csvContent += rowArray.join(';') + '\n';
   });
 
   const dateInput = $("#historyDateFilter");
