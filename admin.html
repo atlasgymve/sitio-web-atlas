@@ -158,8 +158,8 @@
             <option value="activos">Activos </option>
           </select>
           <input type="text" id="searchUserFilter" class="form-input"
-            placeholder="Buscar por nombre, correo o teléfono..." oninput="filterAdminUsers()"
-            style="width: 250px; padding: 0.5rem 1rem; font-size: 0.88rem;">
+            placeholder="Buscar por nombre, correo, cédula o teléfono..." oninput="filterAdminUsers()"
+            style="width: 260px; padding: 0.5rem 1rem; font-size: 0.88rem;">
         </div>
       </div>
 
@@ -330,6 +330,11 @@
         <div class="form-group">
           <label class="form-label" for="newClientEmail">Correo Electrónico (Para iniciar sesión)</label>
           <input type="email" id="newClientEmail" class="form-input" placeholder="cliente@correo.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="newClientCedula">Cédula de Identidad</label>
+          <input type="text" id="newClientCedula" class="form-input" placeholder="Ej: V-12345678 o 12345678">
         </div>
 
         <div class="form-group">

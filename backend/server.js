@@ -133,6 +133,15 @@ async function initDatabaseSchema() {
   }
 
   try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN cedula VARCHAR(30) NULL AFTER correo');
+    console.log('✅ Columna "cedula" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna cedula:', err.message);
+    }
+  }
+
+  try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS pagos (
         id_pago INT AUTO_INCREMENT PRIMARY KEY,
@@ -184,25 +193,36 @@ initDatabaseSchema();
 
 // ---------- REGISTRO DE USUARIO ----------
 app.post('/api/registro', async (req, res) => {
-  const { nombre_completo, correo, telefono, password } = req.body;
+  const { nombre_completo, correo, cedula, telefono, password } = req.body;
 
   if (!nombre_completo || !correo || !password) {
     return res.status(400).json({ msg: 'Nombre, correo y contraseña son obligatorios.' });
   }
 
+  const cleanEmail = correo.trim().toLowerCase();
+  const cleanCedula = cedula ? String(cedula).trim() : null;
+
   try {
     // Comprobar si ya existe el correo
-    const [existing] = await pool.execute('SELECT id_usuario FROM usuarios WHERE correo = ?', [correo]);
+    const [existing] = await pool.execute('SELECT id_usuario FROM usuarios WHERE correo = ?', [cleanEmail]);
     if (existing.length > 0) {
       return res.status(400).json({ msg: 'El correo electrónico ya está registrado.' });
     }
 
+    // Comprobar si ya existe la cédula
+    if (cleanCedula) {
+      const [existingCedula] = await pool.execute('SELECT id_usuario FROM usuarios WHERE cedula = ?', [cleanCedula]);
+      if (existingCedula.length > 0) {
+        return res.status(400).json({ msg: 'La cédula de identidad ya está registrada en el sistema.' });
+      }
+    }
+
     const hash = await bcrypt.hash(password, 10);
-    const nombre_usuario = correo.split('@')[0] + Math.floor(Math.random() * 1000);
+    const nombre_usuario = cleanEmail.split('@')[0] + Math.floor(Math.random() * 1000);
 
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, ?)',
-      [nombre_usuario, correo, telefono || null, hash, hash, nombre_completo, 'cliente']
+      'INSERT INTO usuarios (nombre_usuario, correo, cedula, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, ?, 2, ?)',
+      [nombre_usuario, cleanEmail, cleanCedula, telefono ? telefono.trim() : null, hash, hash, nombre_completo.trim(), 'cliente']
     );
 
     const newUserId = result.insertId;
@@ -229,29 +249,31 @@ app.post('/api/registro', async (req, res) => {
   }
 });
 
-// ---------- LOGIN ----------
+// ---------- LOGIN (CORREO O CÉDULA) ----------
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email) {
-    return res.status(400).json({ msg: 'Por favor ingresa tu correo electrónico.' });
+  const { email, password, loginInput } = req.body;
+  const inputVal = String(loginInput || email || '').trim();
+
+  if (!inputVal) {
+    return res.status(400).json({ msg: 'Por favor ingresa tu correo electrónico o cédula.' });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanInput = inputVal.toLowerCase();
 
   try {
     const [rows] = await pool.execute(
-      'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ?',
-      [cleanEmail]
+      'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? OR cedula = ? OR nombre_usuario = ?',
+      [cleanInput, inputVal, cleanInput]
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ msg: 'Usuario no registrado. Por favor solicita tu acceso al Administrador.' });
+      return res.status(404).json({ msg: 'Usuario no registrado. Por favor verifica tu correo o cédula.' });
     }
 
     const user = rows[0];
 
     // Si es el Administrador o id_rol === 1, se exige contraseña
-    if (cleanEmail === 'atlasgymve@gmail.com' || user.id_rol === 1) {
+    if (cleanInput === 'atlasgymve@gmail.com' || user.id_rol === 1) {
       if (!password) {
         return res.status(400).json({ msg: 'Por favor ingresa la contraseña de administrador.' });
       }
@@ -267,7 +289,7 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // Para clientes regulares: Inicio de sesión directo solo con correo
+    // Para clientes regulares: Inicio de sesión directo con correo o cédula
     res.json({
       ok: true,
       id_usuario: user.id_usuario,
@@ -492,7 +514,7 @@ app.post('/api/sesiones', async (req, res) => {
 app.get('/api/admin/usuarios', async (req, res) => {
   try {
     const [users] = await pool.query(
-      "SELECT id_usuario, nombre_completo, correo, telefono, membresia_estado, membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
+      "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
 
     const usuariosCompletos = await Promise.all(
@@ -588,13 +610,14 @@ app.get('/api/admin/usuarios', async (req, res) => {
 
 // Crear un nuevo usuario cliente desde el panel de administración
 app.post('/api/admin/usuarios', async (req, res) => {
-  const { nombre_completo, correo, telefono } = req.body;
+  const { nombre_completo, correo, cedula, telefono } = req.body;
 
   if (!nombre_completo || !correo) {
     return res.status(400).json({ msg: 'El nombre completo y correo electrónico son obligatorios.' });
   }
 
   const cleanEmail = correo.trim().toLowerCase();
+  const cleanCedula = cedula ? String(cedula).trim() : null;
 
   try {
     const [existing] = await pool.execute('SELECT id_usuario FROM usuarios WHERE correo = ?', [cleanEmail]);
@@ -602,12 +625,19 @@ app.post('/api/admin/usuarios', async (req, res) => {
       return res.status(400).json({ msg: 'El correo electrónico ya está registrado.' });
     }
 
+    if (cleanCedula) {
+      const [existingCed] = await pool.execute('SELECT id_usuario FROM usuarios WHERE cedula = ?', [cleanCedula]);
+      if (existingCed.length > 0) {
+        return res.status(400).json({ msg: 'La cédula de identidad ya está registrada por otro usuario.' });
+      }
+    }
+
     const dummyHash = await bcrypt.hash('cliente123', 10);
     const nombre_usuario = cleanEmail.split('@')[0] + Math.floor(Math.random() * 1000);
 
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre_usuario, correo, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, 2, ?)',
-      [nombre_usuario, cleanEmail, telefono || null, dummyHash, dummyHash, nombre_completo, 'cliente']
+      'INSERT INTO usuarios (nombre_usuario, correo, cedula, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, ?, 2, ?)',
+      [nombre_usuario, cleanEmail, cleanCedula, telefono || null, dummyHash, dummyHash, nombre_completo, 'cliente']
     );
 
     const newUserId = result.insertId;
@@ -633,13 +663,14 @@ app.post('/api/admin/usuarios', async (req, res) => {
 // Actualizar datos de un usuario cliente desde administración
 app.put('/api/admin/usuarios/:id', async (req, res) => {
   const userId = req.params.id;
-  const { nombre_completo, correo, telefono } = req.body;
+  const { nombre_completo, correo, cedula, telefono } = req.body;
 
   if (!nombre_completo || !correo) {
     return res.status(400).json({ msg: 'El nombre completo y correo electrónico son obligatorios.' });
   }
 
   const cleanEmail = correo.trim().toLowerCase();
+  const cleanCedula = cedula ? String(cedula).trim() : null;
 
   try {
     const [existing] = await pool.execute(
@@ -651,9 +682,19 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
       return res.status(400).json({ msg: 'El correo electrónico ya está registrado por otro usuario.' });
     }
 
+    if (cleanCedula) {
+      const [existingCed] = await pool.execute(
+        'SELECT id_usuario FROM usuarios WHERE cedula = ? AND id_usuario != ?',
+        [cleanCedula, userId]
+      );
+      if (existingCed.length > 0) {
+        return res.status(400).json({ msg: 'La cédula ya está registrada por otro usuario.' });
+      }
+    }
+
     await pool.execute(
-      'UPDATE usuarios SET nombre_completo = ?, correo = ?, telefono = ? WHERE id_usuario = ?',
-      [nombre_completo.trim(), cleanEmail, telefono ? telefono.trim() : null, userId]
+      'UPDATE usuarios SET nombre_completo = ?, correo = ?, cedula = ?, telefono = ? WHERE id_usuario = ?',
+      [nombre_completo.trim(), cleanEmail, cleanCedula, telefono ? telefono.trim() : null, userId]
     );
 
     res.json({ ok: true, msg: 'Datos del cliente actualizados exitosamente.' });

@@ -967,6 +967,7 @@ function renderAdminUsersGrid(users) {
       <!-- Detalle desplegable (Oculto por defecto) -->
       <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem;">
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${u.correo}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">🪪 <strong style="color: var(--text-main);">Cédula:</strong> ${u.cedula || "Sin cédula"}</p>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${u.telefono || "Sin teléfono"}</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: rgba(15,23,42,0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
@@ -1020,6 +1021,7 @@ function filterAdminUsers() {
     list = list.filter(u =>
       u.nombre_completo.toLowerCase().includes(query) ||
       u.correo.toLowerCase().includes(query) ||
+      (u.cedula && u.cedula.toLowerCase().includes(query)) ||
       (u.telefono && u.telefono.toLowerCase().includes(query))
     );
   }
@@ -1110,6 +1112,8 @@ function editUserByAdmin(id_usuario) {
 
   $("#newClientNombre").value = user.nombre_completo || "";
   $("#newClientEmail").value = user.correo || "";
+  const cedulaInput = $("#newClientCedula");
+  if (cedulaInput) cedulaInput.value = user.cedula || "";
   $("#newClientTelefono").value = user.telefono || "";
 
   const modal = $("#createUserModal");
@@ -1120,6 +1124,8 @@ function saveNewUser(event) {
   event.preventDefault();
   const nombre_completo = $("#newClientNombre").value.trim();
   const correo = $("#newClientEmail").value.trim();
+  const cedulaInput = $("#newClientCedula");
+  const cedula = cedulaInput ? cedulaInput.value.trim() : "";
   const telefono = $("#newClientTelefono").value.trim();
 
   const url = editingAdminUserId ? `${API_BASE}/admin/usuarios/${editingAdminUserId}` : `${API_BASE}/admin/usuarios`;
@@ -1128,7 +1134,7 @@ function saveNewUser(event) {
   fetch(url, {
     method: method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nombre_completo, correo, telefono })
+    body: JSON.stringify({ nombre_completo, correo, cedula, telefono })
   })
     .then(async r => {
       const data = await r.json();
@@ -1370,6 +1376,7 @@ function filterPaymentUserList() {
   const matches = adminUsersData.filter(u =>
     u.nombre_completo.toLowerCase().includes(query) ||
     u.correo.toLowerCase().includes(query) ||
+    (u.cedula && u.cedula.toLowerCase().includes(query)) ||
     (u.telefono && u.telefono.toLowerCase().includes(query))
   );
 
@@ -1391,7 +1398,7 @@ function filterPaymentUserList() {
 
     item.innerHTML = `
       <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${u.nombre_completo}</div>
-      <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${u.correo} • <span style="color: var(--text-muted);">📞 ${u.telefono || 'Sin tel'}</span></div>
+      <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${u.correo} • 🪪 ${u.cedula || 'Sin CI'} • <span style="color: var(--text-muted);">📞 ${u.telefono || 'Sin tel'}</span></div>
       <div style="font-size: 0.8rem; color: #34D399; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${venceStr}</strong> (${estadoBadge})</div>
     `;
 
