@@ -819,12 +819,18 @@ app.get('/api/admin/pagos', async (req, res) => {
     let totalUSD = 0;
     let totalCOP = 0;
     let totalBS = 0;
+    let totalBancolombia = 0;
+    let totalUSDT = 0;
+    let totalCLP = 0;
 
     rows.forEach(p => {
       const val = parseFloat(p.monto) || 0;
       if (p.moneda === 'USD') totalUSD += val;
       else if (p.moneda === 'COP') totalCOP += val;
       else if (p.moneda === 'BS') totalBS += val;
+      else if (p.moneda === 'Bancolombia') totalBancolombia += val;
+      else if (p.moneda === 'USDT') totalUSDT += val;
+      else if (p.moneda === 'CLP') totalCLP += val;
     });
 
     res.json({
@@ -833,7 +839,10 @@ app.get('/api/admin/pagos', async (req, res) => {
       totales: {
         USD: totalUSD.toFixed(2),
         COP: totalCOP.toFixed(2),
-        BS: totalBS.toFixed(2)
+        BS: totalBS.toFixed(2),
+        Bancolombia: totalBancolombia.toFixed(2),
+        USDT: totalUSDT.toFixed(2),
+        CLP: totalCLP.toFixed(2)
       }
     });
   } catch (err) {

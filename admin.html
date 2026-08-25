@@ -232,26 +232,41 @@
 
       <!-- Resumen de Totales del Día por Moneda -->
       <div id="paymentsDailySummary"
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total
-            USD</span>
-          <div id="totalUsdSummary" style="font-size: 1.6rem; font-weight: 800; color: #34D399; margin-top: 0.2rem;">
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USD</span>
+          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: #34D399; margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total
-            COP</span>
-          <div id="totalCopSummary" style="font-size: 1.6rem; font-weight: 800; color: #60A5FA; margin-top: 0.2rem;">
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">COP</span>
+          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: #60A5FA; margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total
-            BS</span>
-          <div id="totalBsSummary" style="font-size: 1.6rem; font-weight: 800; color: #F59E0B; margin-top: 0.2rem;">
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">BS</span>
+          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: #F59E0B; margin-top: 0.2rem;">
+            $0.00</div>
+        </div>
+        <div
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Bancolombia</span>
+          <div id="totalBancolombiaSummary" style="font-size: 1.3rem; font-weight: 800; color: #FBBF24; margin-top: 0.2rem;">
+            $0.00</div>
+        </div>
+        <div
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USDT</span>
+          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: #F0B90B; margin-top: 0.2rem;">
+            0.00</div>
+        </div>
+        <div
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">CLP</span>
+          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: #A7F3D0; margin-top: 0.2rem;">
             $0.00</div>
         </div>
       </div>
@@ -398,9 +413,12 @@
             <label class="form-label" for="paymentMoneda">Tipo de Moneda</label>
             <select id="paymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
               required>
-              <option value="COP">COP (Pesos Colombianos)</option>
               <option value="USD" selected>USD (Dólares)</option>
+              <option value="COP">COP (Pesos Colombianos)</option>
               <option value="BS">BS (Bolívares)</option>
+              <option value="Bancolombia">Bancolombia</option>
+              <option value="USDT">USDT (Binance Pay / Crypto)</option>
+              <option value="CLP">CLP (Pesos Chilenos)</option>
             </select>
           </div>
 

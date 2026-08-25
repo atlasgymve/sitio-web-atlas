@@ -1615,10 +1615,8 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
       currentPaymentsData = res.pagos || [];
 
       // Actualizar Resumen de Totales por Moneda
-      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00" };
-      if ($("#totalUsdSummary")) $("#totalUsdSummary").textContent = `$${totales.USD} USD`;
-      if ($("#totalCopSummary")) $("#totalCopSummary").textContent = `$${totales.COP} COP`;
-      if ($("#totalBsSummary")) $("#totalBsSummary").textContent = `$${totales.BS} BS`;
+      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
+      updatePaymentsSummaryUI(totales);
 
       container.innerHTML = "";
 
@@ -1744,10 +1742,8 @@ function loadAdminPaymentsRangeHistory() {
 
       currentPaymentsData = res.pagos || [];
 
-      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00" };
-      if ($("#totalUsdSummary")) $("#totalUsdSummary").textContent = `$${totales.USD} USD`;
-      if ($("#totalCopSummary")) $("#totalCopSummary").textContent = `$${totales.COP} COP`;
-      if ($("#totalBsSummary")) $("#totalBsSummary").textContent = `$${totales.BS} BS`;
+      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
+      updatePaymentsSummaryUI(totales);
 
       container.innerHTML = "";
 
@@ -1787,6 +1783,16 @@ function loadAdminPaymentsRangeHistory() {
     .catch(err => console.error("Error al obtener pagos en rango:", err));
 }
 
+function updatePaymentsSummaryUI(totales) {
+  const t = totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
+  if ($("#totalUsdSummary")) $("#totalUsdSummary").textContent = `$${t.USD || '0.00'} USD`;
+  if ($("#totalCopSummary")) $("#totalCopSummary").textContent = `$${t.COP || '0.00'} COP`;
+  if ($("#totalBsSummary")) $("#totalBsSummary").textContent = `$${t.BS || '0.00'} BS`;
+  if ($("#totalBancolombiaSummary")) $("#totalBancolombiaSummary").textContent = `$${t.Bancolombia || '0.00'} COP`;
+  if ($("#totalUsdtSummary")) $("#totalUsdtSummary").textContent = `${t.USDT || '0.00'} USDT`;
+  if ($("#totalClpSummary")) $("#totalClpSummary").textContent = `$${t.CLP || '0.00'} CLP`;
+}
+
 function copyPaymentsSummaryToClipboard() {
   const mode = $("#paymentDateMode") ? $("#paymentDateMode").value : "dia";
   let periodoStr = "";
@@ -1803,9 +1809,12 @@ function copyPaymentsSummaryToClipboard() {
   const usdText = $("#totalUsdSummary") ? $("#totalUsdSummary").textContent : "$0.00 USD";
   const copText = $("#totalCopSummary") ? $("#totalCopSummary").textContent : "$0.00 COP";
   const bsText = $("#totalBsSummary") ? $("#totalBsSummary").textContent : "$0.00 BS";
+  const bancolombiaText = $("#totalBancolombiaSummary") ? $("#totalBancolombiaSummary").textContent : "$0.00 COP";
+  const usdtText = $("#totalUsdtSummary") ? $("#totalUsdtSummary").textContent : "0.00 USDT";
+  const clpText = $("#totalClpSummary") ? $("#totalClpSummary").textContent : "$0.00 CLP";
   const count = currentPaymentsData ? currentPaymentsData.length : 0;
 
-  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\nTotal USD: ${usdText}\nTotal COP: ${copText}\nTotal BS: ${bsText}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
+  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\nTotal USD: ${usdText}\nTotal COP: ${copText}\nTotal BS: ${bsText}\nTotal Bancolombia: ${bancolombiaText}\nTotal USDT: ${usdtText}\nTotal CLP: ${clpText}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
 
   navigator.clipboard.writeText(summaryText)
     .then(() => alert("El resumen contable ha sido copiado al portapapeles."))
