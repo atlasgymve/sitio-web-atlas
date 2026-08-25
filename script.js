@@ -1806,15 +1806,35 @@ function copyPaymentsSummaryToClipboard() {
     periodoStr = singleDate;
   }
 
-  const usdText = $("#totalUsdSummary") ? $("#totalUsdSummary").textContent : "$0.00 USD";
-  const copText = $("#totalCopSummary") ? $("#totalCopSummary").textContent : "$0.00 COP";
-  const bsText = $("#totalBsSummary") ? $("#totalBsSummary").textContent : "$0.00 BS";
-  const bancolombiaText = $("#totalBancolombiaSummary") ? $("#totalBancolombiaSummary").textContent : "$0.00 COP";
-  const usdtText = $("#totalUsdtSummary") ? $("#totalUsdtSummary").textContent : "0.00 USDT";
-  const clpText = $("#totalClpSummary") ? $("#totalClpSummary").textContent : "$0.00 CLP";
   const count = currentPaymentsData ? currentPaymentsData.length : 0;
 
-  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\nTotal USD: ${usdText}\nTotal COP: ${copText}\nTotal BS: ${bsText}\nTotal Bancolombia: ${bancolombiaText}\nTotal USDT: ${usdtText}\nTotal CLP: ${clpText}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
+  // Sumar únicamente transacciones existentes
+  const totalsMap = {};
+  if (currentPaymentsData && currentPaymentsData.length > 0) {
+    currentPaymentsData.forEach(p => {
+      const moneda = p.moneda || 'USD';
+      const monto = parseFloat(p.monto) || 0;
+      totalsMap[moneda] = (totalsMap[moneda] || 0) + monto;
+    });
+  }
+
+  const totalsLines = [];
+  Object.keys(totalsMap).forEach(moneda => {
+    const monto = totalsMap[moneda];
+    if (monto > 0) {
+      if (moneda === 'USDT') {
+        totalsLines.push(`Total ${moneda}: ${monto.toFixed(2)} USDT`);
+      } else {
+        totalsLines.push(`Total ${moneda}: $${monto.toFixed(2)} ${moneda}`);
+      }
+    }
+  });
+
+  const totalsSection = totalsLines.length > 0
+    ? totalsLines.join('\n')
+    : "No hay ingresos registrados en este periodo.";
+
+  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\n${totalsSection}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
 
   navigator.clipboard.writeText(summaryText)
     .then(() => alert("El resumen contable ha sido copiado al portapapeles."))
