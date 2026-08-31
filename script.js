@@ -946,22 +946,34 @@ function renderAdminUsersGrid(users) {
     const status = getClientStatusInfo(u);
     const card = document.createElement("div");
     card.className = "routine-card";
-    card.style.cssText = `padding: 1.25rem; transition: all 0.2s ease; background: rgba(15, 23, 42, 0.6); border-left: 4px solid ${status.borderColor};`;
+    const hasDebt = u.tiene_deuda == 1;
+    const borderLeftColor = hasDebt ? "#EF4444" : status.borderColor;
+    card.style.cssText = `padding: 1.25rem; transition: all 0.2s ease; background: rgba(15, 23, 42, 0.6); border-left: 4px solid ${borderLeftColor};`;
 
     const cantRutinas = u.rutinas ? u.rutinas.length : 0;
+    const debtBadgeHtml = hasDebt
+      ? `<span class="badge" style="background: rgba(239, 68, 68, 0.25); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.5); font-weight: 700;">⚠️ DEUDA</span>`
+      : "";
+    const debtSummaryNotice = hasDebt
+      ? `<div style="font-size: 0.8rem; color: #FCA5A5; font-weight: 600; margin-top: 0.3rem;">⚠️ Abono Pendiente / Debe Dinero</div>`
+      : "";
 
     card.innerHTML = `
       <!-- Encabezado de la Tarjeta (Resumen siempre visible, click para expandir) -->
       <div class="client-card-header" onclick="toggleClientCardDetails(this)" style="cursor: pointer; user-select: none;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem;">
           <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${u.nombre_completo}</h3>
-          <span class="badge ${status.badgeClass}">${status.badgeText}</span>
+          <div style="display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end;">
+            ${debtBadgeHtml}
+            <span class="badge ${status.badgeClass}">${status.badgeText}</span>
+          </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.83rem; color: var(--text-muted);">
           <span>⏳ Vence: <strong style="color: ${status.venceColor};">${u.membresia.vence}</strong></span>
           <span class="accordion-chevron" style="color: #60A5FA; font-weight: 600; font-size: 0.78rem; background: rgba(59,130,246,0.15); padding: 0.2rem 0.55rem; border-radius: 6px; transition: all 0.2s ease;">▼ Ver más</span>
         </div>
+        ${debtSummaryNotice}
       </div>
 
       <!-- Detalle desplegable (Oculto por defecto) -->
@@ -1027,7 +1039,9 @@ function filterAdminUsers() {
   }
 
   // 2. Filtrar por estado y aplicar ordenamiento
-  if (statusFilter === "proximos") {
+  if (statusFilter === "deudores") {
+    list = list.filter(u => u.tiene_deuda == 1);
+  } else if (statusFilter === "proximos") {
     const todayObj = new Date();
     const future5Obj = new Date(todayObj.getTime() + 5 * 24 * 60 * 60 * 1000);
     const future5Str = formatYYYYMMDD(future5Obj);
@@ -1327,6 +1341,9 @@ function openRegisterPaymentModal(preselectUserId = null) {
   const form = $("#registerPaymentForm");
   if (form) form.reset();
 
+  const abonoInput = $("#paymentEsAbono");
+  if (abonoInput) abonoInput.checked = false;
+
   const searchInput = $("#paymentUserSearch");
   if (searchInput) searchInput.value = "";
 
@@ -1469,6 +1486,7 @@ function savePayment(event) {
   const monto = $("#paymentMonto").value;
   const plan = $("#paymentPlan").value;
   const fecha_pago = $("#paymentFecha").value;
+  const es_abono = $("#paymentEsAbono") && $("#paymentEsAbono").checked ? 1 : 0;
 
   fetch(`${API_BASE}/admin/pagos`, {
     method: "POST",
@@ -1478,7 +1496,8 @@ function savePayment(event) {
       monto,
       moneda,
       plan,
-      fecha_pago
+      fecha_pago,
+      es_abono
     })
   })
     .then(async r => {
@@ -1487,7 +1506,7 @@ function savePayment(event) {
       return data;
     })
     .then(res => {
-      alert("¡Pago registrado exitosamente! La membresía del cliente ha sido actualizada.");
+      alert(res.msg || "¡Pago registrado exitosamente! La membresía del cliente ha sido actualizada.");
       closeRegisterPaymentModal();
       initAdminDashboard();
       if (!$("#adminClientsSection").classList.contains("hidden")) {
@@ -1633,12 +1652,16 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
         const item = document.createElement("div");
         item.style.cssText = "background: rgba(15,23,42,0.6); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; transition: transform 0.2s ease;";
 
+        const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
+          ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
+          : "";
+
         item.innerHTML = `
           <div>
             <strong style="color: var(--text-main); font-size: 1rem;">${p.nombre_completo}</strong> 
             <span style="font-size: 0.8rem; color: #60A5FA;">(✉️ ${p.correo} • 📞 ${p.telefono || 'Sin tel'})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> | Fecha de Pago: <strong>${p.fecha_pago}</strong>
+              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">

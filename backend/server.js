@@ -142,6 +142,15 @@ async function initDatabaseSchema() {
   }
 
   try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0 AFTER membresia_estado');
+    console.log('✅ Columna "tiene_deuda" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna tiene_deuda:', err.message);
+    }
+  }
+
+  try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS pagos (
         id_pago INT AUTO_INCREMENT PRIMARY KEY,
@@ -152,6 +161,7 @@ async function initDatabaseSchema() {
         fecha_pago DATE NOT NULL,
         fecha_inicio_plan DATE NULL,
         fecha_fin_plan DATE NULL,
+        es_abono TINYINT(1) DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -159,6 +169,7 @@ async function initDatabaseSchema() {
     try {
       await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
       await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
+      await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0 AFTER fecha_fin_plan');
     } catch (e) {}
     console.log('✅ Tabla "pagos" verificada en MySQL');
   } catch (err) {
@@ -514,7 +525,7 @@ app.post('/api/sesiones', async (req, res) => {
 app.get('/api/admin/usuarios', async (req, res) => {
   try {
     const [users] = await pool.query(
-      "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
+      "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence, tiene_deuda FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
 
     const usuariosCompletos = await Promise.all(
@@ -593,6 +604,7 @@ app.get('/api/admin/usuarios', async (req, res) => {
 
         return {
           ...u,
+          tiene_deuda: u.tiene_deuda ? 1 : 0,
           membresia,
           ultimo_pago,
           rutinas: rutinasConEjercicios,
@@ -636,7 +648,7 @@ app.post('/api/admin/usuarios', async (req, res) => {
     const nombre_usuario = cleanEmail.split('@')[0] + Math.floor(Math.random() * 1000);
 
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre_usuario, correo, cedula, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, ?, 2, ?)',
+      'INSERT INTO usuarios (nombre_usuario, correo, cedula, telefono, hash_contrasena, password_hash, nombre_completo, id_rol, rol, tiene_deuda) VALUES (?, ?, ?, ?, ?, ?, ?, 2, ?, 0)',
       [nombre_usuario, cleanEmail, cleanCedula, telefono || null, dummyHash, dummyHash, nombre_completo, 'cliente']
     );
 
@@ -706,11 +718,13 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
 
 // Registrar pago y actualizar membresía según plan contratado
 app.post('/api/admin/pagos', async (req, res) => {
-  const { id_usuario, monto, moneda, plan, fecha_pago } = req.body;
+  const { id_usuario, monto, moneda, plan, fecha_pago, es_abono } = req.body;
 
   if (!id_usuario || !monto || !moneda || !plan || !fecha_pago) {
     return res.status(400).json({ msg: 'Todos los campos del pago son obligatorios.' });
   }
+
+  const esAbonoVal = (es_abono === true || es_abono === 1 || es_abono === '1' || es_abono === 'true') ? 1 : 0;
 
   try {
     let diasPlan = 0;
@@ -749,12 +763,15 @@ app.post('/api/admin/pagos', async (req, res) => {
     const nombreClienteStr = uRows.length > 0 ? uRows[0].nombre_completo : null;
 
     // Guardar el pago:
-    // - fecha_pago: El día en que se realiza la transacción (fechaRealizacionStr = Hoy)
-    // - fecha_inicio_plan: El día en que comienza a correr la membresía (planStartStr = Seleccionado en formulario)
-    // - fecha_fin_plan: El día en que vence la membresía (newFinStr)
     await pool.execute(
-      'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr]
+      'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, es_abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr, esAbonoVal]
+    );
+
+    // Actualizar estado de deuda del usuario (1 si es abono parcial, 0 si se saldó o pagó completo)
+    await pool.execute(
+      'UPDATE usuarios SET tiene_deuda = ? WHERE id_usuario = ?',
+      [esAbonoVal, id_usuario]
     );
 
     if (memRows.length > 0) {
@@ -771,8 +788,9 @@ app.post('/api/admin/pagos', async (req, res) => {
 
     res.status(201).json({
       ok: true,
-      msg: '¡Pago registrado correctamente y membresía actualizada!',
-      vence: newFinStr
+      msg: esAbonoVal ? '¡Abono registrado! El cliente ha quedado marcado con deuda pendiente.' : '¡Pago registrado correctamente y membresía actualizada!',
+      vence: newFinStr,
+      tiene_deuda: esAbonoVal
     });
   } catch (err) {
     console.error('Error en POST /api/admin/pagos:', err);
@@ -785,7 +803,7 @@ app.get('/api/admin/pagos', async (req, res) => {
   try {
     const { fecha, q, usuario_id } = req.query;
     let querySql = `
-      SELECT p.id_pago, p.monto, p.moneda, p.plan, 
+      SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono,
              DATE_FORMAT(p.fecha_pago, '%Y-%m-%d') as fecha_pago,
              DATE_FORMAT(p.fecha_inicio_plan, '%Y-%m-%d') as fecha_inicio_plan,
              DATE_FORMAT(p.fecha_fin_plan, '%Y-%m-%d') as fecha_fin_plan,

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   rol ENUM('cliente', 'administrador') DEFAULT 'cliente',
   membresia_vence DATE NULL,
   membresia_estado ENUM('activa', 'inactiva', 'vencida') DEFAULT 'inactiva',
+  tiene_deuda TINYINT(1) DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS pagos (
   fecha_pago DATE NOT NULL,
   fecha_inicio_plan DATE NULL,
   fecha_fin_plan DATE NULL,
+  es_abono TINYINT(1) DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
