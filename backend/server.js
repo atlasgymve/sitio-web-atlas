@@ -166,12 +166,10 @@ async function initDatabaseSchema() {
         CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
-    try {
-      await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago');
-      await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan');
-      await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0 AFTER fecha_fin_plan');
-    } catch (e) {}
-    console.log('✅ Tabla "pagos" verificada en MySQL');
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
+    console.log('✅ Tabla "pagos" verificada en MySQL (columna es_abono asegurada)');
   } catch (err) {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
   }
@@ -524,6 +522,7 @@ app.post('/api/sesiones', async (req, res) => {
 // Obtener todos los usuarios clientes con sus membresías, rutinas e historial de entrenamiento
 app.get('/api/admin/usuarios', async (req, res) => {
   try {
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
     const [users] = await pool.query(
       "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence, tiene_deuda FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
@@ -727,6 +726,10 @@ app.post('/api/admin/pagos', async (req, res) => {
   const esAbonoVal = (es_abono === true || es_abono === 1 || es_abono === '1' || es_abono === 'true') ? 1 : 0;
 
   try {
+    // Asegurar que las columnas existan defensivamente en la base de datos de Aiven
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
+
     let diasPlan = 0;
     if (plan === 'Mensualidad' || plan === 'Estudiante') diasPlan = 30;
     else if (plan === 'Semana') diasPlan = 7;
@@ -801,6 +804,7 @@ app.post('/api/admin/pagos', async (req, res) => {
 // Obtener historial de pagos filtrado por fecha o por búsqueda de cliente (Preserva historial aun si se elimina el cliente)
 app.get('/api/admin/pagos', async (req, res) => {
   try {
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
     const { fecha, q, usuario_id } = req.query;
     let querySql = `
       SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono,
