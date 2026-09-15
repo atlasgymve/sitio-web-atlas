@@ -1455,13 +1455,19 @@ function filterPaymentUserList() {
     item.onmouseover = () => item.style.background = "rgba(30, 41, 59, 0.8)";
     item.onmouseout = () => item.style.background = "transparent";
 
+    const statusInfo = getClientStatusInfo(u);
+    let emoji = '🔴';
+    if (statusInfo.badgeText === 'activa') emoji = '🟢';
+    else if (statusInfo.badgeText === 'por vencer') emoji = '🟡';
+    
+    const badgeTxt = statusInfo.badgeText.charAt(0).toUpperCase() + statusInfo.badgeText.slice(1);
+    const estadoBadge = `${emoji} ${badgeTxt}`;
     const venceStr = (u.membresia && u.membresia.vence) ? u.membresia.vence : 'Sin fecha';
-    const estadoBadge = (u.membresia && u.membresia.estado === 'activa') ? '🟢 Activa' : '🔴 Vencida';
 
     item.innerHTML = `
       <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${u.nombre_completo}</div>
       <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${u.correo} • 🪪 ${u.cedula || 'Sin CI'} • <span style="color: var(--text-muted);">📞 ${u.telefono || 'Sin tel'}</span></div>
-      <div style="font-size: 0.8rem; color: #34D399; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${venceStr}</strong> (${estadoBadge})</div>
+      <div style="font-size: 0.8rem; color: ${statusInfo.venceColor}; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${venceStr}</strong> (${estadoBadge})</div>
     `;
 
     item.onclick = () => selectClientForPayment(u.id_usuario);
