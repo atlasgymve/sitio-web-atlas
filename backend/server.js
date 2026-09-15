@@ -169,7 +169,8 @@ async function initDatabaseSchema() {
     try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
-    console.log('✅ Tabla "pagos" verificada en MySQL (columna es_abono asegurada)');
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
+    console.log('✅ Tabla "pagos" verificada en MySQL (columnas es_abono y turno aseguradas)');
   } catch (err) {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
   }
@@ -195,6 +196,37 @@ async function initDatabaseSchema() {
     }
   } catch (err) {
     console.error('⚠️ Error al sembrar usuario administrador:', err.message);
+  }
+
+  // Cuenta de Recepcionista (mismo correo del gym, contraseña diferente)
+  try {
+    const recepEmail = 'recepcion@atlasgym.local';
+    const recepPass = 'pagosatlas';
+    const recepHash = await bcrypt.hash(recepPass, 10);
+
+    // Asegurar que el rol exista defensivamente
+    try {
+      await pool.query('INSERT IGNORE INTO roles (id_rol, nombre_rol) VALUES (3, "recepcionista")');
+    } catch (e) {
+      console.log('Info: No se pudo insertar rol 3, tal vez la tabla no existe o ya está.', e.message);
+    }
+
+    const [recepRows] = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = ?', [recepEmail]);
+    if (recepRows.length === 0) {
+      await pool.query(
+        'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, nombre_completo, id_rol) VALUES (?, ?, ?, ?, 3)',
+        ['recepcion_atlas', recepEmail, recepHash, 'Recepción ATLAS']
+      );
+      console.log('✅ Cuenta de Recepcionista creada.');
+    } else {
+      await pool.query(
+        'UPDATE usuarios SET hash_contrasena = ?, id_rol = 3 WHERE correo = ?',
+        [recepHash, recepEmail]
+      );
+      console.log('✅ Cuenta de Recepcionista verificada/actualizada.');
+    }
+  } catch (err) {
+    console.error('⚠️ Error al sembrar usuario recepcionista:', err.message);
   }
 }
 
@@ -270,6 +302,55 @@ app.post('/api/login', async (req, res) => {
   const cleanInput = inputVal.toLowerCase();
 
   try {
+    // Si es el correo del gimnasio, verificar tanto admin como recepcionista
+    if (cleanInput === 'atlasgymve@gmail.com') {
+      if (!password) {
+        return res.status(400).json({ msg: 'Por favor ingresa la contraseña de acceso.' });
+      }
+
+      // Buscar cuenta de administrador
+      const [adminRows] = await pool.execute(
+        'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? AND id_rol = 1',
+        [cleanInput]
+      );
+
+      // Buscar cuenta de recepcionista
+      const [recepRows] = await pool.execute(
+        'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? AND id_rol = 3',
+        ['recepcion@atlasgym.local']
+      );
+
+      // Intentar contraseña de admin
+      if (adminRows.length > 0) {
+        const adminMatch = await bcrypt.compare(password, adminRows[0].hash_contrasena);
+        if (adminMatch) {
+          return res.json({
+            ok: true,
+            id_usuario: adminRows[0].id_usuario,
+            nombre: adminRows[0].nombre_completo || 'Administrador',
+            esAdmin: true,
+            esRecepcionista: false
+          });
+        }
+      }
+
+      // Intentar contraseña de recepcionista
+      if (recepRows.length > 0) {
+        const recepMatch = await bcrypt.compare(password, recepRows[0].hash_contrasena);
+        if (recepMatch) {
+          return res.json({
+            ok: true,
+            id_usuario: recepRows[0].id_usuario,
+            nombre: recepRows[0].nombre_completo || 'Recepción',
+            esAdmin: false,
+            esRecepcionista: true
+          });
+        }
+      }
+
+      return res.status(401).json({ msg: 'Contraseña incorrecta. Verifica e intenta de nuevo.' });
+    }
+
     const [rows] = await pool.execute(
       'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? OR cedula = ? OR nombre_usuario = ?',
       [cleanInput, inputVal, cleanInput]
@@ -281,20 +362,21 @@ app.post('/api/login', async (req, res) => {
 
     const user = rows[0];
 
-    // Si es el Administrador o id_rol === 1, se exige contraseña
-    if (cleanInput === 'atlasgymve@gmail.com' || user.id_rol === 1) {
+    // Si es administrador o recepcionista por otro medio, exigir contraseña
+    if (user.id_rol === 1 || user.id_rol === 3) {
       if (!password) {
-        return res.status(400).json({ msg: 'Por favor ingresa la contraseña de administrador.' });
+        return res.status(400).json({ msg: 'Por favor ingresa la contraseña de acceso.' });
       }
       const match = await bcrypt.compare(password, user.hash_contrasena);
       if (!match) {
-        return res.status(401).json({ msg: 'Contraseña de administrador incorrecta.' });
+        return res.status(401).json({ msg: 'Contraseña incorrecta.' });
       }
       return res.json({
         ok: true,
         id_usuario: user.id_usuario,
-        nombre: user.nombre_completo || 'Administrador',
-        esAdmin: true
+        nombre: user.nombre_completo || (user.id_rol === 1 ? 'Administrador' : 'Recepción'),
+        esAdmin: user.id_rol === 1,
+        esRecepcionista: user.id_rol === 3
       });
     }
 
@@ -303,7 +385,8 @@ app.post('/api/login', async (req, res) => {
       ok: true,
       id_usuario: user.id_usuario,
       nombre: user.nombre_completo || 'Cliente',
-      esAdmin: false
+      esAdmin: false,
+      esRecepcionista: false
     });
   } catch (err) {
     console.error('Error en /api/login:', err);
@@ -717,7 +800,7 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
 
 // Registrar pago y actualizar membresía según plan contratado
 app.post('/api/admin/pagos', async (req, res) => {
-  const { id_usuario, monto, moneda, plan, fecha_pago, es_abono } = req.body;
+  const { id_usuario, monto, moneda, plan, fecha_pago, es_abono, turno } = req.body;
 
   if (!id_usuario || !monto || !moneda || !plan || !fecha_pago) {
     return res.status(400).json({ msg: 'Todos los campos del pago son obligatorios.' });
@@ -728,7 +811,10 @@ app.post('/api/admin/pagos', async (req, res) => {
   try {
     // Asegurar que las columnas existan defensivamente en la base de datos de Aiven
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
     try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
+
+    const turnoVal = (turno === 'AM' || turno === 'PM') ? turno : null;
 
     let diasPlan = 0;
     if (plan === 'Mensualidad' || plan === 'Estudiante') diasPlan = 30;
@@ -767,8 +853,8 @@ app.post('/api/admin/pagos', async (req, res) => {
 
     // Guardar el pago:
     await pool.execute(
-      'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, es_abono) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr, esAbonoVal]
+      'INSERT INTO pagos (id_usuario, nombre_cliente, monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, es_abono, turno) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id_usuario, nombreClienteStr, parseFloat(monto) || 0, moneda, plan, fechaRealizacionStr, planStartStr, newFinStr, esAbonoVal, turnoVal]
     );
 
     // Actualizar estado de deuda del usuario (1 si es abono parcial, 0 si se saldó o pagó completo)
@@ -805,9 +891,10 @@ app.post('/api/admin/pagos', async (req, res) => {
 app.get('/api/admin/pagos', async (req, res) => {
   try {
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
     const { fecha, q, usuario_id } = req.query;
     let querySql = `
-      SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono,
+      SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono, p.turno,
              DATE_FORMAT(p.fecha_pago, '%Y-%m-%d') as fecha_pago,
              DATE_FORMAT(p.fecha_inicio_plan, '%Y-%m-%d') as fecha_inicio_plan,
              DATE_FORMAT(p.fecha_fin_plan, '%Y-%m-%d') as fecha_fin_plan,

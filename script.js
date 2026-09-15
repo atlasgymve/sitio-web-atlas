@@ -78,8 +78,9 @@ function login(event) {
       localStorage.setItem("token", data.id_usuario);
       localStorage.setItem("nombre", data.nombre);
       localStorage.setItem("esAdmin", data.esAdmin ? "true" : "false");
+      localStorage.setItem("esRecepcionista", data.esRecepcionista ? "true" : "false");
 
-      if (data.esAdmin) {
+      if (data.esAdmin || data.esRecepcionista) {
         window.location.href = "admin.html";
       } else {
         window.location.href = "dashboard.html";
@@ -831,10 +832,16 @@ let editingAdminUserId = null;
 function initAdminDashboard() {
   const token = localStorage.getItem("token");
   const esAdmin = localStorage.getItem("esAdmin");
+  const esRecepcionista = localStorage.getItem("esRecepcionista");
 
-  if (!token || esAdmin !== "true") {
+  if (!token || (esAdmin !== "true" && esRecepcionista !== "true")) {
     window.location.href = "index.html";
     return;
+  }
+
+  // Aplicar restricciones de UI para recepcionistas
+  if (esRecepcionista === "true" && esAdmin !== "true") {
+    applyReceptionistRestrictions();
   }
 
   fetch(`${API_BASE}/admin/usuarios`)
@@ -848,6 +855,44 @@ function initAdminDashboard() {
       }
     })
     .catch(err => console.error("Error al cargar panel admin:", err));
+}
+
+function applyReceptionistRestrictions() {
+  // Cambiar badge del navbar
+  const badge = document.querySelector('.header-logo-group .badge');
+  if (badge) {
+    badge.textContent = 'Modo Recepción';
+    badge.style.background = 'rgba(99, 102, 241, 0.2)';
+    badge.style.color = '#A5B4FC';
+    badge.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+  }
+
+  // Cambiar saludo
+  const greeting = $("#adminGreeting");
+  if (greeting) greeting.textContent = localStorage.getItem("nombre") || 'Recepción ATLAS';
+
+  // Ocultar tarjetas restringidas: Directorio Clientes y Material
+  const cardClientes = $("#cardDirectorioClientes");
+  if (cardClientes) cardClientes.style.display = 'none';
+
+  const cardMaterial = $("#cardMaterialContenido");
+  if (cardMaterial) cardMaterial.style.display = 'none';
+
+  // En la tarjeta de Control de Pagos, ocultar botón de Historial (solo dejar Registrar Pago)
+  const cardPagos = $("#cardControlPagos");
+  if (cardPagos) {
+    const historialBtn = cardPagos.querySelector('.btn-secondary');
+    if (historialBtn && historialBtn.textContent.trim().includes('Historial')) {
+      historialBtn.style.display = 'none';
+    }
+    // Hacer el botón de registrar pago full-width
+    const pagoBtn = cardPagos.querySelector('.btn-primary');
+    if (pagoBtn) pagoBtn.style.flex = '1 1 100%';
+  }
+
+  // Actualizar subtítulo
+  const subtitle = document.querySelector('.main-content > div:first-child > p');
+  if (subtitle) subtitle.textContent = 'Registro rápido de pagos, clientes y gestión de plantillas de entrenamiento.';
 }
 
 function toggleAdminClientsSection() {
@@ -1487,6 +1532,8 @@ function savePayment(event) {
   const plan = $("#paymentPlan").value;
   const fecha_pago = $("#paymentFecha").value;
   const es_abono = $("#paymentEsAbono") && $("#paymentEsAbono").checked ? 1 : 0;
+  const turnoRadio = document.querySelector('input[name="paymentTurno"]:checked');
+  const turno = turnoRadio ? turnoRadio.value : null;
 
   fetch(`${API_BASE}/admin/pagos`, {
     method: "POST",
@@ -1497,7 +1544,8 @@ function savePayment(event) {
       moneda,
       plan,
       fecha_pago,
-      es_abono
+      es_abono,
+      turno
     })
   })
     .then(async r => {
@@ -1656,12 +1704,18 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
           ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
           : "";
 
+        const turnoColor = p.turno === 'AM' ? '#F59E0B' : (p.turno === 'PM' ? '#6366F1' : '#6B7280');
+        const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
+        const turnoBadgeHtml = p.turno
+          ? `<span class="badge" style="background: ${p.turno === 'AM' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color: ${turnoColor}; border: 1px solid ${p.turno === 'AM' ? 'rgba(245,158,11,0.4)' : 'rgba(99,102,241,0.4)'}; font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
+          : '';
+
         item.innerHTML = `
           <div>
             <strong style="color: var(--text-main); font-size: 1rem;">${p.nombre_completo}</strong> 
             <span style="font-size: 0.8rem; color: #60A5FA;">(✉️ ${p.correo} • 📞 ${p.telefono || 'Sin tel'})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
+              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
@@ -1783,12 +1837,22 @@ function loadAdminPaymentsRangeHistory() {
         const item = document.createElement("div");
         item.style.cssText = "background: rgba(15,23,42,0.6); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;";
 
+        const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
+          ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
+          : '';
+
+        const turnoColor = p.turno === 'AM' ? '#F59E0B' : (p.turno === 'PM' ? '#6366F1' : '#6B7280');
+        const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
+        const turnoBadgeHtml = p.turno
+          ? `<span class="badge" style="background: ${p.turno === 'AM' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color: ${turnoColor}; border: 1px solid ${p.turno === 'AM' ? 'rgba(245,158,11,0.4)' : 'rgba(99,102,241,0.4)'}; font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
+          : '';
+
         item.innerHTML = `
           <div>
             <strong style="color: var(--text-main); font-size: 1rem;">${p.nombre_completo}</strong> 
             <span style="font-size: 0.8rem; color: #60A5FA;">(${p.correo} • Tel: ${p.telefono || 'Sin tel'})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> | Fecha de Pago: <strong>${p.fecha_pago}</strong>
+              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
@@ -1870,14 +1934,15 @@ function exportPaymentsToExcel() {
     return;
   }
 
-  // Encabezados simplificados en las 6 columnas solicitadas
+  // Encabezados simplificados en las 7 columnas
   const headers = [
     "Fecha",
     "Cliente",
     "Cedula",
     "Plan",
     "Monto",
-    "Moneda"
+    "Moneda",
+    "Turno"
   ];
 
   const escapeCsv = (str) => {
@@ -1892,7 +1957,8 @@ function exportPaymentsToExcel() {
     escapeCsv(p.cedula || 'Sin cedula'),
     escapeCsv(p.plan || ''),
     escapeCsv(p.monto || '0.00'),
-    escapeCsv(p.moneda || '')
+    escapeCsv(p.moneda || ''),
+    escapeCsv(p.turno || 'N/A')
   ]);
 
   // Usar ';' como separador para que Microsoft Excel (en español) divida automáticamente en celdas/columnas

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   hash_contrasena VARCHAR(255) NULL,
   password_hash VARCHAR(255) NULL,
   id_rol INT NOT NULL DEFAULT 2,
-  rol ENUM('cliente', 'administrador') DEFAULT 'cliente',
+  rol ENUM('cliente', 'administrador', 'recepcionista') DEFAULT 'cliente',
   membresia_vence DATE NULL,
   membresia_estado ENUM('activa', 'inactiva', 'vencida') DEFAULT 'inactiva',
   tiene_deuda TINYINT(1) DEFAULT 0,
@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS pagos (
   fecha_inicio_plan DATE NULL,
   fecha_fin_plan DATE NULL,
   es_abono TINYINT(1) DEFAULT 0,
+  turno ENUM('AM','PM') DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

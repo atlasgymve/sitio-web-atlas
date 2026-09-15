@@ -52,7 +52,7 @@
       style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
 
       <!-- Card 1: Directorio Clientes -->
-      <div class="glass-card"
+      <div id="cardDirectorioClientes" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
           <span class="badge badge-active" style="margin-bottom: 0.5rem;">Directorio</span>
@@ -67,7 +67,7 @@
       </div>
 
       <!-- Card 2: Control de Pagos -->
-      <div class="glass-card"
+      <div id="cardControlPagos" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
           <span class="badge"
@@ -122,7 +122,7 @@
       </div>
 
       <!-- Card 5: Material y Contenido Adicional -->
-      <div class="glass-card"
+      <div id="cardMaterialContenido" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
           <span class="badge"
@@ -452,6 +452,24 @@
           <input type="date" id="paymentFecha" class="form-input" required>
         </div>
 
+        <div class="form-group">
+          <label class="form-label" for="paymentTurno">Turno</label>
+          <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
+            <label
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              <input type="radio" name="paymentTurno" value="AM" checked
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: #F59E0B;">
+              <span>☀️ Turno AM</span>
+            </label>
+            <label
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              <input type="radio" name="paymentTurno" value="PM"
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+              <span>🌙 Turno PM</span>
+            </label>
+          </div>
+        </div>
+
         <div class="form-group"
           style="margin-top: 1.2rem; background: rgba(239, 68, 68, 0.08); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
           <label
@@ -500,6 +518,12 @@
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Monto Pagado</span>
             <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: #34D399;">15.00 USD</div>
           </div>
+        </div>
+
+        <div
+          style="background: rgba(15,23,42,0.6); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Turno de Registro:</span>
+          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: #F59E0B;">☀️ AM</strong>
         </div>
 
         <div
