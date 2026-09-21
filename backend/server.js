@@ -154,7 +154,8 @@ async function initDatabaseSchema() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS pagos (
         id_pago INT AUTO_INCREMENT PRIMARY KEY,
-        id_usuario BIGINT UNSIGNED NOT NULL,
+        id_usuario BIGINT UNSIGNED NULL,
+        nombre_cliente VARCHAR(150) NULL,
         monto DECIMAL(10,2) NOT NULL,
         moneda VARCHAR(10) NOT NULL,
         plan VARCHAR(50) NOT NULL,
@@ -162,10 +163,15 @@ async function initDatabaseSchema() {
         fecha_inicio_plan DATE NULL,
         fecha_fin_plan DATE NULL,
         es_abono TINYINT(1) DEFAULT 0,
+        turno ENUM('AM','PM') DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
+        CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN id_usuario BIGINT UNSIGNED NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos DROP FOREIGN KEY fk_pago_usuario'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN nombre_cliente VARCHAR(150) NULL AFTER id_usuario'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
