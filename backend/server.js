@@ -966,6 +966,29 @@ app.get('/api/admin/pagos', async (req, res) => {
   }
 });
 
+// Editar un pago existente en el historial
+app.put('/api/admin/pagos/:id', async (req, res) => {
+  const pagoId = req.params.id;
+  const { monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, es_abono, turno } = req.body;
+
+  try {
+    const esAbonoVal = (es_abono === true || es_abono === 1 || es_abono === '1' || es_abono === 'true') ? 1 : 0;
+    const turnoVal = (turno === 'AM' || turno === 'PM') ? turno : null;
+
+    await pool.execute(
+      `UPDATE pagos 
+       SET monto = ?, moneda = ?, plan = ?, fecha_pago = ?, fecha_inicio_plan = ?, fecha_fin_plan = ?, es_abono = ?, turno = ?
+       WHERE id_pago = ?`,
+      [parseFloat(monto) || 0, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, esAbonoVal, turnoVal, pagoId]
+    );
+
+    res.json({ ok: true, msg: 'Pago actualizado exitosamente.' });
+  } catch (err) {
+    console.error('Error en PUT /api/admin/pagos:', err);
+    res.status(500).json({ msg: `Error al actualizar pago: ${err.message}` });
+  }
+});
+
 // Eliminar un usuario cliente con validación de contraseña de administrador
 app.delete('/api/admin/usuarios/:id', async (req, res) => {
   const userId = req.params.id;

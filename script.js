@@ -1728,6 +1728,9 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
             <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
               +${p.monto} ${p.moneda}
             </span>
+            <button type="button" class="btn-secondary" onclick="editPayment(${p.id_pago})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-color: #60A5FA; color: #60A5FA;">
+              Editar
+            </button>
             <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${p.id_pago})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
               Ver detalle
             </button>
@@ -1762,6 +1765,90 @@ function inspectPaymentDetail(id_pago) {
 
 function closePaymentDetailModal() {
   $("#paymentDetailModal").classList.add("hidden");
+}
+
+function editPayment(id_pago) {
+  const payment = currentPaymentsData.find(p => p.id_pago === id_pago);
+  if (!payment) return;
+
+  $("#editPaymentId").value = payment.id_pago;
+  $("#editPaymentClientName").textContent = payment.nombre_completo + " (" + payment.correo + ")";
+  $("#editPaymentMoneda").value = payment.moneda;
+  $("#editPaymentMonto").value = payment.monto;
+  $("#editPaymentPlan").value = payment.plan;
+  $("#editPaymentFechaPago").value = payment.fecha_pago;
+  
+  // Set dates, fallbacks if not present
+  $("#editPaymentFechaInicio").value = payment.fecha_inicio_plan || payment.fecha_pago;
+  $("#editPaymentFechaFin").value = payment.fecha_fin_plan || payment.fecha_pago;
+
+  // Turno
+  if (payment.turno === 'AM' || payment.turno === 'PM') {
+    document.querySelector(`input[name="editPaymentTurno"][value="${payment.turno}"]`).checked = true;
+  } else {
+    // Default or uncheck
+    document.querySelector(`input[name="editPaymentTurno"][value="AM"]`).checked = true;
+  }
+
+  // Es Abono
+  $("#editPaymentEsAbono").checked = (payment.es_abono == 1 || payment.es_abono === true);
+
+  $("#editPaymentModal").classList.remove("hidden");
+}
+
+function closeEditPaymentModal() {
+  $("#editPaymentModal").classList.add("hidden");
+}
+
+async function saveEditPayment(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = "Actualizando...";
+
+  const id_pago = $("#editPaymentId").value;
+  
+  const payload = {
+    moneda: $("#editPaymentMoneda").value,
+    monto: parseFloat($("#editPaymentMonto").value) || 0,
+    plan: $("#editPaymentPlan").value,
+    fecha_pago: $("#editPaymentFechaPago").value,
+    fecha_inicio_plan: $("#editPaymentFechaInicio").value,
+    fecha_fin_plan: $("#editPaymentFechaFin").value,
+    turno: document.querySelector('input[name="editPaymentTurno"]:checked')?.value || 'AM',
+    es_abono: $("#editPaymentEsAbono").checked ? 1 : 0
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/pagos/${id_pago}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert("Pago actualizado correctamente.");
+      closeEditPaymentModal();
+      // Recargar historial
+      const dateInput = $("#historyDateFilter");
+      const targetDate = (dateInput && dateInput.value) ? dateInput.value : getLocalTodayStr();
+      const clientInput = $("#historyClientSearch");
+      const query = clientInput ? clientInput.value.trim() : "";
+      if (query.length > 0) {
+        loadAdminPaymentsHistory(null, query);
+      } else {
+        loadAdminPaymentsHistory(targetDate);
+      }
+    } else {
+      alert("Error: " + data.msg);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Ocurrió un error al actualizar el pago.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✓ Actualizar Pago";
+  }
 }
 
 /* ---------- ENVÍO DE RECORDATORIOS WHATSAPP SIN EMOJIS ---------- */
