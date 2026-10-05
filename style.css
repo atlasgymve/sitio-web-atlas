@@ -862,22 +862,65 @@ p, h1, h2, h3, h4, h5, h6, span, strong, a, label, div, td, th {
   .exercise-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.4rem;
+    gap: 0.6rem;
+  }
+  
+  .exercise-name {
+    font-size: 1.25rem;
   }
 
   .set-input {
-    width: 52px;
-    font-size: 0.85rem;
+    width: 65px;
+    font-size: 1rem;
+    padding: 0.5rem;
+    text-align: center;
   }
 
   .btn-check-set {
-    width: 34px;
-    height: 34px;
-    font-size: 0.95rem;
+    width: 46px;
+    height: 46px;
+    font-size: 1.2rem;
+    border-radius: 12px;
   }
 
   .btn-primary, .btn-secondary {
-    font-size: 0.88rem;
-    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    padding: 0.8rem 1rem;
+  }
+  
+  .series-row-card {
+    padding: 0.85rem;
+    gap: 0.5rem;
+  }
+  
+  .series-badge {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+  }
+  
+  .rest-timer-config-bar {
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .rest-timer-config-bar > div {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .series-inputs-group {
+    gap: 1rem;
+    justify-content: center;
+  }
+  
+  .series-field-inner input {
+    width: 65px;
+    font-size: 1.1rem;
+    padding: 0.2rem 0;
+  }
+  
+  .series-box-label {
+    font-size: 0.82rem;
   }
 }
