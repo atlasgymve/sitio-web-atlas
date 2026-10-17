@@ -176,7 +176,8 @@ async function initDatabaseSchema() {
     try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) {}
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
     try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
-    console.log('✅ Tabla "pagos" verificada en MySQL (columnas es_abono y turno aseguradas)');
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) {}
+    console.log('✅ Tabla "pagos" verificada en MySQL (columnas es_abono, turno y moneda VARCHAR(20) aseguradas)');
   } catch (err) {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
   }
@@ -818,6 +819,7 @@ app.post('/api/admin/pagos', async (req, res) => {
     // Asegurar que las columnas existan defensivamente en la base de datos de Aiven
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
     try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) {}
     try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
 
     const turnoVal = (turno === 'AM' || turno === 'PM') ? turno : null;
