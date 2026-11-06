@@ -5,6 +5,65 @@ const fs = require('fs');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+/* Carga opcional de variables desde un archivo .env local (sin dependencias).
+   En Render las variables se configuran en el panel "Environment". */
+(function loadDotEnv() {
+  for (const file of [path.join(__dirname, '.env'), path.join(__dirname, '..', '.env')]) {
+    if (!fs.existsSync(file)) continue;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m || line.trim().startsWith('#')) continue;
+      let val = m[2];
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+      if (process.env[m[1]] === undefined) process.env[m[1]] = val;
+    }
+  }
+})();
+
+/* ---------- SESIONES FIRMADAS (token HMAC, sin dependencias externas) ---------- */
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  console.warn('⚠️ SESSION_SECRET no está configurado: se usará uno temporal y las sesiones se cerrarán en cada reinicio.');
+  return crypto.randomBytes(32).toString('hex');
+})();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'atlasgymve@gmail.com').toLowerCase();
+const RECEPCION_EMAIL = 'recepcion@atlasgym.local';
+const SESSION_HOURS = { admin: 12, recepcion: 14, cliente: 24 * 30 };
+
+function b64url(buf) { return Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_'); }
+function signToken(uid, rol) {
+  const payload = b64url(JSON.stringify({ uid: Number(uid), rol, exp: Date.now() + SESSION_HOURS[rol] * 3600 * 1000 }));
+  const sig = b64url(crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest());
+  return `${payload}.${sig}`;
+}
+function verifyToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const [payload, sig] = token.split('.');
+  const expected = b64url(crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest());
+  const a = Buffer.from(sig || ''), b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    if (!data.uid || !data.rol || !data.exp || data.exp < Date.now()) return null;
+    return data;
+  } catch (e) { return null; }
+}
+function authenticate(req, res, next) {
+  const h = req.headers.authorization || '';
+  req.user = h.startsWith('Bearer ') ? verifyToken(h.slice(7)) : null;
+  next();
+}
+// Exige sesión válida; si se pasan roles, exige uno de ellos
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ ok: false, msg: 'Tu sesión expiró. Vuelve a iniciar sesión.' });
+    if (roles.length && !roles.includes(req.user.rol)) return res.status(403).json({ ok: false, msg: 'No tienes permiso para esta acción.' });
+    next();
+  };
+}
+const requireAuth = requireRole();
+const isStaff = (u) => u && (u.rol === 'admin' || u.rol === 'recepcion');
 
 /* Helper de Fechas en Zona Horaria Local (America/Caracas - UTC-4) */
 function getTodayYMD() {
@@ -64,10 +123,16 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/api', authenticate);
 
-// Servir archivos estáticos del frontend (HTML, CSS, JS, imágenes)
+// Servir SOLO los archivos públicos del frontend.
+// (Antes se publicaba toda la carpeta del proyecto, incluido backend/server.js con sus credenciales.)
 const publicPath = path.join(__dirname, '..');
-app.use(express.static(publicPath));
+const PUBLIC_FILES = new Set(['index.html', 'admin.html', 'dashboard.html', 'script.js', 'style.css']);
+app.get('/:file', (req, res, next) => {
+  if (PUBLIC_FILES.has(req.params.file)) return res.sendFile(path.join(publicPath, req.params.file));
+  next();
+});
 app.use('/assets', express.static(path.join(publicPath, 'assets')));
 
 // Carpeta de archivos subidos
@@ -88,7 +153,7 @@ const upload = multer({
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'loreto2005',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'atlas',
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
   waitForConnections: true,
@@ -182,65 +247,54 @@ async function initDatabaseSchema() {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
   }
 
-  try {
-    const adminEmail = 'atlasgymve@gmail.com';
-    const adminPass = 'atlas1297';
-    const hash = await bcrypt.hash(adminPass, 10);
+  // Cuentas de Administrador y Recepción.
+  // Las contraseñas YA NO están en el código: se toman de las variables de entorno
+  // ADMIN_PASSWORD y RECEPCION_PASSWORD. Si una variable no está definida, la cuenta existente no se modifica.
+  await seedStaffAccount({
+    email: ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, idRol: 1,
+    nombreUsuario: 'admin_atlas', nombre: 'Administrador ATLAS', rolTexto: 'administrador'
+  });
+  try { await pool.query('INSERT IGNORE INTO roles (id_rol, nombre_rol) VALUES (3, "recepcionista")'); } catch (e) {}
+  await seedStaffAccount({
+    email: RECEPCION_EMAIL, password: process.env.RECEPCION_PASSWORD, idRol: 3,
+    nombreUsuario: 'recepcion_atlas', nombre: 'Recepción ATLAS', rolTexto: null
+  });
+}
 
-    const [rows] = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = ?', [adminEmail]);
+async function seedStaffAccount({ email, password, idRol, nombreUsuario, nombre, rolTexto }) {
+  try {
+    const [rows] = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = ?', [email]);
+    if (!password) {
+      if (rows.length === 0) console.warn(`⚠️ No existe la cuenta ${email} y no hay contraseña configurada en el entorno para crearla.`);
+      return;
+    }
+    const hash = await bcrypt.hash(password, 10);
     if (rows.length === 0) {
-      await pool.query(
-        'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, 1, ?)',
-        ['admin_atlas', adminEmail, hash, hash, 'Administrador ATLAS', 'administrador']
-      );
-      console.log('✅ Cuenta de Administrador creada (atlasgymve@gmail.com).');
+      if (rolTexto) {
+        await pool.query(
+          'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, password_hash, nombre_completo, id_rol, rol) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [nombreUsuario, email, hash, hash, nombre, idRol, rolTexto]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, nombre_completo, id_rol) VALUES (?, ?, ?, ?, ?)',
+          [nombreUsuario, email, hash, nombre, idRol]
+        );
+      }
+      console.log(`✅ Cuenta ${email} creada.`);
     } else {
-      await pool.query(
-        'UPDATE usuarios SET hash_contrasena = ?, id_rol = 1 WHERE correo = ?',
-        [hash, adminEmail]
-      );
-      console.log('✅ Cuenta de Administrador verificada/actualizada.');
+      await pool.query('UPDATE usuarios SET hash_contrasena = ?, id_rol = ? WHERE correo = ?', [hash, idRol, email]);
+      console.log(`✅ Contraseña de ${email} sincronizada desde el entorno.`);
     }
   } catch (err) {
-    console.error('⚠️ Error al sembrar usuario administrador:', err.message);
-  }
-
-  // Cuenta de Recepcionista (mismo correo del gym, contraseña diferente)
-  try {
-    const recepEmail = 'recepcion@atlasgym.local';
-    const recepPass = 'pagosatlas';
-    const recepHash = await bcrypt.hash(recepPass, 10);
-
-    // Asegurar que el rol exista defensivamente
-    try {
-      await pool.query('INSERT IGNORE INTO roles (id_rol, nombre_rol) VALUES (3, "recepcionista")');
-    } catch (e) {
-      console.log('Info: No se pudo insertar rol 3, tal vez la tabla no existe o ya está.', e.message);
-    }
-
-    const [recepRows] = await pool.query('SELECT id_usuario FROM usuarios WHERE correo = ?', [recepEmail]);
-    if (recepRows.length === 0) {
-      await pool.query(
-        'INSERT INTO usuarios (nombre_usuario, correo, hash_contrasena, nombre_completo, id_rol) VALUES (?, ?, ?, ?, 3)',
-        ['recepcion_atlas', recepEmail, recepHash, 'Recepción ATLAS']
-      );
-      console.log('✅ Cuenta de Recepcionista creada.');
-    } else {
-      await pool.query(
-        'UPDATE usuarios SET hash_contrasena = ?, id_rol = 3 WHERE correo = ?',
-        [recepHash, recepEmail]
-      );
-      console.log('✅ Cuenta de Recepcionista verificada/actualizada.');
-    }
-  } catch (err) {
-    console.error('⚠️ Error al sembrar usuario recepcionista:', err.message);
+    console.error(`⚠️ Error al preparar la cuenta ${email}:`, err.message);
   }
 }
 
 initDatabaseSchema();
 
 // ---------- REGISTRO DE USUARIO ----------
-app.post('/api/registro', async (req, res) => {
+app.post('/api/registro', requireRole('admin', 'recepcion'), async (req, res) => {
   const { nombre_completo, correo, cedula, telefono, password } = req.body;
 
   if (!nombre_completo || !correo || !password) {
@@ -293,7 +347,7 @@ app.post('/api/registro', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en /api/registro:', err);
-    res.status(500).json({ msg: `Error en el servidor: ${err.message}` });
+    res.status(500).json({ msg: 'Error en el servidor. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
@@ -310,7 +364,7 @@ app.post('/api/login', async (req, res) => {
 
   try {
     // Si es el correo del gimnasio, verificar tanto admin como recepcionista
-    if (cleanInput === 'atlasgymve@gmail.com') {
+    if (cleanInput === ADMIN_EMAIL) {
       if (!password) {
         return res.status(400).json({ msg: 'Por favor ingresa la contraseña de acceso.' });
       }
@@ -324,7 +378,7 @@ app.post('/api/login', async (req, res) => {
       // Buscar cuenta de recepcionista
       const [recepRows] = await pool.execute(
         'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? AND id_rol = 3',
-        ['recepcion@atlasgym.local']
+        [RECEPCION_EMAIL]
       );
 
       // Intentar contraseña de admin
@@ -333,6 +387,7 @@ app.post('/api/login', async (req, res) => {
         if (adminMatch) {
           return res.json({
             ok: true,
+            token: signToken(adminRows[0].id_usuario, 'admin'),
             id_usuario: adminRows[0].id_usuario,
             nombre: adminRows[0].nombre_completo || 'Administrador',
             esAdmin: true,
@@ -347,6 +402,7 @@ app.post('/api/login', async (req, res) => {
         if (recepMatch) {
           return res.json({
             ok: true,
+            token: signToken(recepRows[0].id_usuario, 'recepcion'),
             id_usuario: recepRows[0].id_usuario,
             nombre: recepRows[0].nombre_completo || 'Recepción',
             esAdmin: false,
@@ -380,6 +436,7 @@ app.post('/api/login', async (req, res) => {
       }
       return res.json({
         ok: true,
+        token: signToken(user.id_usuario, user.id_rol === 1 ? 'admin' : 'recepcion'),
         id_usuario: user.id_usuario,
         nombre: user.nombre_completo || (user.id_rol === 1 ? 'Administrador' : 'Recepción'),
         esAdmin: user.id_rol === 1,
@@ -390,6 +447,7 @@ app.post('/api/login', async (req, res) => {
     // Para clientes regulares: Inicio de sesión directo con correo o cédula
     res.json({
       ok: true,
+      token: signToken(user.id_usuario, 'cliente'),
       id_usuario: user.id_usuario,
       nombre: user.nombre_completo || 'Cliente',
       esAdmin: false,
@@ -397,13 +455,16 @@ app.post('/api/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en /api/login:', err);
-    res.status(500).json({ msg: `Error de base de datos: ${err.message}` });
+    res.status(500).json({ msg: 'Error de base de datos. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- DATOS DEL USUARIO Y SUS RUTINAS ----------
-app.get('/api/usuario/:id', async (req, res) => {
+app.get('/api/usuario/:id', requireAuth, async (req, res) => {
   const userId = req.params.id;
+  if (!isStaff(req.user) && String(req.user.uid) !== String(userId)) {
+    return res.status(403).json({ msg: 'No tienes permiso para ver este usuario.' });
+  }
   try {
     const [userRows] = await pool.execute(
       'SELECT nombre_completo, correo, telefono, membresia_estado, membresia_vence FROM usuarios WHERE id_usuario = ?',
@@ -468,13 +529,22 @@ app.get('/api/usuario/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en /api/usuario:', err);
-    res.status(500).json({ msg: `Error al obtener usuario: ${err.message}` });
+    res.status(500).json({ msg: 'Error al obtener usuario. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
+// Un cliente solo puede tocar sus propias rutinas; admin y recepción pueden tocar cualquiera
+async function canTouchRoutine(user, routineId) {
+  if (isStaff(user)) return true;
+  const [rows] = await pool.execute('SELECT id_usuario FROM rutinas WHERE id_rutina = ?', [routineId]);
+  return rows.length > 0 && String(rows[0].id_usuario) === String(user.uid);
+}
+
 // ---------- CREAR RUTINA CON EJERCICIOS ----------
-app.post('/api/rutinas', async (req, res) => {
-  const { id_usuario, titulo, descripcion, horario, ejercicios } = req.body;
+app.post('/api/rutinas', requireAuth, async (req, res) => {
+  const { titulo, descripcion, horario, ejercicios } = req.body;
+  // Un cliente solo puede crear rutinas para sí mismo
+  const id_usuario = isStaff(req.user) ? (req.body.id_usuario || req.user.uid) : req.user.uid;
 
   if (!id_usuario || !titulo) {
     return res.status(400).json({ msg: 'Título de rutina es obligatorio.' });
@@ -507,13 +577,14 @@ app.post('/api/rutinas', async (req, res) => {
     res.status(201).json({ ok: true, msg: 'Rutina creada con éxito', id_rutina: newRoutineId });
   } catch (err) {
     console.error('Error en POST /api/rutinas:', err);
-    res.status(500).json({ msg: `Error al crear rutina: ${err.message}` });
+    res.status(500).json({ msg: 'Error al crear rutina. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- ACTUALIZAR / EDITAR RUTINA ----------
-app.put('/api/rutinas/:id', async (req, res) => {
+app.put('/api/rutinas/:id', requireAuth, async (req, res) => {
   const routineId = req.params.id;
+  if (!(await canTouchRoutine(req.user, routineId))) return res.status(403).json({ msg: 'No tienes permiso para modificar esta rutina.' });
   const { titulo, descripcion, horario, ejercicios } = req.body;
 
   if (!titulo) {
@@ -552,25 +623,28 @@ app.put('/api/rutinas/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Rutina actualizada con éxito' });
   } catch (err) {
     console.error('Error en PUT /api/rutinas:', err);
-    res.status(500).json({ msg: `Error al actualizar rutina: ${err.message}` });
+    res.status(500).json({ msg: 'Error al actualizar rutina. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- ELIMINAR RUTINA ----------
-app.delete('/api/rutinas/:id', async (req, res) => {
+app.delete('/api/rutinas/:id', requireAuth, async (req, res) => {
   const routineId = req.params.id;
+  if (!(await canTouchRoutine(req.user, routineId))) return res.status(403).json({ msg: 'No tienes permiso para eliminar esta rutina.' });
   try {
     await pool.execute('DELETE FROM rutinas WHERE id_rutina = ?', [routineId]);
     res.json({ ok: true, msg: 'Rutina eliminada.' });
   } catch (err) {
     console.error('Error en DELETE /api/rutinas:', err);
-    res.status(500).json({ msg: `Error al eliminar rutina: ${err.message}` });
+    res.status(500).json({ msg: 'Error al eliminar rutina. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- REGISTRAR SESIÓN DE ENTRENAMIENTO (RUTINA DE HOY) ----------
-app.post('/api/sesiones', async (req, res) => {
-  const { id_usuario, id_rutina, detalle_json, ejercicios_actualizados } = req.body;
+app.post('/api/sesiones', requireAuth, async (req, res) => {
+  const { id_rutina, detalle_json, ejercicios_actualizados } = req.body;
+  const id_usuario = isStaff(req.user) ? (req.body.id_usuario || req.user.uid) : req.user.uid;
+  if (id_rutina && !(await canTouchRoutine(req.user, id_rutina))) return res.status(403).json({ msg: 'No tienes permiso sobre esta rutina.' });
 
   if (!id_usuario || !id_rutina) {
     return res.status(400).json({ msg: 'Faltan datos de sesión' });
@@ -588,12 +662,13 @@ app.post('/api/sesiones', async (req, res) => {
         if (ej.id_ejercicio) {
           const seriesDetalleJson = ej.series_detalle ? JSON.stringify(ej.series_detalle) : null;
           await pool.execute(
-            'UPDATE ejercicios_rutina SET repeticiones = ?, peso_kg = ?, series_detalle_json = ? WHERE id_ejercicio = ?',
+            'UPDATE ejercicios_rutina SET repeticiones = ?, peso_kg = ?, series_detalle_json = ? WHERE id_ejercicio = ? AND id_rutina = ?',
             [
               parseInt(ej.repeticiones) || 10,
               parseFloat(ej.peso_kg) || 0,
               seriesDetalleJson,
-              ej.id_ejercicio
+              ej.id_ejercicio,
+              id_rutina
             ]
           );
         }
@@ -603,14 +678,14 @@ app.post('/api/sesiones', async (req, res) => {
     res.json({ ok: true, msg: '¡Sesión de entrenamiento guardada correctamente!' });
   } catch (err) {
     console.error('Error en POST /api/sesiones:', err);
-    res.status(500).json({ msg: `Error al guardar sesión: ${err.message}` });
+    res.status(500).json({ msg: 'Error al guardar sesión. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- RUTAS DE ADMINISTRACIÓN ----------
 
 // Obtener todos los usuarios clientes con sus membresías, rutinas e historial de entrenamiento
-app.get('/api/admin/usuarios', async (req, res) => {
+app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, res) => {
   try {
     try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
     const [users] = await pool.query(
@@ -705,12 +780,12 @@ app.get('/api/admin/usuarios', async (req, res) => {
     res.json({ ok: true, usuarios: usuariosCompletos });
   } catch (err) {
     console.error('Error en GET /api/admin/usuarios:', err);
-    res.status(500).json({ msg: `Error al obtener usuarios: ${err.message}` });
+    res.status(500).json({ msg: 'Error al obtener usuarios. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Crear un nuevo usuario cliente desde el panel de administración
-app.post('/api/admin/usuarios', async (req, res) => {
+app.post('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, res) => {
   const { nombre_completo, correo, cedula, telefono } = req.body;
 
   if (!nombre_completo || !correo) {
@@ -757,12 +832,12 @@ app.post('/api/admin/usuarios', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en POST /api/admin/usuarios:', err);
-    res.status(500).json({ msg: `Error al crear usuario: ${err.message}` });
+    res.status(500).json({ msg: 'Error al crear usuario. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Actualizar datos de un usuario cliente desde administración
-app.put('/api/admin/usuarios/:id', async (req, res) => {
+app.put('/api/admin/usuarios/:id', requireRole('admin', 'recepcion'), async (req, res) => {
   const userId = req.params.id;
   const { nombre_completo, correo, cedula, telefono } = req.body;
 
@@ -801,12 +876,12 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Datos del cliente actualizados exitosamente.' });
   } catch (err) {
     console.error('Error en PUT /api/admin/usuarios:', err);
-    res.status(500).json({ msg: `Error al actualizar cliente: ${err.message}` });
+    res.status(500).json({ msg: 'Error al actualizar cliente. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Registrar pago y actualizar membresía según plan contratado
-app.post('/api/admin/pagos', async (req, res) => {
+app.post('/api/admin/pagos', requireRole('admin', 'recepcion'), async (req, res) => {
   const { id_usuario, monto, moneda, plan, fecha_pago, es_abono, turno } = req.body;
 
   if (!id_usuario || !monto || !moneda || !plan || !fecha_pago) {
@@ -891,12 +966,12 @@ app.post('/api/admin/pagos', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en POST /api/admin/pagos:', err);
-    res.status(500).json({ msg: `Error al registrar pago: ${err.message}` });
+    res.status(500).json({ msg: 'Error al registrar pago. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Obtener historial de pagos filtrado por fecha o por búsqueda de cliente (Preserva historial aun si se elimina el cliente)
-app.get('/api/admin/pagos', async (req, res) => {
+app.get('/api/admin/pagos', requireRole('admin'), async (req, res) => {
   try {
     try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
     try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
@@ -964,12 +1039,12 @@ app.get('/api/admin/pagos', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en GET /api/admin/pagos:', err);
-    res.status(500).json({ msg: `Error al obtener pagos: ${err.message}` });
+    res.status(500).json({ msg: 'Error al obtener pagos. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Editar un pago existente en el historial
-app.put('/api/admin/pagos/:id', async (req, res) => {
+app.put('/api/admin/pagos/:id', requireRole('admin'), async (req, res) => {
   const pagoId = req.params.id;
   const { monto, moneda, plan, fecha_pago, fecha_inicio_plan, fecha_fin_plan, es_abono, turno } = req.body;
 
@@ -987,12 +1062,12 @@ app.put('/api/admin/pagos/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Pago actualizado exitosamente.' });
   } catch (err) {
     console.error('Error en PUT /api/admin/pagos:', err);
-    res.status(500).json({ msg: `Error al actualizar pago: ${err.message}` });
+    res.status(500).json({ msg: 'Error al actualizar pago. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Eliminar un usuario cliente con validación de contraseña de administrador
-app.delete('/api/admin/usuarios/:id', async (req, res) => {
+app.delete('/api/admin/usuarios/:id', requireRole('admin'), async (req, res) => {
   const userId = req.params.id;
   const { admin_password } = req.body;
 
@@ -1001,8 +1076,7 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
   }
 
   try {
-    const adminEmail = 'atlasgymve@gmail.com';
-    const [adminRows] = await pool.execute('SELECT hash_contrasena FROM usuarios WHERE correo = ?', [adminEmail]);
+    const [adminRows] = await pool.execute('SELECT hash_contrasena FROM usuarios WHERE correo = ?', [ADMIN_EMAIL]);
 
     if (adminRows.length === 0) {
       return res.status(400).json({ msg: 'No se encontró la cuenta de Administrador.' });
@@ -1017,14 +1091,14 @@ app.delete('/api/admin/usuarios/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Usuario cliente eliminado con éxito.' });
   } catch (err) {
     console.error('Error en DELETE /api/admin/usuarios:', err);
-    res.status(500).json({ msg: `Error al eliminar usuario: ${err.message}` });
+    res.status(500).json({ msg: 'Error al eliminar usuario. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- RUTAS DE PLANTILLAS DE RUTINAS ----------
 
 // Obtener todas las plantillas de rutinas
-app.get('/api/plantillas', async (req, res) => {
+app.get('/api/plantillas', requireAuth, async (req, res) => {
   try {
     const [plantillas] = await pool.execute('SELECT id_plantilla, titulo, descripcion, horario FROM plantillas_rutinas ORDER BY id_plantilla DESC');
 
@@ -1041,12 +1115,12 @@ app.get('/api/plantillas', async (req, res) => {
     res.json({ ok: true, plantillas: result });
   } catch (err) {
     console.error('Error en GET /api/plantillas:', err);
-    res.status(500).json({ msg: `Error al obtener plantillas: ${err.message}` });
+    res.status(500).json({ msg: 'Error al obtener plantillas. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Crear una plantilla de rutina por el administrador
-app.post('/api/admin/plantillas', async (req, res) => {
+app.post('/api/admin/plantillas', requireRole('admin', 'recepcion'), async (req, res) => {
   const { titulo, descripcion, horario, ejercicios } = req.body;
 
   if (!titulo || !Array.isArray(ejercicios) || ejercicios.length === 0) {
@@ -1073,12 +1147,12 @@ app.post('/api/admin/plantillas', async (req, res) => {
     res.status(201).json({ ok: true, msg: 'Plantilla de rutina creada con éxito.', id_plantilla: plantillaId });
   } catch (err) {
     console.error('Error en POST /api/admin/plantillas:', err);
-    res.status(500).json({ msg: `Error al crear plantilla: ${err.message}` });
+    res.status(500).json({ msg: 'Error al crear plantilla. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Actualizar una plantilla de rutina por el administrador
-app.put('/api/admin/plantillas/:id', async (req, res) => {
+app.put('/api/admin/plantillas/:id', requireRole('admin', 'recepcion'), async (req, res) => {
   const plantillaId = req.params.id;
   const { titulo, descripcion, horario, ejercicios } = req.body;
 
@@ -1106,26 +1180,26 @@ app.put('/api/admin/plantillas/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Plantilla de rutina actualizada con éxito.' });
   } catch (err) {
     console.error('Error en PUT /api/admin/plantillas:', err);
-    res.status(500).json({ msg: `Error al actualizar plantilla: ${err.message}` });
+    res.status(500).json({ msg: 'Error al actualizar plantilla. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Eliminar plantilla de rutina por el administrador
-app.delete('/api/admin/plantillas/:id', async (req, res) => {
+app.delete('/api/admin/plantillas/:id', requireRole('admin', 'recepcion'), async (req, res) => {
   const plantillaId = req.params.id;
   try {
     await pool.execute('DELETE FROM plantillas_rutinas WHERE id_plantilla = ?', [plantillaId]);
     res.json({ ok: true, msg: 'Plantilla eliminada con éxito.' });
   } catch (err) {
     console.error('Error en DELETE /api/admin/plantillas:', err);
-    res.status(500).json({ msg: `Error al eliminar plantilla: ${err.message}` });
+    res.status(500).json({ msg: 'Error al eliminar plantilla. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // ---------- RUTAS: MATERIAL Y CONTENIDO ADICIONAL ----------
 
 // Listar recursos de apoyo
-app.get('/api/recursos', async (req, res) => {
+app.get('/api/recursos', requireAuth, async (req, res) => {
   const { categoria } = req.query;
   try {
     let query = 'SELECT * FROM recursos_apoyo';
@@ -1144,11 +1218,11 @@ app.get('/api/recursos', async (req, res) => {
 });
 
 // Crear recurso de apoyo (Archivo o Enlace)
-app.post('/api/admin/recursos', (req, res, next) => {
+app.post('/api/admin/recursos', requireRole('admin'), (req, res, next) => {
   upload.single('archivo')(req, res, (err) => {
     if (err) {
       console.error('Error en Multer upload:', err);
-      return res.status(400).json({ ok: false, msg: `Error en la carga del archivo: ${err.message}` });
+      return res.status(400).json({ ok: false, msg: 'Error en la carga del archivo. Intenta de nuevo o contacta al administrador.' });
     }
     next();
   });
@@ -1190,12 +1264,12 @@ app.post('/api/admin/recursos', (req, res, next) => {
     res.json({ ok: true, id_recurso: result.insertId, msg: 'Material y Contenido Adicional agregado con éxito.' });
   } catch (err) {
     console.error('Error en POST /api/admin/recursos:', err);
-    res.status(500).json({ ok: false, msg: `Error al guardar material: ${err.message}` });
+    res.status(500).json({ ok: false, msg: 'Error al guardar material. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
 // Eliminar recurso de apoyo
-app.delete('/api/admin/recursos/:id', async (req, res) => {
+app.delete('/api/admin/recursos/:id', requireRole('admin'), async (req, res) => {
   const id = req.params.id;
   try {
     const [rows] = await pool.query('SELECT * FROM recursos_apoyo WHERE id_recurso = ?', [id]);
@@ -1212,7 +1286,7 @@ app.delete('/api/admin/recursos/:id', async (req, res) => {
     res.json({ ok: true, msg: 'Material eliminado con éxito.' });
   } catch (err) {
     console.error('Error en DELETE /api/admin/recursos:', err);
-    res.status(500).json({ ok: false, msg: `Error al eliminar material: ${err.message}` });
+    res.status(500).json({ ok: false, msg: 'Error al eliminar material. Intenta de nuevo o contacta al administrador.' });
   }
 });
 
@@ -1242,7 +1316,7 @@ app.get('*', (req, res) => {
 // Manejador global de errores Express para evitar cierres 502
 app.use((err, req, res, next) => {
   console.error('❌ Error no controlado en Express:', err);
-  res.status(500).json({ ok: false, msg: err.message || 'Error interno del servidor' });
+  res.status(500).json({ ok: false, msg: 'Error interno del servidor.' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

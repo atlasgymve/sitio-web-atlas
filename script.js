@@ -8,6 +8,31 @@ const API_BASE = (
 )
   ? "http://localhost:3000/api"
   : `${window.location.origin}/api`;
+
+/* ---------- SESIÓN: token firmado por el servidor ----------
+   Todas las llamadas a la API llevan el token en la cabecera Authorization.
+   Si el servidor responde 401 (sesión vencida o inválida) se vuelve al login. */
+(function setupAuthFetch() {
+  const stored = localStorage.getItem("token");
+  // Sesiones del sistema anterior (guardaban solo el número de usuario): obligar a entrar de nuevo
+  if (stored && !stored.includes(".")) localStorage.clear();
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = function (input, init = {}) {
+    const url = typeof input === "string" ? input : (input && input.url) || "";
+    if (!url.startsWith(API_BASE)) return originalFetch(input, init);
+    const headers = new Headers(init.headers || {});
+    const token = localStorage.getItem("token");
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return originalFetch(input, { ...init, headers }).then(res => {
+      if (res.status === 401 && !url.endsWith("/login")) {
+        localStorage.clear();
+        if (!/index\.html$|\/$/.test(window.location.pathname)) window.location.href = "index.html";
+      }
+      return res;
+    });
+  };
+})();
 let currentUserData = null;
 let currentActiveRoutine = null;
 let completedSetsState = {}; // { "ex_0_set_0": true, ... }
@@ -75,7 +100,8 @@ function login(event) {
       return data;
     })
     .then(data => {
-      localStorage.setItem("token", data.id_usuario);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userId", data.id_usuario);
       localStorage.setItem("nombre", data.nombre);
       localStorage.setItem("esAdmin", data.esAdmin ? "true" : "false");
       localStorage.setItem("esRecepcionista", data.esRecepcionista ? "true" : "false");
@@ -148,7 +174,7 @@ function loadDashboard() {
     }
   }
 
-  fetch(`${API_BASE}/usuario/${token}`)
+  fetch(`${API_BASE}/usuario/${localStorage.getItem("userId")}`)
     .then(r => r.json())
     .then(data => {
       currentUserData = data;
@@ -350,7 +376,7 @@ function saveRoutine(event) {
   fetch(url, {
     method: method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id_usuario: token, titulo, descripcion, horario, ejercicios })
+    body: JSON.stringify({ id_usuario: localStorage.getItem("userId"), titulo, descripcion, horario, ejercicios })
   })
     .then(r => r.json())
     .then(res => {
@@ -438,7 +464,7 @@ function startWorkoutSession(id_rutina) {
   const token = localStorage.getItem("token");
   if (!token) return;
 
-  fetch(`${API_BASE}/usuario/${token}`)
+  fetch(`${API_BASE}/usuario/${localStorage.getItem("userId")}`)
     .then(r => r.json())
     .then(data => {
       currentUserData = data;
@@ -803,7 +829,7 @@ function finishWorkoutSession() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      id_usuario: token,
+      id_usuario: localStorage.getItem("userId"),
       id_rutina: currentActiveRoutine.id_rutina,
       detalle_json: sessionDetail,
       ejercicios_actualizados: ejerciciosActualizados
