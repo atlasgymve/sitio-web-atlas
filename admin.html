@@ -55,7 +55,6 @@
       <div id="cardDirectorioClientes" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <span class="badge badge-active" style="margin-bottom: 0.5rem;">Directorio</span>
           <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Listado de Clientes</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Consulta la lista de atletas registrados, su estado de membresía y las rutinas que tienen asignadas.
@@ -70,8 +69,6 @@
       <div id="cardControlPagos" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <span class="badge"
-            style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); margin-bottom: 0.5rem;">Finanzas</span>
           <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Pagos</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Registra abonos por plan (Mensual, Estudiante, Semana, Diario o Deuda) en la moneda de tu preferencia.
@@ -92,7 +89,6 @@
       <div class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <span class="badge badge-active" style="margin-bottom: 0.5rem;">Registrar</span>
           <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Nuevo Cliente</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Registra a un nuevo atleta en el sistema para permitirle el ingreso directo por correo electrónico.
@@ -108,8 +104,6 @@
       <div class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <span class="badge"
-            style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); margin-bottom: 0.5rem;">Entrenamiento</span>
           <h3 style="font-size: 1.3rem; font-weight: 700; color: #C084FC;">Plantillas de Rutinas</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Diseña rutinas predefinidas para que tus clientes puedan cargarlas al crear su plan de entrenamiento.
@@ -125,8 +119,6 @@
       <div id="cardMaterialContenido" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <span class="badge"
-            style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 0.5rem;">Biblioteca</span>
           <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Sube archivos de soporte (PDFs, guías, imágenes) y enlaces de interés para que tus atletas consulten.
@@ -564,16 +556,18 @@
 
       <form id="editPaymentForm" onsubmit="saveEditPayment(event)">
         <input type="hidden" id="editPaymentId">
-        
+
         <div class="form-group">
           <label class="form-label" style="color: var(--text-muted); font-size: 0.85rem;">Cliente</label>
-          <div id="editPaymentClientName" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.8rem;"></div>
+          <div id="editPaymentClientName"
+            style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.8rem;"></div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div class="form-group">
             <label class="form-label" for="editPaymentMoneda">Tipo de Moneda</label>
-            <select id="editPaymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;" required>
+            <select id="editPaymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+              required>
               <option value="USD">USD (Dólares)</option>
               <option value="COP">COP (Pesos Colombianos)</option>
               <option value="BS">BS (Bolívares)</option>
@@ -585,13 +579,15 @@
 
           <div class="form-group">
             <label class="form-label" for="editPaymentMonto">Monto Pagado</label>
-            <input type="number" step="0.01" id="editPaymentMonto" class="form-input" placeholder="15.00" min="0" required>
+            <input type="number" step="0.01" id="editPaymentMonto" class="form-input" placeholder="15.00" min="0"
+              required>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="editPaymentPlan">Plan Contratado</label>
-          <select id="editPaymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;" required>
+          <select id="editPaymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+            required>
             <option value="Mensualidad">Mensualidad (+30 días)</option>
             <option value="Estudiante">Estudiante (+30 días)</option>
             <option value="Semana">Semana (+7 días)</option>
