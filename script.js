@@ -1506,7 +1506,7 @@ function filterPaymentUserList() {
     let emoji = '🔴';
     if (statusInfo.badgeText === 'activa') emoji = '🟢';
     else if (statusInfo.badgeText === 'por vencer') emoji = '🟡';
-    
+
     const badgeTxt = statusInfo.badgeText.charAt(0).toUpperCase() + statusInfo.badgeText.slice(1);
     const estadoBadge = `${esc(emoji)} ${esc(badgeTxt)}`;
     const venceStr = (u.membresia && u.membresia.vence) ? u.membresia.vence : 'Sin fecha';
@@ -1824,7 +1824,7 @@ function editPayment(id_pago) {
   $("#editPaymentMonto").value = payment.monto;
   $("#editPaymentPlan").value = payment.plan;
   $("#editPaymentFechaPago").value = payment.fecha_pago;
-  
+
   // Set dates, fallbacks if not present
   $("#editPaymentFechaInicio").value = payment.fecha_inicio_plan || payment.fecha_pago;
   $("#editPaymentFechaFin").value = payment.fecha_fin_plan || payment.fecha_pago;
@@ -1854,7 +1854,7 @@ async function saveEditPayment(e) {
   btn.textContent = "Actualizando...";
 
   const id_pago = $("#editPaymentId").value;
-  
+
   const payload = {
     moneda: $("#editPaymentMoneda").value,
     monto: parseFloat($("#editPaymentMonto").value) || 0,

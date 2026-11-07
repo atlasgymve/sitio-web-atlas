@@ -47,9 +47,69 @@
       </p>
     </div>
 
+    <!-- SECCIÓN: CONTROL DE ENTRADA (ASISTENCIA) -->
+    <section id="adminCheckinSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Escribe la cédula (o el nombre) y presiona <strong>Enter</strong>. Si la membresía está al día, la entrada se registra sola.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+          <input type="date" id="checkinDateFilter" class="form-input" onchange="loadCheckins()"
+            style="width: auto; padding: 0.5rem 0.8rem; font-size: 0.88rem;">
+          <span id="checkinCount" class="badge badge-active" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">0 entradas</span>
+        </div>
+      </div>
+
+      <div style="position: relative; max-width: 640px; margin: 0 auto 1rem auto;">
+        <input type="text" id="checkinSearch" class="form-input" autocomplete="off" inputmode="search"
+          placeholder="Cédula o nombre del cliente..." oninput="onCheckinInput()" onkeydown="onCheckinKeydown(event)"
+          style="font-size: 1.25rem; padding: 0.9rem 1.1rem; text-align: center;">
+        <div id="checkinResults" class="hidden"
+          style="position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: #0f172a; border: 1px solid var(--border-light); border-radius: 10px; margin-top: 0.3rem; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.45);"></div>
+      </div>
+
+      <div id="checkinStatus" style="max-width: 640px; margin: 0 auto 1.5rem auto;"></div>
+
+      <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.6rem;">Entradas del día</h4>
+      <div id="checkinList" style="display: flex; flex-direction: column; gap: 0.4rem;">
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Aún no hay entradas registradas.</p>
+      </div>
+    </section>
+
     <!-- TARJETAS DE ACCIONES RÁPIDAS -->
     <div
       style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+
+      <!-- Card 0a: Control de Entrada -->
+      <div id="cardControlEntrada" class="glass-card"
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(16,185,129,0.45);">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
+            Registra la asistencia con la cédula o el nombre y verifica al instante si la membresía está al día.
+          </p>
+        </div>
+        <button type="button" class="btn-primary" onclick="toggleCheckinSection()"
+          style="width: 100%; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          Registrar Entradas
+        </button>
+      </div>
+
+      <!-- Card 0b: Vencimientos -->
+      <div id="cardVencimientos" class="glass-card"
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Vencimientos <span id="expiryCardCount" class="badge badge-warning" style="font-size: 0.75rem; vertical-align: middle;"></span></h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
+            Mensualidades y semanas por vencer o vencidas, con recordatorio por WhatsApp y renovación rápida.
+          </p>
+        </div>
+        <button type="button" class="btn-secondary" onclick="toggleExpirySection()"
+          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
+          Ver Vencimientos
+        </button>
+      </div>
 
       <!-- Card 1: Directorio Clientes -->
       <div id="cardDirectorioClientes" class="glass-card"
@@ -132,6 +192,21 @@
 
     </div>
 
+    <!-- SECCIÓN: VENCIMIENTOS -->
+    <section id="adminExpirySection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Vencimientos</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Las mensualidades se muestran aparte de las semanas para darles seguimiento sin mezclar.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" id="expiryTabMensual" class="btn-primary" onclick="setExpiryTab('mensual')" style="font-size: 0.88rem; padding: 0.5rem 0.9rem;">Mensualidades</button>
+          <button type="button" id="expiryTabSemanal" class="btn-secondary" onclick="setExpiryTab('semanal')" style="font-size: 0.88rem; padding: 0.5rem 0.9rem;">Semanas</button>
+        </div>
+      </div>
+      <div id="expiryContent"></div>
+    </section>
+
     <!-- SECCIÓN: LISTADO DE CLIENTES (OCULTA POR DEFECTO UNTIL BOTÓN CLICKEADO) -->
     <section id="adminClientsSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
       <div
@@ -147,9 +222,17 @@
             style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
             <option value="todos" selected>Todos los Clientes</option>
             <option value="deudores">⚠️ Con Deuda (Abono Pendiente)</option>
-            <option value="proximos">⚠️ Próximos a vencer (3-5 días)</option>
+            <option value="proximos">⚠️ Próximos a vencer (0-5 días)</option>
             <option value="vencidos">Vencidos</option>
             <option value="activos">Activos</option>
+          </select>
+          <select id="clientPlanFilterSelect" class="form-input" onchange="filterAdminUsers()"
+            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            <option value="todos" selected>Todos los planes</option>
+            <option value="mensual">Mensualidad (incluye Estudiante)</option>
+            <option value="semanal">Semana</option>
+            <option value="diario">Diario</option>
+            <option value="sin">Sin plan registrado</option>
           </select>
           <input type="text" id="searchUserFilter" class="form-input"
             placeholder="Buscar por nombre, correo, cédula o teléfono..." oninput="filterAdminUsers()"

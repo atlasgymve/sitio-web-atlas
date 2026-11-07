@@ -283,6 +283,29 @@ async function initDatabaseSchema() {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
   }
 
+  // Tabla de asistencias (control de entrada en recepción)
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS asistencias (
+        id_asistencia BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        id_usuario BIGINT UNSIGNED NULL,
+        nombre_cliente VARCHAR(150) NULL,
+        fecha DATE NOT NULL,
+        hora TIME NOT NULL,
+        estado_membresia VARCHAR(20) NULL,
+        plan VARCHAR(50) NULL,
+        tenia_deuda TINYINT(1) DEFAULT 0,
+        registrado_por BIGINT UNSIGNED NULL,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_asistencia_fecha (fecha),
+        INDEX idx_asistencia_usuario (id_usuario, fecha)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    console.log('✅ Tabla "asistencias" verificada');
+  } catch (err) {
+    console.error('⚠️ Error verificando asistencias:', err.message);
+  }
+
   // Cuentas de Administrador y Recepción.
   // Las contraseñas YA NO están en el código: se toman de las variables de entorno
   // ADMIN_PASSWORD y RECEPCION_PASSWORD. Si una variable no está definida, la cuenta existente no se modifica.
@@ -757,6 +780,16 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
           }
         } catch (e) { }
 
+        // Plan del último pago que dio días de membresía (Mensualidad, Estudiante, Semana, Diario)
+        let ultimo_plan = null;
+        try {
+          const [planRows] = await pool.execute(
+            "SELECT plan FROM pagos WHERE id_usuario = ? AND plan <> 'Pago Deuda' ORDER BY fecha_fin_plan DESC, id_pago DESC LIMIT 1",
+            [u.id_usuario]
+          );
+          if (planRows.length) ultimo_plan = planRows[0].plan;
+        } catch (plErr) { }
+
         // Último Pago registrado para ordenar por fecha de pago
         let ultimo_pago = null;
         try {
@@ -807,6 +840,7 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
 
         return {
           ...u,
+          ultimo_plan,
           tiene_deuda: u.tiene_deuda ? 1 : 0,
           membresia,
           ultimo_pago,
@@ -1131,6 +1165,88 @@ app.delete('/api/admin/usuarios/:id', requireRole('admin'), async (req, res) => 
   } catch (err) {
     console.error('Error en DELETE /api/admin/usuarios:', err);
     res.status(500).json({ msg: 'Error al eliminar usuario. Intenta de nuevo o contacta al administrador.' });
+  }
+});
+
+// ---------- ASISTENCIAS (CONTROL DE ENTRADA) ----------
+function isValidDateStr(d) { return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d); }
+function isValidTimeStr(t) { return typeof t === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(t); }
+
+// Registrar la entrada de un cliente. Fecha y hora llegan del equipo de recepción (hora local del gimnasio).
+app.post('/api/admin/asistencias', requireRole('admin', 'recepcion'), async (req, res) => {
+  const { id_usuario, fecha, hora, forzar } = req.body;
+  if (!id_usuario || !isValidDateStr(fecha) || !isValidTimeStr(hora)) {
+    return res.status(400).json({ ok: false, msg: 'Faltan datos para registrar la entrada.' });
+  }
+  try {
+    const [users] = await pool.execute(
+      'SELECT id_usuario, nombre_completo, tiene_deuda FROM usuarios WHERE id_usuario = ?', [id_usuario]
+    );
+    if (!users.length) return res.status(404).json({ ok: false, msg: 'Cliente no encontrado.' });
+    const u = users[0];
+
+    // ¿Ya entró hoy? Se avisa, salvo que recepción confirme registrarlo otra vez
+    const [prev] = await pool.execute(
+      "SELECT id_asistencia, TIME_FORMAT(hora, '%H:%i') AS hora FROM asistencias WHERE id_usuario = ? AND fecha = ? ORDER BY hora DESC LIMIT 1",
+      [id_usuario, fecha]
+    );
+    if (prev.length && !forzar) {
+      return res.json({ ok: true, ya_registrado: true, hora_anterior: prev[0].hora });
+    }
+
+    // Estado de la membresía al momento de entrar (queda guardado aunque luego cambie)
+    const [mem] = await pool.execute(
+      "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+      [id_usuario]
+    );
+    let estado = 'sin_membresia';
+    if (mem.length) {
+      estado = (mem[0].estado === 'activa' && mem[0].vence >= fecha) ? 'activa' : 'vencida';
+    }
+    const [planRows] = await pool.execute(
+      "SELECT plan FROM pagos WHERE id_usuario = ? AND plan <> 'Pago Deuda' ORDER BY fecha_fin_plan DESC, id_pago DESC LIMIT 1",
+      [id_usuario]
+    );
+    const plan = planRows.length ? planRows[0].plan : null;
+
+    const [result] = await pool.execute(
+      'INSERT INTO asistencias (id_usuario, nombre_cliente, fecha, hora, estado_membresia, plan, tenia_deuda, registrado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id_usuario, u.nombre_completo, fecha, hora, estado, plan, u.tiene_deuda ? 1 : 0, req.user.uid]
+    );
+    res.json({ ok: true, id_asistencia: result.insertId, estado_membresia: estado });
+  } catch (err) {
+    console.error('Error registrando asistencia:', err);
+    res.status(500).json({ ok: false, msg: 'Error al registrar la entrada. Intenta de nuevo.' });
+  }
+});
+
+// Entradas de un día
+app.get('/api/admin/asistencias', requireRole('admin', 'recepcion'), async (req, res) => {
+  const fecha = req.query.fecha;
+  if (!isValidDateStr(fecha)) return res.status(400).json({ ok: false, msg: 'Fecha inválida.' });
+  try {
+    const [rows] = await pool.execute(
+      `SELECT a.id_asistencia, a.id_usuario, COALESCE(u.nombre_completo, a.nombre_cliente) AS nombre_completo,
+              u.cedula, TIME_FORMAT(a.hora, '%H:%i') AS hora, a.estado_membresia, a.plan, a.tenia_deuda
+         FROM asistencias a LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
+        WHERE a.fecha = ? ORDER BY a.hora DESC, a.id_asistencia DESC`,
+      [fecha]
+    );
+    res.json({ ok: true, asistencias: rows });
+  } catch (err) {
+    console.error('Error obteniendo asistencias:', err);
+    res.status(500).json({ ok: false, msg: 'Error al obtener las entradas del día.' });
+  }
+});
+
+// Anular una entrada registrada por error
+app.delete('/api/admin/asistencias/:id', requireRole('admin', 'recepcion'), async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM asistencias WHERE id_asistencia = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error eliminando asistencia:', err);
+    res.status(500).json({ ok: false, msg: 'Error al anular la entrada.' });
   }
 });
 
