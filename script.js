@@ -9,6 +9,17 @@ const API_BASE = (
   ? "http://localhost:3000/api"
   : `${window.location.origin}/api`;
 
+/* Escapa texto antes de insertarlo como HTML (evita inyección de código con nombres, notas, etc.) */
+function esc(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /* ---------- SESIÓN: token firmado por el servidor ----------
    Todas las llamadas a la API llevan el token en la cabecera Authorization.
    Si el servidor responde 401 (sesión vencida o inválida) se vuelve al login. */
@@ -214,13 +225,13 @@ function renderRoutinesGrid(rutinas) {
 
     const cantEjercicios = r.ejercicios ? r.ejercicios.length : 0;
     const listaEjerciciosNombres = r.ejercicios && r.ejercicios.length > 0
-      ? r.ejercicios.map(e => `• ${e.nombre_ejercicio} (${e.series}x${e.repeticiones} - ${formatExerciseWeights(e)})`).join("<br>")
+      ? r.ejercicios.map(e => `• ${esc(e.nombre_ejercicio)} (${esc(e.series)}x${esc(e.repeticiones)} - ${esc(formatExerciseWeights(e))})`).join("<br>")
       : "Sin ejercicios aún";
 
     card.innerHTML = `
       <div>
-        <h3 class="routine-title">${r.titulo}</h3>
-        <p class="routine-desc">${r.descripcion || "Sin descripción"}</p>
+        <h3 class="routine-title">${esc(r.titulo)}</h3>
+        <p class="routine-desc">${esc(r.descripcion || "Sin descripción")}</p>
         
         <div style="background: rgba(15,23,42,0.5); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
           <strong style="color: #60A5FA;">Ejercicios incluidos (${cantEjercicios}):</strong><br>
@@ -230,16 +241,16 @@ function renderRoutinesGrid(rutinas) {
 
       <div>
         <div class="routine-meta">
-          <span>Horario: ${r.horario || "Flexible"}</span>
+          <span>Horario: ${esc(r.horario || "Flexible")}</span>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <button class="btn-primary" onclick="startWorkoutSession(${r.id_rutina})" style="font-size: 0.85rem; padding: 0.6rem 1rem;">
+          <button class="btn-primary" onclick="startWorkoutSession(${esc(r.id_rutina)})" style="font-size: 0.85rem; padding: 0.6rem 1rem;">
             Iniciar Rutina
           </button>
-          <button class="btn-secondary" onclick="editRoutine(${r.id_rutina})" title="Editar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
+          <button class="btn-secondary" onclick="editRoutine(${esc(r.id_rutina)})" title="Editar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
             Editar
           </button>
-          <button class="btn-danger" onclick="deleteRoutine(${r.id_rutina})" title="Eliminar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
+          <button class="btn-danger" onclick="deleteRoutine(${esc(r.id_rutina)})" title="Eliminar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
             Eliminar
           </button>
         </div>
@@ -328,21 +339,21 @@ function addExerciseRow(nombre = "", series = 3, reps = 10, peso = 0) {
     
     <div style="margin-bottom: 0.8rem; padding-right: 2rem;">
       <label class="form-label" style="font-size: 0.8rem; color: #60A5FA; margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
-      <input type="text" class="form-input ex-name" placeholder="Ej: Press de Banca" value="${nombre}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
+      <input type="text" class="form-input ex-name" placeholder="Ej: Press de Banca" value="${esc(nombre)}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem;">
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Series</label>
-        <input type="number" class="form-input ex-series" placeholder="3" value="${series}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" class="form-input ex-series" placeholder="3" value="${esc(series)}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Reps</label>
-        <input type="number" class="form-input ex-reps" placeholder="10" value="${reps}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" class="form-input ex-reps" placeholder="10" value="${esc(reps)}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Peso (kg)</label>
-        <input type="number" step="0.5" class="form-input ex-peso" placeholder="0" value="${peso}" min="0" style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" step="0.5" class="form-input ex-peso" placeholder="0" value="${esc(peso)}" min="0" style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
     </div>
   `;
@@ -536,23 +547,23 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
 
       setsHtml += `
         <div class="series-row-card">
-          <div class="series-badge">S${s + 1}</div>
+          <div class="series-badge">S${esc(s + 1)}</div>
           <div class="series-inputs-group">
             <div class="series-input-box">
               <span class="series-box-label">Peso</span>
               <div class="series-field-inner">
-                <input type="number" step="0.5" class="set-input set-weight-input" data-ex="${exIdx}" data-set="${s}" value="${setWeight}" oninput="saveActiveSessionState()">
+                <input type="number" step="0.5" class="set-input set-weight-input" data-ex="${esc(exIdx)}" data-set="${esc(s)}" value="${esc(setWeight)}" oninput="saveActiveSessionState()">
                 <span class="unit-tag">kg</span>
               </div>
             </div>
             <div class="series-input-box">
               <span class="series-box-label">Reps</span>
               <div class="series-field-inner">
-                <input type="number" class="set-input set-reps-input" data-ex="${exIdx}" data-set="${s}" value="${setReps}" oninput="saveActiveSessionState()">
+                <input type="number" class="set-input set-reps-input" data-ex="${esc(exIdx)}" data-set="${esc(s)}" value="${esc(setReps)}" oninput="saveActiveSessionState()">
               </div>
             </div>
           </div>
-          <button type="button" class="btn-check-set ${isCompleted ? 'completed' : ''}" id="btn_set_${setId}" onclick="toggleSetCompleted('${setId}')" title="Marcar serie completada">
+          <button type="button" class="btn-check-set ${esc(isCompleted ? 'completed' : '')}" id="btn_set_${esc(setId)}" onclick="toggleSetCompleted('${esc(setId)}')" title="Marcar serie completada">
             ✓
           </button>
         </div>
@@ -561,8 +572,8 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
 
     block.innerHTML = `
       <div class="exercise-header">
-        <span class="exercise-name">${ej.nombre_ejercicio || ej.titulo || "Ejercicio"}</span>
-        <span class="exercise-subinfo">${ej.series} Series × ${ej.repeticiones} Reps (${formatExerciseWeights(ej)})</span>
+        <span class="exercise-name">${esc(ej.nombre_ejercicio || ej.titulo || "Ejercicio")}</span>
+        <span class="exercise-subinfo">${esc(ej.series)} Series × ${esc(ej.repeticiones)} Reps (${esc(formatExerciseWeights(ej))})</span>
       </div>
       <div class="series-list-container">
         ${setsHtml}
@@ -876,6 +887,8 @@ function initAdminDashboard() {
       if (res.ok) {
         adminUsersData = res.usuarios || [];
         filterAdminUsers();
+        refrescarPanelesAsistencia();
+        if (esRecepcionista === "true" && esAdmin !== "true") toggleCheckinSection(true);
       } else {
         alert(res.msg || "Error al cargar datos de administración");
       }
@@ -1033,15 +1046,15 @@ function renderAdminUsersGrid(users) {
       <!-- Encabezado de la Tarjeta (Resumen siempre visible, click para expandir) -->
       <div class="client-card-header" onclick="toggleClientCardDetails(this)" style="cursor: pointer; user-select: none;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem;">
-          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${u.nombre_completo}</h3>
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${esc(u.nombre_completo)}</h3>
           <div style="display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end;">
             ${debtBadgeHtml}
-            <span class="badge ${status.badgeClass}">${status.badgeText}</span>
+            <span class="badge ${esc(status.badgeClass)}">${esc(status.badgeText)}</span>
           </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.83rem; color: var(--text-muted);">
-          <span>⏳ Vence: <strong style="color: ${status.venceColor};">${u.membresia.vence}</strong></span>
+          <span>⏳ Vence: <strong style="color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong> <span style="opacity: 0.85;">· ${esc(u.ultimo_plan || "Sin plan")}</span></span>
           <span class="accordion-chevron" style="color: #60A5FA; font-weight: 600; font-size: 0.78rem; background: rgba(59,130,246,0.15); padding: 0.2rem 0.55rem; border-radius: 6px; transition: all 0.2s ease;">▼ Ver más</span>
         </div>
         ${debtSummaryNotice}
@@ -1049,37 +1062,37 @@ function renderAdminUsersGrid(users) {
 
       <!-- Detalle desplegable (Oculto por defecto) -->
       <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem;">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${u.correo}</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">🪪 <strong style="color: var(--text-main);">Cédula:</strong> ${u.cedula || "Sin cédula"}</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${u.telefono || "Sin teléfono"}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${esc(u.correo)}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">🪪 <strong style="color: var(--text-main);">Cédula:</strong> ${esc(u.cedula || "Sin cédula")}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${esc(u.telefono || "Sin teléfono")}</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: rgba(15,23,42,0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
           <div>
             <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Vencimiento:</span>
-            <strong style="font-size: 0.85rem; color: ${status.venceColor};">${u.membresia.vence}</strong>
+            <strong style="font-size: 0.85rem; color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong>
           </div>
           <div>
             <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Último Pago:</span>
-            <strong style="font-size: 0.85rem; color: #34D399;">${u.ultimo_pago || 'Sin pagos'}</strong>
+            <strong style="font-size: 0.85rem; color: #34D399;">${esc(u.ultimo_pago || 'Sin pagos')}</strong>
           </div>
         </div>
 
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">🏋️ <strong style="color: #60A5FA;">Rutinas Asignadas:</strong> ${cantRutinas}</p>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
+          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
             Registrar Pago
           </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminder('${u.nombre_completo}', '${u.telefono || ''}', '${u.membresia.vence}', '${u.membresia.estado}')" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
+          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
             WhatsApp
           </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${u.id_usuario})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 100px; text-align: center; justify-content: center;">
+          <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 100px; text-align: center; justify-content: center;">
             Ver Rutinas
           </button>
-          <button class="btn-secondary" onclick="event.stopPropagation(); editUserByAdmin(${u.id_usuario})" title="Editar datos del cliente" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 80px; text-align: center; justify-content: center;">
+          <button class="btn-secondary" onclick="event.stopPropagation(); editUserByAdmin(${esc(u.id_usuario)})" title="Editar datos del cliente" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 80px; text-align: center; justify-content: center;">
             Editar
           </button>
-          <button class="btn-danger" onclick="event.stopPropagation(); deleteUserByAdmin(${u.id_usuario})" title="Eliminar cliente" style="padding: 0.5rem 0.75rem; font-size: 0.82rem; flex: 1 1 100%; text-align: center; justify-content: center;">
+          <button class="btn-danger" onclick="event.stopPropagation(); deleteUserByAdmin(${esc(u.id_usuario)})" title="Eliminar cliente" style="padding: 0.5rem 0.75rem; font-size: 0.82rem; flex: 1 1 100%; text-align: center; justify-content: center;">
             Eliminar Cliente
           </button>
         </div>
@@ -1096,8 +1109,16 @@ function filterAdminUsers() {
   const statusSelect = $("#clientStatusFilterSelect");
   const statusFilter = statusSelect ? statusSelect.value : "todos";
 
+  const planSelect = $("#clientPlanFilterSelect");
+  const planFilter = planSelect ? planSelect.value : "todos";
+
   const todayStr = getLocalTodayStr();
   let list = [...adminUsersData];
+
+  // 0. Filtrar por tipo de plan (Mensualidad incluye Estudiante)
+  if (planFilter !== "todos") {
+    list = list.filter(u => planCategoria(u.ultimo_plan) === planFilter);
+  }
 
   // 1. Filtrar por texto si hay consulta
   if (query) {
@@ -1303,16 +1324,16 @@ function viewUserProgressModal(id_usuario) {
       item.style.cssText = "background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;";
 
       const exList = r.ejercicios && r.ejercicios.length > 0
-        ? r.ejercicios.map(e => `• ${e.nombre_ejercicio || e.titulo} (${e.series} series x ${e.repeticiones} reps - ${formatExerciseWeights(e)})`).join("<br>")
+        ? r.ejercicios.map(e => `• ${esc(e.nombre_ejercicio || e.titulo)} (${esc(e.series)} series x ${esc(e.repeticiones)} reps - ${esc(formatExerciseWeights(e))})`).join("<br>")
         : "Sin ejercicios";
 
       item.innerHTML = `
         <div>
-          <h5 style="font-size: 1.05rem; font-weight: 700; color: #60A5FA;">${r.titulo}</h5>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">${r.descripcion || "Sin descripción"} | Horario: ${r.horario || "Flexible"}</p>
+          <h5 style="font-size: 1.05rem; font-weight: 700; color: #60A5FA;">${esc(r.titulo)}</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">${esc(r.descripcion || "Sin descripción")} | Horario: ${esc(r.horario || "Flexible")}</p>
           <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4;">${exList}</div>
         </div>
-        <button type="button" class="btn-primary" onclick="inspectRoutineDetailByAdmin(${id_usuario}, ${r.id_rutina})" style="font-size: 0.85rem; padding: 0.6rem 1rem; width: auto; white-space: nowrap;">
+        <button type="button" class="btn-primary" onclick="inspectRoutineDetailByAdmin(${esc(id_usuario)}, ${esc(r.id_rutina)})" style="font-size: 0.85rem; padding: 0.6rem 1rem; width: auto; white-space: nowrap;">
           Ver Detalle Completo
         </button>
       `;
@@ -1362,12 +1383,12 @@ function inspectRoutineDetailByAdmin(id_usuario, id_rutina) {
 
         setsHtml += `
           <tr>
-            <td style="font-weight: 600; color: var(--text-muted);">Serie ${s + 1}</td>
+            <td style="font-weight: 600; color: var(--text-muted);">Serie ${esc(s + 1)}</td>
             <td>
-              <span style="font-size: 1rem; font-weight: 700; color: #60A5FA;">${setWeight} kg</span>
+              <span style="font-size: 1rem; font-weight: 700; color: #60A5FA;">${esc(setWeight)} kg</span>
             </td>
             <td>
-              <span style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${setReps} reps</span>
+              <span style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${esc(setReps)} reps</span>
             </td>
           </tr>
         `;
@@ -1375,8 +1396,8 @@ function inspectRoutineDetailByAdmin(id_usuario, id_rutina) {
 
       block.innerHTML = `
         <div class="exercise-header">
-          <span class="exercise-name">${ej.nombre_ejercicio || ej.titulo || "Ejercicio"}</span>
-          <span style="font-size: 0.85rem; color: var(--text-muted);">${ej.series} Series × ${ej.repeticiones} Reps (${formatExerciseWeights(ej)})</span>
+          <span class="exercise-name">${esc(ej.nombre_ejercicio || ej.titulo || "Ejercicio")}</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">${esc(ej.series)} Series × ${esc(ej.repeticiones)} Reps (${esc(formatExerciseWeights(ej))})</span>
         </div>
         <table class="sets-table">
           <thead>
@@ -1487,13 +1508,13 @@ function filterPaymentUserList() {
     else if (statusInfo.badgeText === 'por vencer') emoji = '🟡';
     
     const badgeTxt = statusInfo.badgeText.charAt(0).toUpperCase() + statusInfo.badgeText.slice(1);
-    const estadoBadge = `${emoji} ${badgeTxt}`;
+    const estadoBadge = `${esc(emoji)} ${esc(badgeTxt)}`;
     const venceStr = (u.membresia && u.membresia.vence) ? u.membresia.vence : 'Sin fecha';
 
     item.innerHTML = `
-      <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${u.nombre_completo}</div>
-      <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${u.correo} • 🪪 ${u.cedula || 'Sin CI'} • <span style="color: var(--text-muted);">📞 ${u.telefono || 'Sin tel'}</span></div>
-      <div style="font-size: 0.8rem; color: ${statusInfo.venceColor}; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${venceStr}</strong> (${estadoBadge})</div>
+      <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${esc(u.nombre_completo)}</div>
+      <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${esc(u.correo)} • 🪪 ${esc(u.cedula || 'Sin CI')} • <span style="color: var(--text-muted);">📞 ${esc(u.telefono || 'Sin tel')}</span></div>
+      <div style="font-size: 0.8rem; color: ${esc(statusInfo.venceColor)}; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${esc(venceStr)}</strong> (${estadoBadge})</div>
     `;
 
     item.onclick = () => selectClientForPayment(u.id_usuario);
@@ -1521,10 +1542,10 @@ function selectClientForPayment(id_usuario) {
   if (badgeText) {
     badgeText.innerHTML = `
       <div style="line-height: 1.5;">
-        <strong style="font-size: 1rem; color: var(--text-main);">${user.nombre_completo}</strong>
-        <span style="font-size: 0.82rem; color: #60A5FA; display: block;">✉️ ${user.correo} • 📞 ${user.telefono || 'Sin teléfono'}</span>
-        <span style="font-size: 0.85rem; color: ${estadoColor}; font-weight: 600; margin-top: 0.3rem; display: inline-block;">
-          📅 Membresía Vence: <strong>${venceStr}</strong> (${estadoStr})
+        <strong style="font-size: 1rem; color: var(--text-main);">${esc(user.nombre_completo)}</strong>
+        <span style="font-size: 0.82rem; color: #60A5FA; display: block;">✉️ ${esc(user.correo)} • 📞 ${esc(user.telefono || 'Sin teléfono')}</span>
+        <span style="font-size: 0.85rem; color: ${esc(estadoColor)}; font-weight: 600; margin-top: 0.3rem; display: inline-block;">
+          📅 Membresía Vence: <strong>${esc(venceStr)}</strong> (${esc(estadoStr)})
         </span>
       </div>
     `;
@@ -1685,7 +1706,7 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
   if (searchQuery && searchQuery.trim() !== "") {
     url += `?q=${encodeURIComponent(searchQuery.trim())}`;
-    emptyMsg = `No se encontraron pagos registrados para el cliente "${searchQuery}".`;
+    emptyMsg = `No se encontraron pagos registrados para el cliente "${esc(searchQuery)}".`;
   } else {
     const dateInput = $("#historyDateFilter");
     const todayStr = getLocalTodayStr();
@@ -1700,7 +1721,7 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
     const selectedDate = (dateInput && dateInput.value) ? dateInput.value : todayStr;
     url += `?fecha=${selectedDate}`;
-    emptyMsg = `No se registraron pagos en la fecha seleccionada (${selectedDate}).`;
+    emptyMsg = `No se registraron pagos en la fecha seleccionada (${esc(selectedDate)}).`;
   }
 
   fetch(url)
@@ -1744,20 +1765,20 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
         item.innerHTML = `
           <div>
-            <strong style="color: var(--text-main); font-size: 1rem;">${p.nombre_completo}</strong> 
-            <span style="font-size: 0.8rem; color: #60A5FA;">(✉️ ${p.correo} • 📞 ${p.telefono || 'Sin tel'})</span><br>
+            <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
+            <span style="font-size: 0.8rem; color: #60A5FA;">(✉️ ${esc(p.correo)} • 📞 ${esc(p.telefono || 'Sin tel')})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
+              Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
             <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
-              +${p.monto} ${p.moneda}
+              +${esc(p.monto)} ${esc(p.moneda)}
             </span>
-            <button type="button" class="btn-secondary" onclick="editPayment(${p.id_pago})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-color: #60A5FA; color: #60A5FA;">
+            <button type="button" class="btn-secondary" onclick="editPayment(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-color: #60A5FA; color: #60A5FA;">
               Editar
             </button>
-            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${p.id_pago})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
               Ver detalle
             </button>
           </div>
@@ -1878,6 +1899,14 @@ async function saveEditPayment(e) {
 }
 
 /* ---------- ENVÍO DE RECORDATORIOS WHATSAPP SIN EMOJIS ---------- */
+// Busca los datos del cliente por id (evita pasar nombres con comillas dentro del atributo onclick)
+function sendWhatsAppReminderById(idUsuario) {
+  const u = adminUsersData.find(x => String(x.id_usuario) === String(idUsuario));
+  if (!u) return;
+  const m = u.membresia || {};
+  sendWhatsAppReminder(u.nombre_completo, u.telefono || '', m.vence, m.estado);
+}
+
 function sendWhatsAppReminder(nombreCompleto, telefono, venceDate, estado) {
   if (!telefono || telefono.trim() === "" || telefono.trim() === "Sin teléfono") {
     alert("El cliente no tiene un número de teléfono registrado. Puedes agregar uno editando sus datos.");
@@ -1946,7 +1975,7 @@ function loadAdminPaymentsRangeHistory() {
       if (currentPaymentsData.length === 0) {
         container.innerHTML = `
           <div style="text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
-            <p style="color: var(--text-muted); font-size: 0.95rem;">No se registraron pagos en el rango seleccionado (${from} a ${to}).</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">No se registraron pagos en el rango seleccionado (${esc(from)} a ${esc(to)}).</p>
           </div>
         `;
         return;
@@ -1968,17 +1997,17 @@ function loadAdminPaymentsRangeHistory() {
 
         item.innerHTML = `
           <div>
-            <strong style="color: var(--text-main); font-size: 1rem;">${p.nombre_completo}</strong> 
-            <span style="font-size: 0.8rem; color: #60A5FA;">(${p.correo} • Tel: ${p.telefono || 'Sin tel'})</span><br>
+            <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
+            <span style="font-size: 0.8rem; color: #60A5FA;">(${esc(p.correo)} • Tel: ${esc(p.telefono || 'Sin tel')})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${p.plan}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${p.fecha_pago}</strong>
+              Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
             <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
-              +${p.monto} ${p.moneda}
+              +${esc(p.monto)} ${esc(p.moneda)}
             </span>
-            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${p.id_pago})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
               Ver detalle
             </button>
           </div>
@@ -2170,14 +2199,14 @@ function loadAdminTemplates() {
         card.className = "routine-card";
 
         const exList = p.ejercicios && p.ejercicios.length > 0
-          ? p.ejercicios.map(e => `• ${e.nombre_ejercicio} (${e.series}s x ${e.repeticiones}r)`).join("<br>")
+          ? p.ejercicios.map(e => `• ${esc(e.nombre_ejercicio)} (${esc(e.series)}s x ${esc(e.repeticiones)}r)`).join("<br>")
           : "Sin ejercicios";
 
         card.innerHTML = `
           <div>
             <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); margin-bottom: 0.5rem;">Plantilla</span>
-            <h3 class="routine-title">${p.titulo}</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">${p.descripcion || "Sin descripción"} | Horario: ${p.horario || "Flexible"}</p>
+            <h3 class="routine-title">${esc(p.titulo)}</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">${esc(p.descripcion || "Sin descripción")} | Horario: ${esc(p.horario || "Flexible")}</p>
             
             <div style="background: rgba(15,23,42,0.5); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.4;">
               ${exList}
@@ -2185,10 +2214,10 @@ function loadAdminTemplates() {
           </div>
 
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-            <button type="button" class="btn-secondary" onclick="editTemplateByAdmin(${p.id_plantilla})" style="font-size: 0.85rem; padding: 0.5rem 0.8rem; flex: 1;">
+            <button type="button" class="btn-secondary" onclick="editTemplateByAdmin(${esc(p.id_plantilla)})" style="font-size: 0.85rem; padding: 0.5rem 0.8rem; flex: 1;">
               Editar
             </button>
-            <button type="button" class="btn-danger" onclick="deleteTemplateByAdmin(${p.id_plantilla})" style="font-size: 0.85rem; padding: 0.5rem 0.8rem; flex: 1;">
+            <button type="button" class="btn-danger" onclick="deleteTemplateByAdmin(${esc(p.id_plantilla)})" style="font-size: 0.85rem; padding: 0.5rem 0.8rem; flex: 1;">
               Eliminar
             </button>
           </div>
@@ -2241,21 +2270,21 @@ function addTemplateExerciseRow(nombre = "", series = 3, reps = 10, peso = 0) {
 
     <div style="margin-bottom: 0.8rem; padding-right: 2rem;">
       <label class="form-label" style="font-size: 0.8rem; color: #C084FC; margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
-      <input type="text" class="form-input template-ex-name" placeholder="Ej: Sentadilla Libre" value="${nombre}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
+      <input type="text" class="form-input template-ex-name" placeholder="Ej: Sentadilla Libre" value="${esc(nombre)}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem;">
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Series</label>
-        <input type="number" class="form-input template-ex-series" placeholder="3" value="${series}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" class="form-input template-ex-series" placeholder="3" value="${esc(series)}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Reps</label>
-        <input type="number" class="form-input template-ex-reps" placeholder="10" value="${reps}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" class="form-input template-ex-reps" placeholder="10" value="${esc(reps)}" min="1" required style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
       <div>
         <label class="form-label" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; display: block; text-align: center;">Peso Sugerido (kg)</label>
-        <input type="number" step="0.5" class="form-input template-ex-peso" placeholder="0" value="${peso}" min="0" style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
+        <input type="number" step="0.5" class="form-input template-ex-peso" placeholder="0" value="${esc(peso)}" min="0" style="padding: 0.4rem 0.6rem; text-align: center; font-size: 0.9rem;">
       </div>
     </div>
   `;
@@ -2459,17 +2488,17 @@ function openTemplateSelectorModal() {
         card.style.cssText = "display: flex; flex-direction: column; justify-content: space-between; height: 100%; border-color: rgba(168, 85, 247, 0.3);";
 
         const exList = p.ejercicios && p.ejercicios.length > 0
-          ? p.ejercicios.map(e => `• ${e.nombre_ejercicio} (${e.series} series × ${e.repeticiones} reps)`).join("<br>")
+          ? p.ejercicios.map(e => `• ${esc(e.nombre_ejercicio)} (${esc(e.series)} series × ${esc(e.repeticiones)} reps)`).join("<br>")
           : "Sin ejercicios";
 
         card.innerHTML = `
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <h3 class="routine-title" style="color: #C084FC;">${p.titulo}</h3>
-              <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">${p.horario || "Flexible"}</span>
+              <h3 class="routine-title" style="color: #C084FC;">${esc(p.titulo)}</h3>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">${esc(p.horario || "Flexible")}</span>
             </div>
             
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">${p.descripcion || "Sin descripción"}</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">${esc(p.descripcion || "Sin descripción")}</p>
 
             <div style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1.2rem; line-height: 1.4;">
               ${exList}
@@ -2477,7 +2506,7 @@ function openTemplateSelectorModal() {
           </div>
 
           <div>
-            <button type="button" class="btn-primary" onclick="selectTemplateForRoutine(${p.id_plantilla})" style="width: 100%; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+            <button type="button" class="btn-primary" onclick="selectTemplateForRoutine(${esc(p.id_plantilla)})" style="width: 100%; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
               Cargar Esta Rutina
             </button>
           </div>
@@ -2569,6 +2598,8 @@ function dataURItoBlob(dataURI) {
 function getResourceUrl(url) {
   if (!url) return '';
   const cleanUrl = String(url).trim();
+  // Solo se permiten enlaces web, imágenes/PDF incrustados y rutas del propio sitio
+  if (!/^(https?:|data:image\/|data:application\/pdf|blob:|\/)/i.test(cleanUrl) && /^[a-z][a-z0-9+.-]*:/i.test(cleanUrl)) return '#';
   if (cleanUrl.startsWith('data:')) {
     if (cleanUrl.startsWith('data:application/pdf')) {
       const blob = dataURItoBlob(cleanUrl);
@@ -2654,7 +2685,7 @@ function openImagePreviewModal(url, title) {
       if (hrefUrl.startsWith('data:image/')) {
         const win = window.open();
         if (win) {
-          win.document.write(`<html><head><title>${title || 'Vista Previa'}</title></head><body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${hrefUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
+          win.document.write(`<html><head><title>${esc(title || 'Vista Previa')}</title></head><body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${esc(hrefUrl)}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
         }
       } else {
         window.open(hrefUrl, '_blank');
@@ -2740,22 +2771,22 @@ function filterAdminResourcesByCategory() {
     const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
-        <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
+        <img src="${esc(hrefUrl)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${esc(r.titulo)}">
       </div>
     ` : (isPdf ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ver PDF">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
         <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
         <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
       </div>
     ` : '');
 
     const actionBtn = (isImage || isPdf) ? `
-      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        ${isImage ? 'Ver Imagen' : 'Ver PDF'}
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        ${esc(isImage ? 'Ver Imagen' : 'Ver PDF')}
       </button>
     ` : `
-      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; justify-content: center;">
+      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; justify-content: center;">
         Abrir Enlace 🔗
       </a>
     `;
@@ -2763,22 +2794,22 @@ function filterAdminResourcesByCategory() {
     card.innerHTML = `
       <div>
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 0.5rem;">
-          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${r.titulo}</h3>
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${esc(r.titulo)}</h3>
           ${catBadge}
         </div>
         
         ${thumbnailHtml}
 
-        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${esc(r.descripcion || "Sin descripción adicional.")}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.04);">
-          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : r.url_recurso)}</strong>
+          ${iconTag}: <strong style="color: var(--text-main);">${esc(r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : r.url_recurso))}</strong>
         </div>
       </div>
 
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         ${actionBtn}
-        <button class="btn-danger" onclick="deleteResourceByAdmin(${r.id_recurso})" title="Eliminar material" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
+        <button class="btn-danger" onclick="deleteResourceByAdmin(${esc(r.id_recurso)})" title="Eliminar material" style="padding: 0.55rem 0.8rem; font-size: 0.85rem;">
           Eliminar
         </button>
       </div>
@@ -3054,22 +3085,22 @@ function filterUserResourcesByCategory() {
     const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ampliar">
-        <img src="${hrefUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${r.titulo}">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
+        <img src="${esc(hrefUrl)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${esc(r.titulo)}">
       </div>
     ` : (isPdf ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${r.id_recurso})" title="Haz clic para ver PDF">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
         <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
         <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
       </div>
     ` : '');
 
     const userActionBtn = (isImage || isPdf) ? `
-      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${r.id_recurso})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
-        ${isImage ? 'Ver Imagen' : 'Ver PDF'}
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        ${esc(isImage ? 'Ver Imagen' : 'Ver PDF')}
       </button>
     ` : `
-      <a href="${hrefUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
         Abrir Enlace 🔗
       </a>
     `;
@@ -3077,16 +3108,16 @@ function filterUserResourcesByCategory() {
     card.innerHTML = `
       <div>
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 0.5rem;">
-          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${r.titulo}</h3>
+          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${esc(r.titulo)}</h3>
           ${catBadge}
         </div>
         
         ${thumbnailHtml}
 
-        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${r.descripcion || "Sin descripción adicional."}</p>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${esc(r.descripcion || "Sin descripción adicional.")}</p>
 
         <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
-          ${iconTag}: <strong style="color: var(--text-main);">${r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : 'Ver Recurso')}</strong>
+          ${iconTag}: <strong style="color: var(--text-main);">${esc(r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : 'Ver Recurso'))}</strong>
         </div>
       </div>
 
@@ -3098,4 +3129,338 @@ function filterUserResourcesByCategory() {
   });
 }
 
+/* =====================================================================
+   CONTROL DE ENTRADA (ASISTENCIA) Y VENCIMIENTOS
+   ===================================================================== */
 
+// Agrupa los planes: Mensualidad y Estudiante cuentan como mensuales
+function planCategoria(plan) {
+  if (!plan) return "sin";
+  const p = String(plan).toLowerCase();
+  if (p.includes("mensual") || p.includes("estudiante")) return "mensual";
+  if (p.includes("semana")) return "semanal";
+  if (p.includes("diario")) return "diario";
+  return "otro";
+}
+
+// Días desde hoy hasta la fecha (negativo = ya pasó)
+function diasHasta(fechaStr) {
+  if (!fechaStr || !/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return null;
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  const [ty, tm, td] = getLocalTodayStr().split("-").map(Number);
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000);
+}
+
+function textoDias(dias) {
+  if (dias === null) return "sin fecha";
+  if (dias === 0) return "vence hoy";
+  if (dias === 1) return "vence mañana";
+  if (dias > 1) return `faltan ${dias} días`;
+  if (dias === -1) return "venció ayer";
+  return `venció hace ${-dias} días`;
+}
+
+function formatFechaCorta(fechaStr) {
+  if (!fechaStr || !/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return "-";
+  const [y, m, d] = fechaStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+// Estado de membresía de un cliente para la entrada
+function estadoEntrada(u) {
+  const vence = u.membresia && u.membresia.vence;
+  const activa = u.membresia && u.membresia.estado === "activa";
+  const dias = diasHasta(vence);
+  if (dias === null) {
+    return { codigo: "sin", dias, color: "#F87171", titulo: "Sin membresía registrada" };
+  }
+  if (!activa || dias < 0) return { codigo: "vencida", dias, color: "#F87171", titulo: "Membresía vencida" };
+  if (dias <= 3) return { codigo: "por_vencer", dias, color: "#FBBF24", titulo: "Membresía por vencer" };
+  return { codigo: "activa", dias, color: "#34D399", titulo: "Membresía activa" };
+}
+
+/* ---------- Control de Entrada ---------- */
+let checkinMatches = [];
+let checkinSelectedId = null;
+
+function toggleCheckinSection(forceOpen) {
+  const sec = $("#adminCheckinSection");
+  if (!sec) return;
+  const open = forceOpen === true || sec.classList.contains("hidden");
+  if (!open) { sec.classList.add("hidden"); return; }
+  const exp = $("#adminExpirySection");
+  if (exp) exp.classList.add("hidden");
+  sec.classList.remove("hidden");
+  const dateInput = $("#checkinDateFilter");
+  if (dateInput && !dateInput.value) dateInput.value = getLocalTodayStr();
+  loadCheckins();
+  if (forceOpen !== true) sec.scrollIntoView({ behavior: "smooth" });
+  const input = $("#checkinSearch");
+  if (input) setTimeout(() => input.focus(), 150);
+}
+
+function buscarClientesEntrada(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  const soloDigitos = q.replace(/\D/g, "");
+  const esNumero = soloDigitos.length >= 3 && soloDigitos.length === q.replace(/[\s.\-vVeE]/g, "").length;
+  return adminUsersData.filter(u => {
+    if (esNumero) {
+      const ced = String(u.cedula || "").replace(/\D/g, "");
+      const tel = String(u.telefono || "").replace(/\D/g, "");
+      return ced.startsWith(soloDigitos) || (soloDigitos.length >= 6 && tel.includes(soloDigitos));
+    }
+    return (u.nombre_completo || "").toLowerCase().includes(q);
+  }).slice(0, 8);
+}
+
+function onCheckinInput() {
+  const input = $("#checkinSearch");
+  const box = $("#checkinResults");
+  if (!input || !box) return;
+  checkinMatches = buscarClientesEntrada(input.value);
+  if (!input.value.trim()) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+  if (checkinMatches.length === 0) {
+    box.innerHTML = `<div style="padding: 0.8rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No se encontró ningún cliente.</div>`;
+  } else {
+    box.innerHTML = checkinMatches.map(u => {
+      const st = estadoEntrada(u);
+      return `<div onclick="seleccionarClienteEntrada(${esc(u.id_usuario)})" style="padding: 0.7rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(59,130,246,0.12)'" onmouseout="this.style.background='transparent'">
+        <span><strong>${esc(u.nombre_completo)}</strong> <span style="color: var(--text-muted); font-size: 0.85rem;">· ${esc(u.cedula || "sin cédula")}</span></span>
+        <span style="color: ${st.color}; font-size: 0.85rem; white-space: nowrap;">${esc(st.titulo.replace("Membresía ", ""))}</span>
+      </div>`;
+    }).join("");
+  }
+  box.classList.remove("hidden");
+}
+
+function onCheckinKeydown(event) {
+  if (event.key === "Escape") { limpiarBusquedaEntrada(); return; }
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const input = $("#checkinSearch");
+  const q = input ? input.value.trim() : "";
+  if (!q) return;
+  const matches = buscarClientesEntrada(q);
+  const digitos = q.replace(/\D/g, "");
+  const exacto = digitos ? matches.find(u => String(u.cedula || "").replace(/\D/g, "") === digitos) : null;
+  if (exacto) return seleccionarClienteEntrada(exacto.id_usuario);
+  if (matches.length === 1) return seleccionarClienteEntrada(matches[0].id_usuario);
+  if (matches.length === 0) {
+    mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); text-align: center;">
+      <strong style="color: #FCA5A5;">No hay ningún cliente con “${esc(q)}”.</strong>
+      <div style="margin-top: 0.6rem;"><button type="button" class="btn-secondary" onclick="openCreateUserModal()" style="font-size: 0.85rem;">+ Registrar nuevo cliente</button></div>
+    </div>`);
+  }
+  // Varias coincidencias: la lista queda abierta para elegir
+}
+
+function limpiarBusquedaEntrada() {
+  const input = $("#checkinSearch");
+  const box = $("#checkinResults");
+  if (input) { input.value = ""; input.focus(); }
+  if (box) { box.innerHTML = ""; box.classList.add("hidden"); }
+  checkinMatches = [];
+}
+
+function mostrarPanelEntrada(html) {
+  const panel = $("#checkinStatus");
+  if (panel) panel.innerHTML = html;
+}
+
+function seleccionarClienteEntrada(idUsuario) {
+  const u = adminUsersData.find(x => String(x.id_usuario) === String(idUsuario));
+  if (!u) return;
+  checkinSelectedId = u.id_usuario;
+  limpiarBusquedaEntrada();
+  const st = estadoEntrada(u);
+  const deuda = u.tiene_deuda == 1;
+  // Camino rápido: al día y sin deuda -> se registra directo
+  if ((st.codigo === "activa" || st.codigo === "por_vencer") && !deuda) {
+    registrarEntrada(u.id_usuario, false);
+    return;
+  }
+  mostrarPanelEntrada(panelClienteHtml(u, st, `
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.9rem;">
+      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="flex: 1 1 180px; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">💳 Registrar pago</button>
+      <button type="button" class="btn-secondary" onclick="registrarEntrada(${esc(u.id_usuario)}, false)" style="flex: 1 1 180px;">Dejar pasar de todas formas</button>
+      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="flex: 1 1 120px; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
+    </div>`));
+}
+
+function panelClienteHtml(u, st, extraHtml, encabezado) {
+  const deuda = u.tiene_deuda == 1;
+  const vence = u.membresia && u.membresia.vence;
+  const bg = st.codigo === "activa" ? "rgba(16,185,129,0.12)" : st.codigo === "por_vencer" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+  return `<div style="padding: 1.1rem 1.25rem; border-radius: 14px; background: ${bg}; border: 2px solid ${st.color};">
+    <div style="font-size: 0.85rem; font-weight: 700; color: ${st.color}; text-transform: uppercase; letter-spacing: 0.04em;">${esc(encabezado || st.titulo)}</div>
+    <div style="font-size: 1.45rem; font-weight: 700; color: var(--text-main); margin-top: 0.2rem;">${esc(u.nombre_completo)}</div>
+    <div style="color: var(--text-muted); font-size: 0.92rem; margin-top: 0.3rem;">
+      ${esc(u.ultimo_plan || "Sin plan")} · Vence ${esc(formatFechaCorta(vence))} · <strong style="color: ${st.color};">${esc(textoDias(st.dias))}</strong>
+    </div>
+    ${deuda ? `<div style="margin-top: 0.5rem; color: #FCA5A5; font-weight: 700;">⚠️ Tiene un abono pendiente (deuda)</div>` : ""}
+    ${extraHtml || ""}
+  </div>`;
+}
+
+function horaLocalStr() {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
+}
+
+function registrarEntrada(idUsuario, forzar) {
+  const u = adminUsersData.find(x => String(x.id_usuario) === String(idUsuario));
+  if (!u) return;
+  fetch(`${API_BASE}/admin/asistencias`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_usuario: u.id_usuario, fecha: getLocalTodayStr(), hora: horaLocalStr(), forzar: !!forzar })
+  })
+    .then(r => r.json())
+    .then(res => {
+      const st = estadoEntrada(u);
+      if (!res.ok) {
+        mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #FCA5A5;">${esc(res.msg || "No se pudo registrar la entrada.")}</div>`);
+        return;
+      }
+      if (res.ya_registrado) {
+        mostrarPanelEntrada(panelClienteHtml(u, st, `
+          <div style="margin-top: 0.7rem; color: var(--text-main);">Ya registró su entrada hoy a las <strong>${esc(res.hora_anterior)}</strong>.</div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" onclick="registrarEntrada(${esc(u.id_usuario)}, true)">Registrar otra entrada</button>
+            <button type="button" class="btn-secondary" onclick="mostrarPanelEntrada('')">Listo</button>
+          </div>`, "Entrada ya registrada"));
+        return;
+      }
+      const aviso = st.codigo === "por_vencer"
+        ? `<div style="margin-top: 0.6rem; color: #FCD34D; font-weight: 600;">🔔 Recuérdale que su plan ${esc(textoDias(st.dias))}.</div>`
+        : (st.codigo !== "activa" ? `<div style="margin-top: 0.6rem; color: #FCA5A5; font-weight: 600;">Entrada registrada con la membresía no vigente.</div>` : "");
+      mostrarPanelEntrada(panelClienteHtml(u, st, aviso, `✅ Entrada registrada · ${horaLocalStr()}`));
+      loadCheckins();
+    })
+    .catch(() => mostrarPanelEntrada(`<div style="padding: 1rem; color: #FCA5A5;">Error de conexión. Intenta de nuevo.</div>`));
+}
+
+function loadCheckins() {
+  const list = $("#checkinList");
+  const dateInput = $("#checkinDateFilter");
+  if (!list) return;
+  const fecha = (dateInput && dateInput.value) ? dateInput.value : getLocalTodayStr();
+  fetch(`${API_BASE}/admin/asistencias?fecha=${encodeURIComponent(fecha)}`)
+    .then(r => r.json())
+    .then(res => {
+      const rows = (res.ok && res.asistencias) ? res.asistencias : [];
+      const count = $("#checkinCount");
+      if (count) count.textContent = `${rows.length} ${rows.length === 1 ? "entrada" : "entradas"}`;
+      if (!rows.length) {
+        list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aún no hay entradas registradas este día.</p>`;
+        return;
+      }
+      const etiquetas = { activa: ["Al día", "#34D399"], vencida: ["Vencida", "#F87171"], sin_membresia: ["Sin membresía", "#F87171"] };
+      list.innerHTML = rows.map(a => {
+        const [txt, col] = etiquetas[a.estado_membresia] || ["-", "var(--text-muted)"];
+        return `<div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.55rem 0.8rem; background: rgba(15,23,42,0.6); border-radius: 10px; border-left: 3px solid ${col};">
+          <strong style="font-variant-numeric: tabular-nums; min-width: 3.2rem;">${esc(a.hora)}</strong>
+          <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(a.nombre_completo)} <span style="color: var(--text-muted); font-size: 0.82rem;">· ${esc(a.plan || "sin plan")}</span></span>
+          <span style="color: ${col}; font-size: 0.82rem; white-space: nowrap;">${esc(txt)}${a.tenia_deuda == 1 ? " · deuda" : ""}</span>
+          <button type="button" title="Anular esta entrada" onclick="anularEntrada(${esc(a.id_asistencia)})" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;">✕</button>
+        </div>`;
+      }).join("");
+    })
+    .catch(() => { list.innerHTML = `<p style="color: #FCA5A5;">No se pudieron cargar las entradas.</p>`; });
+}
+
+function anularEntrada(idAsistencia) {
+  if (!confirm("¿Anular esta entrada? Úsalo solo si se registró por error.")) return;
+  fetch(`${API_BASE}/admin/asistencias/${encodeURIComponent(idAsistencia)}`, { method: "DELETE" })
+    .then(r => r.json())
+    .then(() => loadCheckins());
+}
+
+/* ---------- Vencimientos ---------- */
+let expiryTab = "mensual";
+// Ventanas: cuántos días antes avisar y hasta cuántos días atrás mostrar vencidos
+const EXPIRY_WINDOWS = { mensual: { antes: 7, despues: 30 }, semanal: { antes: 2, despues: 14 } };
+
+function toggleExpirySection() {
+  const sec = $("#adminExpirySection");
+  if (!sec) return;
+  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
+  const chk = $("#adminCheckinSection");
+  if (chk) chk.classList.add("hidden");
+  sec.classList.remove("hidden");
+  renderExpiry();
+  sec.scrollIntoView({ behavior: "smooth" });
+}
+
+function setExpiryTab(tab) {
+  expiryTab = tab;
+  const bM = $("#expiryTabMensual"), bS = $("#expiryTabSemanal");
+  if (bM) bM.className = tab === "mensual" ? "btn-primary" : "btn-secondary";
+  if (bS) bS.className = tab === "semanal" ? "btn-primary" : "btn-secondary";
+  renderExpiry();
+}
+
+function calcularVencimientos(categoria) {
+  const w = EXPIRY_WINDOWS[categoria];
+  const porVencer = [], vencidos = [];
+  adminUsersData.forEach(u => {
+    if (planCategoria(u.ultimo_plan) !== categoria) return;
+    const vence = u.membresia && u.membresia.vence;
+    const dias = diasHasta(vence);
+    if (dias === null) return;
+    if (dias >= 0 && dias <= w.antes) porVencer.push({ u, dias });
+    else if (dias < 0 && dias >= -w.despues) vencidos.push({ u, dias });
+  });
+  porVencer.sort((a, b) => a.dias - b.dias);
+  vencidos.sort((a, b) => b.dias - a.dias);
+  return { porVencer, vencidos, w };
+}
+
+function filaVencimientoHtml({ u, dias }) {
+  const col = dias < 0 ? "#F87171" : dias <= 2 ? "#FBBF24" : "#FCD34D";
+  return `<div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding: 0.7rem 0.9rem; background: rgba(15,23,42,0.6); border-radius: 10px; border-left: 3px solid ${col};">
+    <div style="flex: 1 1 220px; min-width: 0;">
+      <strong>${esc(u.nombre_completo)}</strong>${u.tiene_deuda == 1 ? ` <span class="badge badge-expired" style="font-size: 0.7rem;">deuda</span>` : ""}
+      <div style="color: var(--text-muted); font-size: 0.82rem;">${esc(u.ultimo_plan || "")} · vence ${esc(formatFechaCorta(u.membresia.vence))} · <span style="color: ${col}; font-weight: 600;">${esc(textoDias(dias))}</span></div>
+    </div>
+    <div style="display: flex; gap: 0.4rem;">
+      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
+      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">Renovar</button>
+    </div>
+  </div>`;
+}
+
+function renderExpiry() {
+  const box = $("#expiryContent");
+  if (!box) return;
+  const { porVencer, vencidos, w } = calcularVencimientos(expiryTab);
+  const nombre = expiryTab === "mensual" ? "mensualidades" : "semanas";
+  const vacio = (t) => `<p style="color: var(--text-muted); font-size: 0.9rem; padding: 0.5rem 0;">${t}</p>`;
+  box.innerHTML = `
+    <h4 style="font-size: 1.05rem; font-weight: 700; color: #FBBF24; margin-bottom: 0.6rem;">Por vencer en los próximos ${w.antes} días <span class="badge badge-warning">${porVencer.length}</span></h4>
+    <div style="display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.6rem;">
+      ${porVencer.length ? porVencer.map(filaVencimientoHtml).join("") : vacio(`No hay ${nombre} por vencer.`)}
+    </div>
+    <h4 style="font-size: 1.05rem; font-weight: 700; color: #F87171; margin-bottom: 0.6rem;">Vencidas en los últimos ${w.despues} días (sin renovar) <span class="badge badge-expired">${vencidos.length}</span></h4>
+    <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+      ${vencidos.length ? vencidos.map(filaVencimientoHtml).join("") : vacio(`No hay ${nombre} vencidas recientemente.`)}
+    </div>`;
+}
+
+// Contador en la tarjeta: mensualidades por vencer + vencidas recientes
+function actualizarContadorVencimientos() {
+  const el = $("#expiryCardCount");
+  if (!el) return;
+  const { porVencer, vencidos } = calcularVencimientos("mensual");
+  const n = porVencer.length + vencidos.length;
+  el.textContent = n ? `${n} mensualidades` : "";
+  el.style.display = n ? "inline-block" : "none";
+}
+
+// Se llama cada vez que se recarga la lista de clientes
+function refrescarPanelesAsistencia() {
+  actualizarContadorVencimientos();
+  const exp = $("#adminExpirySection");
+  if (exp && !exp.classList.contains("hidden")) renderExpiry();
+}
