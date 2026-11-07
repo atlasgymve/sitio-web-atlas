@@ -917,13 +917,15 @@ function applyReceptionistRestrictions() {
   const cardMaterial = $("#cardMaterialContenido");
   if (cardMaterial) cardMaterial.style.display = 'none';
 
-  // Reporte mensual: solo admin. Cierre de caja: solo el día actual (también lo valida el servidor)
-  const cardReporte = $("#cardReporteMensual");
-  if (cardReporte) cardReporte.style.display = 'none';
-  const reporteSec = $("#adminReporteSection");
-  if (reporteSec) reporteSec.remove();
-  const cierreBtn = document.querySelector('#cardCierreCaja button');
-  if (cierreBtn) cierreBtn.textContent = 'Ver Cierre de Hoy';
+  // Cierre de caja y reporte mensual: solo admin (el servidor también lo exige)
+  ["#cardCierreCaja", "#cardReporteMensual"].forEach(id => {
+    const card = $(id);
+    if (card) card.style.display = 'none';
+  });
+  ["#adminCierreSection", "#adminReporteSection"].forEach(id => {
+    const sec = $(id);
+    if (sec) sec.remove();
+  });
 
   // En la tarjeta de Control de Pagos, ocultar botón de Historial (solo dejar Registrar Pago)
   const cardPagos = $("#cardControlPagos");
@@ -3476,10 +3478,6 @@ const MONEDAS_CAJA = ["USD", "COP", "BS", "Bancolombia", "USDT", "CLP"];
 let cierreData = null;
 let reporteVencidos = [];
 
-function esSoloRecepcion() {
-  return localStorage.getItem("esRecepcionista") === "true" && localStorage.getItem("esAdmin") !== "true";
-}
-
 // Oculta las demás secciones de este bloque al abrir una
 function ocultarSeccionesPanel(excepto) {
   ["#adminCheckinSection", "#adminExpirySection", "#adminCierreSection", "#adminReporteSection"].forEach(id => {
@@ -3518,14 +3516,7 @@ function toggleCierreSection() {
   ocultarSeccionesPanel("#adminCierreSection");
   sec.classList.remove("hidden");
   const f = $("#cierreFecha");
-  if (f) {
-    if (!f.value) f.value = getLocalTodayStr();
-    if (esSoloRecepcion()) {
-      f.value = getLocalTodayStr();
-      f.disabled = true;
-      f.title = "Recepción solo puede ver el cierre del día actual";
-    }
-  }
+  if (f && !f.value) f.value = getLocalTodayStr();
   loadCierreCaja();
   sec.scrollIntoView({ behavior: "smooth" });
 }
@@ -3615,16 +3606,14 @@ function renderCierreCaja() {
       </div>`).join("")}</div>`;
   }
 
-  if (d.ver_lista) {
-    html += `<h4 class="report-h4">Pagos del ${d.turno === "todos" ? "día" : "turno"}</h4>`;
-    const conPagos = d.grupos.filter(g => g.pagos && g.pagos.length);
-    if (!conPagos.length) {
-      html += `<p class="report-empty">No hay pagos registrados.</p>`;
-    } else {
-      html += conPagos.map(g => `
-        ${d.turno === "todos" ? `<h5 class="report-h5">${esc(nombreTurno(g.turno))}</h5>` : ""}
-        <div class="cierre-lista">${g.pagos.map(filaPagoCierreHtml).join("")}</div>`).join("");
-    }
+  html += `<h4 class="report-h4">Pagos del ${d.turno === "todos" ? "día" : "turno"}</h4>`;
+  const conPagos = d.grupos.filter(g => g.pagos && g.pagos.length);
+  if (!conPagos.length) {
+    html += `<p class="report-empty">No hay pagos registrados.</p>`;
+  } else {
+    html += conPagos.map(g => `
+      ${d.turno === "todos" ? `<h5 class="report-h5">${esc(nombreTurno(g.turno))}</h5>` : ""}
+      <div class="cierre-lista">${g.pagos.map(filaPagoCierreHtml).join("")}</div>`).join("");
   }
   box.innerHTML = html;
 }

@@ -1286,17 +1286,13 @@ function resumirPagos(rows) {
 // created_at se guarda en la hora de la base de datos (puede ser UTC). Se convierte a hora de Venezuela (UTC-4).
 const SQL_CREATED_VE = "DATE_ADD(p.created_at, INTERVAL (-240 - TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), NOW())) MINUTE)";
 
-// Cierre de caja de un día y turno. Recepción: solo el día actual y sin la lista de pagos.
-app.get('/api/admin/cierre-caja', requireRole('admin', 'recepcion'), async (req, res) => {
+// Cierre de caja de un día y turno (solo admin)
+app.get('/api/admin/cierre-caja', requireRole('admin'), async (req, res) => {
   const hoy = getTodayYMD();
-  const esAdmin = req.user.rol === 'admin';
   const fecha = req.query.fecha || hoy;
   const turno = req.query.turno || 'todos';
   if (!isValidDateStr(fecha)) return res.status(400).json({ ok: false, msg: 'Fecha inválida.' });
   if (!['AM', 'PM', 'todos'].includes(turno)) return res.status(400).json({ ok: false, msg: 'Turno inválido.' });
-  if (!esAdmin && fecha !== hoy) {
-    return res.status(403).json({ ok: false, msg: 'Recepción solo puede ver el cierre del día actual.' });
-  }
   try {
     let sql = `
       SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono, p.turno,
@@ -1315,13 +1311,11 @@ app.get('/api/admin/cierre-caja', requireRole('admin', 'recepcion'), async (req,
     const grupos = nombresGrupo
       .map(g => {
         const pagosGrupo = rows.filter(p => (p.turno || 'Sin turno') === g);
-        const grupo = { turno: g, ...resumirPagos(pagosGrupo) };
-        if (esAdmin) grupo.pagos = pagosGrupo;
-        return grupo;
+        return { turno: g, ...resumirPagos(pagosGrupo), pagos: pagosGrupo };
       })
       .filter(g => g.cantidad > 0 || g.turno !== 'Sin turno');
 
-    res.json({ ok: true, fecha, turno, hoy, ver_lista: esAdmin, resumen: resumirPagos(rows), grupos });
+    res.json({ ok: true, fecha, turno, resumen: resumirPagos(rows), grupos });
   } catch (err) {
     console.error('Error en GET /api/admin/cierre-caja:', err);
     res.status(500).json({ ok: false, msg: 'Error al obtener el cierre de caja.' });
