@@ -111,6 +111,36 @@
         </button>
       </div>
 
+      <!-- Card 0c: Cierre de Caja -->
+      <div id="cardCierreCaja" class="glass-card"
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(45,212,191,0.45);">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
+            Totales cobrados por moneda en el turno AM, PM o todo el día, con resumen listo para enviar por WhatsApp.
+          </p>
+        </div>
+        <button type="button" class="btn-secondary" onclick="toggleCierreSection()"
+          style="width: 100%; border-color: #2DD4BF; color: #2DD4BF;">
+          Ver Cierre de Caja
+        </button>
+      </div>
+
+      <!-- Card 0d: Reporte Mensual (solo admin) -->
+      <div id="cardReporteMensual" class="glass-card"
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
+            Ingresos comparados con el mes anterior, clientes activos, nuevos y vencidos, y asistencia por hora.
+          </p>
+        </div>
+        <button type="button" class="btn-secondary" onclick="toggleReporteSection()"
+          style="width: 100%; border-color: #F472B6; color: #F472B6;">
+          Ver Reporte Mensual
+        </button>
+      </div>
+
       <!-- Card 1: Directorio Clientes -->
       <div id="cardDirectorioClientes" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
@@ -205,6 +235,40 @@
         </div>
       </div>
       <div id="expiryContent"></div>
+    </section>
+
+    <!-- SECCIÓN: CIERRE DE CAJA -->
+    <section id="adminCierreSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+      <div class="report-header">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
+          <p id="cierreSubtitulo" style="color: var(--text-muted); font-size: 0.85rem;">Los montos de cada moneda se suman por separado.</p>
+        </div>
+        <div class="report-filters">
+          <input type="date" id="cierreFecha" class="form-input" onchange="loadCierreCaja()">
+          <select id="cierreTurno" class="form-input" onchange="loadCierreCaja()">
+            <option value="todos">Todo el día</option>
+            <option value="AM">Turno AM</option>
+            <option value="PM">Turno PM</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="copiarResumenCierre()">Copiar resumen</button>
+        </div>
+      </div>
+      <div id="cierreContent"></div>
+    </section>
+
+    <!-- SECCIÓN: REPORTE MENSUAL (SOLO ADMIN) -->
+    <section id="adminReporteSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+      <div class="report-header">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Ingresos, clientes y asistencia del mes seleccionado.</p>
+        </div>
+        <div class="report-filters">
+          <select id="reporteMes" class="form-input" onchange="loadReporteMensual()"></select>
+        </div>
+      </div>
+      <div id="reporteContent"></div>
     </section>
 
     <!-- SECCIÓN: LISTADO DE CLIENTES (OCULTA POR DEFECTO UNTIL BOTÓN CLICKEADO) -->

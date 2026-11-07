@@ -1250,6 +1250,231 @@ app.delete('/api/admin/asistencias/:id', requireRole('admin', 'recepcion'), asyn
   }
 });
 
+// ---------- CIERRE DE CAJA Y REPORTES ----------
+const MONEDAS = ['USD', 'COP', 'BS', 'Bancolombia', 'USDT', 'CLP'];
+
+// Suma montos por moneda (en céntimos para evitar errores de redondeo). Nunca mezcla monedas.
+function totalesPorMoneda(rows) {
+  const cents = {};
+  MONEDAS.forEach(m => { cents[m] = 0; });
+  rows.forEach(p => {
+    const m = p.moneda || 'USD';
+    cents[m] = (cents[m] || 0) + Math.round((parseFloat(p.monto) || 0) * 100);
+  });
+  const out = {};
+  Object.keys(cents).forEach(m => { out[m] = (cents[m] / 100).toFixed(2); });
+  return out;
+}
+
+// Resumen de un conjunto de pagos: totales por moneda, cantidad, por plan, completos vs. abonos
+function resumirPagos(rows) {
+  const abonos = rows.filter(p => Number(p.es_abono) === 1);
+  const completos = rows.filter(p => Number(p.es_abono) !== 1);
+  const planes = {};
+  rows.forEach(p => { (planes[p.plan || 'Sin plan'] = planes[p.plan || 'Sin plan'] || []).push(p); });
+  return {
+    cantidad: rows.length,
+    totales: totalesPorMoneda(rows),
+    completos: { cantidad: completos.length, totales: totalesPorMoneda(completos) },
+    abonos: { cantidad: abonos.length, totales: totalesPorMoneda(abonos) },
+    por_plan: Object.keys(planes).sort().map(plan => ({
+      plan, cantidad: planes[plan].length, totales: totalesPorMoneda(planes[plan])
+    }))
+  };
+}
+
+// created_at se guarda en la hora de la base de datos (puede ser UTC). Se convierte a hora de Venezuela (UTC-4).
+const SQL_CREATED_VE = "DATE_ADD(p.created_at, INTERVAL (-240 - TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), NOW())) MINUTE)";
+
+// Cierre de caja de un día y turno. Recepción: solo el día actual y sin la lista de pagos.
+app.get('/api/admin/cierre-caja', requireRole('admin', 'recepcion'), async (req, res) => {
+  const hoy = getTodayYMD();
+  const esAdmin = req.user.rol === 'admin';
+  const fecha = req.query.fecha || hoy;
+  const turno = req.query.turno || 'todos';
+  if (!isValidDateStr(fecha)) return res.status(400).json({ ok: false, msg: 'Fecha inválida.' });
+  if (!['AM', 'PM', 'todos'].includes(turno)) return res.status(400).json({ ok: false, msg: 'Turno inválido.' });
+  if (!esAdmin && fecha !== hoy) {
+    return res.status(403).json({ ok: false, msg: 'Recepción solo puede ver el cierre del día actual.' });
+  }
+  try {
+    let sql = `
+      SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono, p.turno,
+             DATE_FORMAT(p.fecha_pago, '%Y-%m-%d') AS fecha_pago,
+             DATE_FORMAT(${SQL_CREATED_VE}, '%Y-%m-%d') AS fecha_registro,
+             DATE_FORMAT(${SQL_CREATED_VE}, '%H:%i') AS hora_registro,
+             COALESCE(u.nombre_completo, p.nombre_cliente, 'Cliente eliminado') AS nombre_cliente
+        FROM pagos p LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario
+       WHERE p.fecha_pago = ?`;
+    const params = [fecha];
+    if (turno !== 'todos') { sql += ' AND p.turno = ?'; params.push(turno); }
+    sql += ' ORDER BY p.created_at ASC, p.id_pago ASC';
+    const [rows] = await pool.execute(sql, params);
+
+    const nombresGrupo = turno === 'todos' ? ['AM', 'PM', 'Sin turno'] : [turno];
+    const grupos = nombresGrupo
+      .map(g => {
+        const pagosGrupo = rows.filter(p => (p.turno || 'Sin turno') === g);
+        const grupo = { turno: g, ...resumirPagos(pagosGrupo) };
+        if (esAdmin) grupo.pagos = pagosGrupo;
+        return grupo;
+      })
+      .filter(g => g.cantidad > 0 || g.turno !== 'Sin turno');
+
+    res.json({ ok: true, fecha, turno, hoy, ver_lista: esAdmin, resumen: resumirPagos(rows), grupos });
+  } catch (err) {
+    console.error('Error en GET /api/admin/cierre-caja:', err);
+    res.status(500).json({ ok: false, msg: 'Error al obtener el cierre de caja.' });
+  }
+});
+
+// Valida ?mes=YYYY-MM (no futuro) y devuelve el rango del mes, el del mes anterior y la fecha de corte
+function rangoMes(mesStr) {
+  if (typeof mesStr !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mesStr)) return null;
+  const [y, m] = mesStr.split('-').map(Number);
+  const pad = n => String(n).padStart(2, '0');
+  const ultimo = (yy, mm) => new Date(yy, mm, 0).getDate();
+  const ini = `${y}-${pad(m)}-01`;
+  const fin = `${y}-${pad(m)}-${pad(ultimo(y, m))}`;
+  const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1;
+  const hoy = getTodayYMD();
+  if (ini > hoy) return null;
+  return {
+    mes: mesStr, ini, fin, hoy,
+    corte: fin < hoy ? fin : hoy, // "al cierre del mes" (o a hoy si el mes está en curso)
+    mesAnterior: `${py}-${pad(pm)}`,
+    iniAnt: `${py}-${pad(pm)}-01`,
+    finAnt: `${py}-${pad(pm)}-${pad(ultimo(py, pm))}`
+  };
+}
+
+// Clientes = usuarios que no son admin (1) ni recepción (3)
+const SQL_ES_CLIENTE = '(u.id_rol IS NULL OR u.id_rol NOT IN (1, 3))';
+
+// Ingresos del mes comparados con el mes anterior
+app.get('/api/admin/reportes/ingresos', requireRole('admin'), async (req, res) => {
+  const r = rangoMes(req.query.mes);
+  if (!r) return res.status(400).json({ ok: false, msg: 'Mes inválido.' });
+  try {
+    const sql = 'SELECT monto, moneda, plan, es_abono FROM pagos WHERE fecha_pago BETWEEN ? AND ?';
+    const [actual] = await pool.execute(sql, [r.ini, r.fin]);
+    const [anterior] = await pool.execute(sql, [r.iniAnt, r.finAnt]);
+    res.json({
+      ok: true, mes: r.mes, mes_anterior: r.mesAnterior,
+      actual: resumirPagos(actual),
+      anterior: resumirPagos(anterior)
+    });
+  } catch (err) {
+    console.error('Error en GET /api/admin/reportes/ingresos:', err);
+    res.status(500).json({ ok: false, msg: 'Error al obtener el reporte de ingresos.' });
+  }
+});
+
+// Clientes: activos al cierre, nuevos, renovaciones y vencidos sin renovar
+app.get('/api/admin/reportes/clientes', requireRole('admin'), async (req, res) => {
+  const r = rangoMes(req.query.mes);
+  if (!r) return res.status(400).json({ ok: false, msg: 'Mes inválido.' });
+  try {
+    // Activos: un pago cuyo período cubre la fecha de corte, o la membresía vigente que la cubre
+    const [activos] = await pool.execute(
+      `SELECT COUNT(*) AS n FROM (
+         SELECT p.id_usuario FROM pagos p JOIN usuarios u ON u.id_usuario = p.id_usuario
+          WHERE ${SQL_ES_CLIENTE} AND p.plan <> 'Pago Deuda'
+            AND p.fecha_inicio_plan <= ? AND p.fecha_fin_plan >= ?
+         UNION
+         SELECT m.id_usuario FROM membresias m JOIN usuarios u ON u.id_usuario = m.id_usuario
+          WHERE ${SQL_ES_CLIENTE} AND m.fecha_inicio <= ? AND m.fecha_fin >= ?
+       ) t`,
+      [r.corte, r.corte, r.corte, r.corte]
+    );
+
+    // Nuevos: su primer pago (sin contar pagos de deuda) cae dentro del mes
+    const [nuevos] = await pool.execute(
+      `SELECT u.id_usuario, u.nombre_completo, DATE_FORMAT(MIN(p.fecha_pago), '%Y-%m-%d') AS primer_pago
+         FROM pagos p JOIN usuarios u ON u.id_usuario = p.id_usuario
+        WHERE ${SQL_ES_CLIENTE} AND p.plan <> 'Pago Deuda'
+        GROUP BY u.id_usuario, u.nombre_completo
+       HAVING MIN(p.fecha_pago) BETWEEN ? AND ?
+        ORDER BY primer_pago ASC`,
+      [r.ini, r.fin]
+    );
+
+    // Renovaciones: clientes con un pago en el mes que no es su primer pago
+    const [renov] = await pool.execute(
+      `SELECT COUNT(DISTINCT p.id_usuario) AS n
+         FROM pagos p JOIN usuarios u ON u.id_usuario = p.id_usuario
+        WHERE ${SQL_ES_CLIENTE} AND p.plan <> 'Pago Deuda' AND p.fecha_pago BETWEEN ? AND ?
+          AND EXISTS (SELECT 1 FROM pagos p2
+                       WHERE p2.id_usuario = p.id_usuario AND p2.plan <> 'Pago Deuda'
+                         AND (p2.fecha_pago < p.fecha_pago OR (p2.fecha_pago = p.fecha_pago AND p2.id_pago < p.id_pago)))`,
+      [r.ini, r.fin]
+    );
+
+    // Vencidos sin renovar: la membresía vigente terminó dentro del mes y antes de hoy
+    const [vencidos] = await pool.execute(
+      `SELECT u.id_usuario, u.nombre_completo, u.telefono, DATE_FORMAT(m.fecha_fin, '%Y-%m-%d') AS vence,
+              (SELECT p.plan FROM pagos p WHERE p.id_usuario = u.id_usuario AND p.plan <> 'Pago Deuda'
+                ORDER BY p.fecha_fin_plan DESC, p.id_pago DESC LIMIT 1) AS plan
+         FROM membresias m JOIN usuarios u ON u.id_usuario = m.id_usuario
+        WHERE ${SQL_ES_CLIENTE}
+          AND m.fecha_fin = (SELECT MAX(m2.fecha_fin) FROM membresias m2 WHERE m2.id_usuario = m.id_usuario)
+          AND m.fecha_fin BETWEEN ? AND ? AND m.fecha_fin < ?
+        GROUP BY u.id_usuario, u.nombre_completo, u.telefono, m.fecha_fin
+        ORDER BY m.fecha_fin ASC`,
+      [r.ini, r.fin, r.hoy]
+    );
+
+    res.json({
+      ok: true, mes: r.mes, corte: r.corte,
+      activos: Number(activos[0].n) || 0,
+      nuevos,
+      renovaciones: Number(renov[0].n) || 0,
+      vencidos_sin_renovar: vencidos
+    });
+  } catch (err) {
+    console.error('Error en GET /api/admin/reportes/clientes:', err);
+    res.status(500).json({ ok: false, msg: 'Error al obtener el reporte de clientes.' });
+  }
+});
+
+// Asistencia: total, promedio diario, horas pico y clientes que más vinieron
+app.get('/api/admin/reportes/asistencia', requireRole('admin'), async (req, res) => {
+  const r = rangoMes(req.query.mes);
+  if (!r) return res.status(400).json({ ok: false, msg: 'Mes inválido.' });
+  try {
+    const [tot] = await pool.execute(
+      'SELECT COUNT(*) AS total, COUNT(DISTINCT fecha) AS dias FROM asistencias WHERE fecha BETWEEN ? AND ?',
+      [r.ini, r.fin]
+    );
+    const [horas] = await pool.execute(
+      'SELECT HOUR(hora) AS hora, COUNT(*) AS n FROM asistencias WHERE fecha BETWEEN ? AND ? GROUP BY HOUR(hora) ORDER BY hora',
+      [r.ini, r.fin]
+    );
+    const [top] = await pool.execute(
+      `SELECT a.id_usuario, COALESCE(u.nombre_completo, MAX(a.nombre_cliente), 'Cliente eliminado') AS nombre_completo,
+              COUNT(*) AS visitas
+         FROM asistencias a LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
+        WHERE a.fecha BETWEEN ? AND ?
+        GROUP BY a.id_usuario, u.nombre_completo
+        ORDER BY visitas DESC, nombre_completo ASC
+        LIMIT 10`,
+      [r.ini, r.fin]
+    );
+    const total = Number(tot[0].total) || 0;
+    const dias = Number(tot[0].dias) || 0;
+    res.json({
+      ok: true, mes: r.mes,
+      total, dias_con_entradas: dias,
+      promedio_diario: dias ? +(total / dias).toFixed(1) : 0,
+      por_hora: horas.map(h => ({ hora: Number(h.hora), n: Number(h.n) })),
+      top_clientes: top.map(t => ({ id_usuario: t.id_usuario, nombre_completo: t.nombre_completo, visitas: Number(t.visitas) }))
+    });
+  } catch (err) {
+    console.error('Error en GET /api/admin/reportes/asistencia:', err);
+    res.status(500).json({ ok: false, msg: 'Error al obtener el reporte de asistencia.' });
+  }
+});
+
 // ---------- RUTAS DE PLANTILLAS DE RUTINAS ----------
 
 // Obtener todas las plantillas de rutinas

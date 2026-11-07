@@ -917,6 +917,14 @@ function applyReceptionistRestrictions() {
   const cardMaterial = $("#cardMaterialContenido");
   if (cardMaterial) cardMaterial.style.display = 'none';
 
+  // Reporte mensual: solo admin. Cierre de caja: solo el día actual (también lo valida el servidor)
+  const cardReporte = $("#cardReporteMensual");
+  if (cardReporte) cardReporte.style.display = 'none';
+  const reporteSec = $("#adminReporteSection");
+  if (reporteSec) reporteSec.remove();
+  const cierreBtn = document.querySelector('#cardCierreCaja button');
+  if (cierreBtn) cierreBtn.textContent = 'Ver Cierre de Hoy';
+
   // En la tarjeta de Control de Pagos, ocultar botón de Historial (solo dejar Registrar Pago)
   const cardPagos = $("#cardControlPagos");
   if (cardPagos) {
@@ -3188,8 +3196,7 @@ function toggleCheckinSection(forceOpen) {
   if (!sec) return;
   const open = forceOpen === true || sec.classList.contains("hidden");
   if (!open) { sec.classList.add("hidden"); return; }
-  const exp = $("#adminExpirySection");
-  if (exp) exp.classList.add("hidden");
+  ocultarSeccionesPanel("#adminCheckinSection");
   sec.classList.remove("hidden");
   const dateInput = $("#checkinDateFilter");
   if (dateInput && !dateInput.value) dateInput.value = getLocalTodayStr();
@@ -3386,8 +3393,7 @@ function toggleExpirySection() {
   const sec = $("#adminExpirySection");
   if (!sec) return;
   if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
-  const chk = $("#adminCheckinSection");
-  if (chk) chk.classList.add("hidden");
+  ocultarSeccionesPanel("#adminExpirySection");
   sec.classList.remove("hidden");
   renderExpiry();
   sec.scrollIntoView({ behavior: "smooth" });
@@ -3463,4 +3469,359 @@ function refrescarPanelesAsistencia() {
   actualizarContadorVencimientos();
   const exp = $("#adminExpirySection");
   if (exp && !exp.classList.contains("hidden")) renderExpiry();
+}
+
+/* ---------- Cierre de Caja y Reporte Mensual ---------- */
+const MONEDAS_CAJA = ["USD", "COP", "BS", "Bancolombia", "USDT", "CLP"];
+let cierreData = null;
+let reporteVencidos = [];
+
+function esSoloRecepcion() {
+  return localStorage.getItem("esRecepcionista") === "true" && localStorage.getItem("esAdmin") !== "true";
+}
+
+// Oculta las demás secciones de este bloque al abrir una
+function ocultarSeccionesPanel(excepto) {
+  ["#adminCheckinSection", "#adminExpirySection", "#adminCierreSection", "#adminReporteSection"].forEach(id => {
+    if (id === excepto) return;
+    const s = $(id);
+    if (s) s.classList.add("hidden");
+  });
+}
+
+function fmtMonto(valor) {
+  const n = parseFloat(valor) || 0;
+  return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Monedas con monto distinto de cero (en el orden habitual)
+function monedasConMonto(totales) {
+  const keys = Object.keys(totales || {});
+  const orden = MONEDAS_CAJA.concat(keys.filter(k => !MONEDAS_CAJA.includes(k)));
+  return orden.filter(m => parseFloat(totales[m]) > 0);
+}
+
+function textoTotales(totales, sep) {
+  const ms = monedasConMonto(totales);
+  return ms.length ? ms.map(m => `${m} ${fmtMonto(totales[m])}`).join(sep || " · ") : "—";
+}
+
+function nombreTurno(t) {
+  return t === "AM" ? "Turno AM" : t === "PM" ? "Turno PM" : t === "todos" ? "Todo el día" : "Sin turno";
+}
+
+/* ----- Cierre de Caja ----- */
+function toggleCierreSection() {
+  const sec = $("#adminCierreSection");
+  if (!sec) return;
+  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
+  ocultarSeccionesPanel("#adminCierreSection");
+  sec.classList.remove("hidden");
+  const f = $("#cierreFecha");
+  if (f) {
+    if (!f.value) f.value = getLocalTodayStr();
+    if (esSoloRecepcion()) {
+      f.value = getLocalTodayStr();
+      f.disabled = true;
+      f.title = "Recepción solo puede ver el cierre del día actual";
+    }
+  }
+  loadCierreCaja();
+  sec.scrollIntoView({ behavior: "smooth" });
+}
+
+function loadCierreCaja() {
+  const box = $("#cierreContent");
+  if (!box) return;
+  const fecha = ($("#cierreFecha") && $("#cierreFecha").value) || getLocalTodayStr();
+  const turno = ($("#cierreTurno") && $("#cierreTurno").value) || "todos";
+  box.innerHTML = `<p class="report-empty">Cargando cierre...</p>`;
+  cierreData = null;
+  fetch(`${API_BASE}/admin/cierre-caja?fecha=${encodeURIComponent(fecha)}&turno=${encodeURIComponent(turno)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { box.innerHTML = `<p class="report-error">${esc(data.msg || "No se pudo cargar el cierre.")}</p>`; return; }
+      cierreData = data;
+      renderCierreCaja();
+    })
+    .catch(err => {
+      console.error("Error cargando cierre de caja:", err);
+      box.innerHTML = `<p class="report-error">No se pudo cargar el cierre. Revisa la conexión.</p>`;
+    });
+}
+
+function tilesMonedasHtml(totales) {
+  return `<div class="stat-grid">${MONEDAS_CAJA.map(m => {
+    const v = parseFloat(totales[m]) || 0;
+    return `<div class="stat-tile${v > 0 ? "" : " stat-tile-empty"}">
+      <span class="stat-label">${esc(m)}</span>
+      <span class="stat-value">${esc(fmtMonto(v))}</span>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function tablaPlanesHtml(porPlan) {
+  if (!porPlan || !porPlan.length) return `<p class="report-empty">Sin pagos.</p>`;
+  return `<div class="report-table-wrap"><table class="report-table">
+    <thead><tr><th>Plan</th><th>Pagos</th><th>Total</th></tr></thead>
+    <tbody>${porPlan.map(p => `<tr>
+      <td>${esc(p.plan)}</td><td>${esc(p.cantidad)}</td><td>${esc(textoTotales(p.totales))}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+function filaPagoCierreHtml(p) {
+  const mismaFecha = p.fecha_registro === p.fecha_pago;
+  const cuando = p.hora_registro
+    ? (mismaFecha ? p.hora_registro : `${formatFechaCorta(p.fecha_registro)} ${p.hora_registro}`)
+    : "—";
+  return `<div class="cierre-pago">
+    <span class="cierre-pago-hora">${esc(cuando)}</span>
+    <span class="cierre-pago-cliente"><strong>${esc(p.nombre_cliente)}</strong>
+      <small>${esc(p.plan)}${Number(p.es_abono) === 1 ? ` <span class="badge badge-warning" style="font-size: 0.7rem;">abono</span>` : ""}</small></span>
+    <span class="cierre-pago-monto">${esc(fmtMonto(p.monto))} ${esc(p.moneda)}</span>
+  </div>`;
+}
+
+function renderCierreCaja() {
+  const box = $("#cierreContent");
+  const d = cierreData;
+  if (!box || !d) return;
+  const r = d.resumen;
+  const sub = $("#cierreSubtitulo");
+  if (sub) sub.textContent = `${formatFechaCorta(d.fecha)} · ${nombreTurno(d.turno)} · los montos de cada moneda se suman por separado.`;
+
+  let html = `
+    <h4 class="report-h4">Total cobrado <span class="badge badge-active">${esc(r.cantidad)} ${r.cantidad === 1 ? "pago" : "pagos"}</span></h4>
+    ${tilesMonedasHtml(r.totales)}
+    <div class="report-two-col">
+      <div class="report-box">
+        <h5>Pagos completos <span class="badge badge-active">${esc(r.completos.cantidad)}</span></h5>
+        <p>${esc(textoTotales(r.completos.totales))}</p>
+      </div>
+      <div class="report-box">
+        <h5>Abonos <span class="badge badge-warning">${esc(r.abonos.cantidad)}</span></h5>
+        <p>${esc(textoTotales(r.abonos.totales))}</p>
+      </div>
+    </div>
+    <h4 class="report-h4">Por plan</h4>
+    ${tablaPlanesHtml(r.por_plan)}`;
+
+  if (d.turno === "todos") {
+    html += `<h4 class="report-h4">Por turno</h4><div class="report-two-col">${d.grupos.map(g => `
+      <div class="report-box">
+        <h5>${esc(nombreTurno(g.turno))} <span class="badge ${g.turno === "Sin turno" ? "badge-warning" : "badge-active"}">${esc(g.cantidad)}</span></h5>
+        <p>${esc(textoTotales(g.totales))}</p>
+        ${g.abonos.cantidad ? `<p class="report-muted">Abonos: ${esc(textoTotales(g.abonos.totales))}</p>` : ""}
+      </div>`).join("")}</div>`;
+  }
+
+  if (d.ver_lista) {
+    html += `<h4 class="report-h4">Pagos del ${d.turno === "todos" ? "día" : "turno"}</h4>`;
+    const conPagos = d.grupos.filter(g => g.pagos && g.pagos.length);
+    if (!conPagos.length) {
+      html += `<p class="report-empty">No hay pagos registrados.</p>`;
+    } else {
+      html += conPagos.map(g => `
+        ${d.turno === "todos" ? `<h5 class="report-h5">${esc(nombreTurno(g.turno))}</h5>` : ""}
+        <div class="cierre-lista">${g.pagos.map(filaPagoCierreHtml).join("")}</div>`).join("");
+    }
+  }
+  box.innerHTML = html;
+}
+
+function copiarResumenCierre() {
+  const d = cierreData;
+  if (!d) { alert("Primero carga el cierre de caja."); return; }
+  const r = d.resumen;
+  const lineasMonedas = (tot) => {
+    const ms = monedasConMonto(tot);
+    return ms.length ? ms.map(m => `• ${m}: ${fmtMonto(tot[m])}`).join("\n") : "• Sin ingresos";
+  };
+  let t = `*ATLAS GYM – CIERRE DE CAJA*\n`;
+  t += `Fecha: ${formatFechaCorta(d.fecha)} · ${nombreTurno(d.turno)}\n`;
+  const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+  t += `Pagos: ${r.cantidad} (${plural(r.completos.cantidad, "completo", "completos")}, ${plural(r.abonos.cantidad, "abono", "abonos")})\n\n`;
+  t += `*Total cobrado*\n${lineasMonedas(r.totales)}\n`;
+  if (r.abonos.cantidad) t += `\n*De eso, abonos*\n${lineasMonedas(r.abonos.totales)}\n`;
+  if (r.por_plan.length) {
+    t += `\n*Por plan*\n` + r.por_plan.map(p => `• ${p.plan}: ${p.cantidad} — ${textoTotales(p.totales, ", ")}`).join("\n") + "\n";
+  }
+  if (d.turno === "todos") {
+    t += `\n*Por turno*\n` + d.grupos.map(g => `• ${nombreTurno(g.turno)}: ${g.cantidad} — ${textoTotales(g.totales, ", ")}`).join("\n") + "\n";
+  }
+  t += `\n_Los montos de cada moneda se suman por separado._`;
+
+  const ok = () => alert("Resumen copiado. Ya puedes pegarlo en WhatsApp.");
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(t).then(ok).catch(() => copiarTextoFallback(t, ok));
+  } else {
+    copiarTextoFallback(t, ok);
+  }
+}
+
+// Copiado alternativo para navegadores sin acceso al portapapeles moderno
+function copiarTextoFallback(texto, ok) {
+  const ta = document.createElement("textarea");
+  ta.value = texto;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  let copiado = false;
+  try { copiado = document.execCommand("copy"); } catch (e) { copiado = false; }
+  document.body.removeChild(ta);
+  if (copiado) ok();
+  else window.prompt("Copia el resumen manualmente:", texto);
+}
+
+/* ----- Reporte Mensual (solo admin) ----- */
+const NOMBRES_MES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+function nombreMes(mesStr) {
+  const [y, m] = String(mesStr || "").split("-").map(Number);
+  if (!y || !m) return "";
+  return `${NOMBRES_MES[m - 1]} ${y}`;
+}
+
+function llenarSelectorMeses() {
+  const sel = $("#reporteMes");
+  if (!sel || sel.options.length) return;
+  const [y, m] = getLocalTodayStr().split("-").map(Number);
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(y, m - 1 - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const opt = document.createElement("option");
+    opt.value = val;
+    const txt = nombreMes(val);
+    opt.textContent = (i === 0 ? `${txt} (en curso)` : txt).replace(/^./, c => c.toUpperCase());
+    sel.appendChild(opt);
+  }
+}
+
+function toggleReporteSection() {
+  const sec = $("#adminReporteSection");
+  if (!sec) return;
+  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
+  ocultarSeccionesPanel("#adminReporteSection");
+  sec.classList.remove("hidden");
+  llenarSelectorMeses();
+  loadReporteMensual();
+  sec.scrollIntoView({ behavior: "smooth" });
+}
+
+function loadReporteMensual() {
+  const box = $("#reporteContent");
+  const sel = $("#reporteMes");
+  if (!box || !sel) return;
+  const mes = sel.value;
+  box.innerHTML = `<p class="report-empty">Cargando reporte...</p>`;
+  const q = `?mes=${encodeURIComponent(mes)}`;
+  const get = (ruta) => fetch(`${API_BASE}/admin/reportes/${ruta}${q}`).then(r => r.json());
+  Promise.all([get("ingresos"), get("clientes"), get("asistencia")])
+    .then(([ing, cli, asi]) => {
+      if (sel.value !== mes) return; // el usuario cambió de mes mientras cargaba
+      const fallo = [ing, cli, asi].find(x => !x.ok);
+      if (fallo) { box.innerHTML = `<p class="report-error">${esc(fallo.msg || "No se pudo cargar el reporte.")}</p>`; return; }
+      reporteVencidos = cli.vencidos_sin_renovar || [];
+      box.innerHTML = reporteIngresosHtml(ing) + reporteClientesHtml(cli) + reporteAsistenciaHtml(asi);
+    })
+    .catch(err => {
+      console.error("Error cargando reporte mensual:", err);
+      box.innerHTML = `<p class="report-error">No se pudo cargar el reporte. Revisa la conexión.</p>`;
+    });
+}
+
+function variacionHtml(actual, anterior) {
+  const a = parseFloat(actual) || 0, b = parseFloat(anterior) || 0;
+  if (!b) return a ? `<span class="var-up">nuevo</span>` : `<span class="report-muted">—</span>`;
+  const pct = Math.round(((a - b) / b) * 100);
+  const cls = pct > 0 ? "var-up" : pct < 0 ? "var-down" : "report-muted";
+  return `<span class="${cls}">${pct > 0 ? "+" : ""}${esc(pct)}%</span>`;
+}
+
+function reporteIngresosHtml(d) {
+  const act = d.actual, ant = d.anterior;
+  const monedas = MONEDAS_CAJA.filter(m => parseFloat(act.totales[m]) > 0 || parseFloat(ant.totales[m]) > 0);
+  const filas = monedas.length
+    ? monedas.map(m => `<tr><td>${esc(m)}</td><td>${esc(fmtMonto(act.totales[m]))}</td><td>${esc(fmtMonto(ant.totales[m]))}</td><td>${variacionHtml(act.totales[m], ant.totales[m])}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="report-muted">Sin ingresos en ninguno de los dos meses.</td></tr>`;
+  return `
+    <h4 class="report-h4 report-section-title">Ingresos</h4>
+    <div class="report-table-wrap"><table class="report-table">
+      <thead><tr><th>Moneda</th><th>${esc(nombreMes(d.mes))}</th><th>${esc(nombreMes(d.mes_anterior))}</th><th>Var.</th></tr></thead>
+      <tbody>${filas}
+        <tr class="report-row-total"><td>Pagos</td><td>${esc(act.cantidad)}</td><td>${esc(ant.cantidad)}</td><td>${variacionHtml(act.cantidad, ant.cantidad)}</td></tr>
+      </tbody></table></div>
+    <p class="report-muted" style="margin-top: 0.4rem;">Abonos del mes: ${esc(act.abonos.cantidad)} (${esc(textoTotales(act.abonos.totales))})</p>
+    <h5 class="report-h5">Por plan</h5>
+    ${tablaPlanesHtml(act.por_plan)}`;
+}
+
+function statTile(label, valor, extraClass) {
+  return `<div class="stat-tile ${extraClass || ""}"><span class="stat-label">${esc(label)}</span><span class="stat-value">${esc(valor)}</span></div>`;
+}
+
+function reporteClientesHtml(d) {
+  const venc = d.vencidos_sin_renovar || [];
+  const nuevos = d.nuevos || [];
+  return `
+    <h4 class="report-h4 report-section-title">Clientes</h4>
+    <div class="stat-grid">
+      ${statTile(`Activos al ${formatFechaCorta(d.corte)}`, d.activos)}
+      ${statTile("Nuevos", nuevos.length)}
+      ${statTile("Renovaciones", d.renovaciones)}
+      ${statTile("Vencidos sin renovar", venc.length, venc.length ? "stat-tile-alert" : "")}
+    </div>
+    ${nuevos.length ? `<p class="report-muted" style="margin-top: 0.6rem;"><strong>Nuevos:</strong> ${nuevos.map(n => esc(n.nombre_completo)).join(", ")}</p>` : ""}
+    <h5 class="report-h5">Vencieron en el mes y no han renovado</h5>
+    ${venc.length ? `<div class="cierre-lista">${venc.map(v => `
+      <div class="cierre-pago">
+        <span class="cierre-pago-cliente"><strong>${esc(v.nombre_completo)}</strong>
+          <small>${esc(v.plan || "Sin plan")} · venció ${esc(formatFechaCorta(v.vence))}${v.telefono ? "" : " · sin teléfono"}</small></span>
+        <button type="button" class="btn-secondary" onclick="whatsappVencidoReporte(${esc(Number(v.id_usuario))})"
+          style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
+      </div>`).join("")}</div>` : `<p class="report-empty">Nadie quedó vencido sin renovar este mes.</p>`}`;
+}
+
+function whatsappVencidoReporte(idUsuario) {
+  const v = reporteVencidos.find(x => String(x.id_usuario) === String(idUsuario));
+  if (!v) return;
+  sendWhatsAppReminder(v.nombre_completo, v.telefono || "", formatFechaCorta(v.vence), "vencida");
+}
+
+function reporteAsistenciaHtml(d) {
+  let grafico = `<p class="report-empty">No hay entradas registradas en este mes.</p>`;
+  if (d.por_hora && d.por_hora.length) {
+    const mapa = {};
+    d.por_hora.forEach(h => { mapa[h.hora] = h.n; });
+    const horas = d.por_hora.map(h => h.hora);
+    const desde = Math.min(...horas), hasta = Math.max(...horas);
+    const max = Math.max(...d.por_hora.map(h => h.n));
+    const barras = [];
+    for (let h = desde; h <= hasta; h++) {
+      const n = mapa[h] || 0;
+      const alto = max ? Math.max(n ? 4 : 0, Math.round((n / max) * 100)) : 0;
+      barras.push(`<div class="bar-col" title="${esc(`${h}:00 – ${n} entradas`)}">
+        <span class="bar-num">${n ? esc(n) : ""}</span>
+        <div class="bar-track"><div class="bar${n === max ? " bar-peak" : ""}" style="height: ${alto}%;"></div></div>
+        <span class="bar-label">${esc(h)}</span>
+      </div>`);
+    }
+    grafico = `<div class="bar-chart">${barras.join("")}</div>
+      <p class="report-muted" style="text-align: center; margin-top: 0.3rem;">Hora del día (entradas por hora)</p>`;
+  }
+  const top = d.top_clientes || [];
+  return `
+    <h4 class="report-h4 report-section-title">Asistencia</h4>
+    <div class="stat-grid">
+      ${statTile("Entradas", d.total)}
+      ${statTile("Promedio diario", d.promedio_diario)}
+      ${statTile("Días con entradas", d.dias_con_entradas)}
+    </div>
+    <h5 class="report-h5">Horas pico</h5>
+    ${grafico}
+    <h5 class="report-h5">Clientes que más vinieron</h5>
+    ${top.length ? `<ol class="report-top">${top.map(t => `<li><span>${esc(t.nombre_completo)}</span><strong>${esc(t.visitas)}</strong></li>`).join("")}</ol>`
+      : `<p class="report-empty">Sin datos.</p>`}`;
 }
