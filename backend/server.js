@@ -207,7 +207,43 @@ async function initDatabaseSchema() {
   }
 
   try {
-    await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0 AFTER membresia_estado');
+    await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_estado VARCHAR(20) DEFAULT "activa"');
+    console.log('✅ Columna "membresia_estado" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna membresia_estado:', err.message);
+    }
+  }
+
+  try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_vence DATE NULL');
+    console.log('✅ Columna "membresia_vence" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna membresia_vence:', err.message);
+    }
+  }
+
+  try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN rol VARCHAR(30) NULL');
+    console.log('✅ Columna "rol" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna rol:', err.message);
+    }
+  }
+
+  try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN password_hash VARCHAR(255) NULL');
+    console.log('✅ Columna "password_hash" verificada/agregada en usuarios');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') {
+      console.error('⚠️ Error al verificar columna password_hash:', err.message);
+    }
+  }
+
+  try {
+    await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0');
     console.log('✅ Columna "tiene_deuda" verificada/agregada en usuarios');
   } catch (err) {
     if (err.code !== 'ER_DUP_FIELDNAME') {
@@ -688,8 +724,11 @@ app.post('/api/sesiones', requireAuth, async (req, res) => {
 app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, res) => {
   try {
     try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_estado VARCHAR(20) DEFAULT "activa"'); } catch (e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_vence DATE NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN rol VARCHAR(30) NULL'); } catch (e) {}
     const [users] = await pool.query(
-      "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence, tiene_deuda FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
+      "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence, tiene_deuda, id_rol FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
 
     const usuariosCompletos = await Promise.all(
