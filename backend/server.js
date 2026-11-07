@@ -182,7 +182,7 @@ async function initDatabaseSchema() {
     `);
     try {
       await pool.query('ALTER TABLE recursos_apoyo MODIFY COLUMN url_recurso LONGTEXT NOT NULL');
-    } catch (e) {}
+    } catch (e) { }
     console.log('✅ Tabla "recursos_apoyo" verificada');
   } catch (err) {
     console.error('⚠️ Error verificando recursos_apoyo:', err.message);
@@ -269,15 +269,15 @@ async function initDatabaseSchema() {
         CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
-    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN id_usuario BIGINT UNSIGNED NULL'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos DROP FOREIGN KEY fk_pago_usuario'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos ADD CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN nombre_cliente VARCHAR(150) NULL AFTER id_usuario'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
-    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN id_usuario BIGINT UNSIGNED NULL'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos DROP FOREIGN KEY fk_pago_usuario'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos ADD CONSTRAINT fk_pago_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE SET NULL'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN nombre_cliente VARCHAR(150) NULL AFTER id_usuario'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_inicio_plan DATE NULL AFTER fecha_pago'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN fecha_fin_plan DATE NULL AFTER fecha_inicio_plan'); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) { }
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) { }
     console.log('✅ Tabla "pagos" verificada en MySQL (columnas es_abono, turno y moneda VARCHAR(20) aseguradas)');
   } catch (err) {
     console.error('⚠️ Error al verificar tabla pagos:', err.message);
@@ -290,7 +290,7 @@ async function initDatabaseSchema() {
     email: ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD, idRol: 1,
     nombreUsuario: 'admin_atlas', nombre: 'Administrador ATLAS', rolTexto: 'administrador'
   });
-  try { await pool.query('INSERT IGNORE INTO roles (id_rol, nombre_rol) VALUES (3, "recepcionista")'); } catch (e) {}
+  try { await pool.query('INSERT IGNORE INTO roles (id_rol, nombre_rol) VALUES (3, "recepcionista")'); } catch (e) { }
   await seedStaffAccount({
     email: RECEPCION_EMAIL, password: process.env.RECEPCION_PASSWORD, idRol: 3,
     nombreUsuario: 'recepcion_atlas', nombre: 'Recepción ATLAS', rolTexto: null
@@ -723,10 +723,10 @@ app.post('/api/sesiones', requireAuth, async (req, res) => {
 // Obtener todos los usuarios clientes con sus membresías, rutinas e historial de entrenamiento
 app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, res) => {
   try {
-    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
-    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_estado VARCHAR(20) DEFAULT "activa"'); } catch (e) {}
-    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_vence DATE NULL'); } catch (e) {}
-    try { await pool.query('ALTER TABLE usuarios ADD COLUMN rol VARCHAR(30) NULL'); } catch (e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) { }
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_estado VARCHAR(20) DEFAULT "activa"'); } catch (e) { }
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN membresia_vence DATE NULL'); } catch (e) { }
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN rol VARCHAR(30) NULL'); } catch (e) { }
     const [users] = await pool.query(
       "SELECT id_usuario, nombre_completo, correo, cedula, telefono, membresia_estado, membresia_vence, tiene_deuda, id_rol FROM usuarios WHERE (id_rol != 1 OR id_rol IS NULL) AND (rol != 'administrador' OR rol IS NULL) ORDER BY id_usuario DESC"
     );
@@ -755,7 +755,7 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
               vence: formatYYYYMMDD(memRows[0].vence)
             };
           }
-        } catch (e) {}
+        } catch (e) { }
 
         // Último Pago registrado para ordenar por fecha de pago
         let ultimo_pago = null;
@@ -767,7 +767,7 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
           if (payRows.length && payRows[0].ultimo_pago) {
             ultimo_pago = payRows[0].ultimo_pago;
           }
-        } catch (pErr) {}
+        } catch (pErr) { }
 
         // Rutinas del usuario
         let rutinasConEjercicios = [];
@@ -790,7 +790,7 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
               }
             })
           );
-        } catch (rErr) {}
+        } catch (rErr) { }
 
         // Historial de sesiones
         let sesiones = [];
@@ -803,7 +803,7 @@ app.get('/api/admin/usuarios', requireRole('admin', 'recepcion'), async (req, re
             ...s,
             detalle: typeof s.detalle_json === 'string' ? JSON.parse(s.detalle_json) : s.detalle_json
           }));
-        } catch (sErr) {}
+        } catch (sErr) { }
 
         return {
           ...u,
@@ -931,10 +931,10 @@ app.post('/api/admin/pagos', requireRole('admin', 'recepcion'), async (req, res)
 
   try {
     // Asegurar que las columnas existan defensivamente en la base de datos de Aiven
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
-    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
-    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) {}
-    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) { }
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) { }
+    try { await pool.query('ALTER TABLE pagos MODIFY COLUMN moneda VARCHAR(20) NOT NULL'); } catch (e) { }
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN tiene_deuda TINYINT(1) DEFAULT 0'); } catch (e) { }
 
     const turnoVal = (turno === 'AM' || turno === 'PM') ? turno : null;
 
@@ -1012,8 +1012,8 @@ app.post('/api/admin/pagos', requireRole('admin', 'recepcion'), async (req, res)
 // Obtener historial de pagos filtrado por fecha o por búsqueda de cliente (Preserva historial aun si se elimina el cliente)
 app.get('/api/admin/pagos', requireRole('admin'), async (req, res) => {
   try {
-    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) {}
-    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) {}
+    try { await pool.query('ALTER TABLE pagos ADD COLUMN es_abono TINYINT(1) DEFAULT 0'); } catch (e) { }
+    try { await pool.query("ALTER TABLE pagos ADD COLUMN turno ENUM('AM','PM') DEFAULT NULL AFTER es_abono"); } catch (e) { }
     const { fecha, q, usuario_id } = req.query;
     let querySql = `
       SELECT p.id_pago, p.monto, p.moneda, p.plan, p.es_abono, p.turno,
