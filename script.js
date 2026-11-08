@@ -920,6 +920,8 @@ function finishWorkoutSession() {
 /* ---------- PANEL DE ADMINISTRACIÓN ---------- */
 let adminUsersData = [];
 let editingAdminUserId = null;
+let panelIniciado = false;
+let vistaActual = null;
 
 function initAdminDashboard() {
   const token = localStorage.getItem("token");
@@ -931,9 +933,14 @@ function initAdminDashboard() {
     return;
   }
 
-  // Aplicar restricciones de UI para recepcionistas
-  if (esRecepcionista === "true" && esAdmin !== "true") {
-    applyReceptionistRestrictions();
+  const esRecep = esRecepcionista === "true" && esAdmin !== "true";
+
+  // Primera carga: datos del usuario, restricciones de recepción y navegación por vistas
+  if (!panelIniciado) {
+    panelIniciado = true;
+    prepararUsuarioPanel(esRecep);
+    if (esRecep) applyReceptionistRestrictions();
+    iniciarNavegacionPanel();
   }
 
   fetch(`${API_BASE}/admin/usuarios`)
@@ -943,7 +950,8 @@ function initAdminDashboard() {
         adminUsersData = res.usuarios || [];
         filterAdminUsers();
         refrescarPanelesAsistencia();
-        if (esRecepcionista === "true" && esAdmin !== "true") toggleCheckinSection(true);
+        refrescarFichaAbierta();
+        if (vistaActual === "inicio") cargarInicio();
       } else {
         showToast(res.msg || "Error al cargar datos de administración", "error");
       }
@@ -951,67 +959,28 @@ function initAdminDashboard() {
     .catch(err => console.error("Error al cargar panel admin:", err));
 }
 
+// Nombre, rol e inicial del usuario en el menú lateral
+function prepararUsuarioPanel(esRecep) {
+  const nombre = localStorage.getItem("nombre") || (esRecep ? "Recepción ATLAS" : "Administrador");
+  const n = $("#adminGreeting");
+  if (n) n.textContent = nombre;
+  const rol = $("#sidebarRole");
+  if (rol) rol.textContent = esRecep ? "Recepción" : "Administrador";
+  const av = $("#sidebarAvatar");
+  if (av) av.textContent = (nombre.trim().charAt(0) || "A").toUpperCase();
+}
+
+// Recepción no ve en la interfaz lo que es solo del admin (el servidor lo exige igual).
 function applyReceptionistRestrictions() {
-  // Cambiar badge del navbar
-  const badge = document.querySelector('.header-logo-group .badge');
-  if (badge) {
-    badge.textContent = 'Modo Recepción';
-    badge.style.background = 'var(--accent-bg)';
-    badge.style.color = 'var(--accent-soft)';
-    badge.style.borderColor = 'var(--border-strong)';
-  }
-
-  // Cambiar saludo
-  const greeting = $("#adminGreeting");
-  if (greeting) greeting.textContent = localStorage.getItem("nombre") || 'Recepción ATLAS';
-
-  // Ocultar tarjetas restringidas: Directorio Clientes y Material
-  const cardClientes = $("#cardDirectorioClientes");
-  if (cardClientes) cardClientes.style.display = 'none';
-
-  const cardMaterial = $("#cardMaterialContenido");
-  if (cardMaterial) cardMaterial.style.display = 'none';
-
-  // Cierre de caja y reporte mensual: solo admin (el servidor también lo exige)
-  ["#cardCierreCaja", "#cardReporteMensual"].forEach(id => {
-    const card = $(id);
-    if (card) card.style.display = 'none';
-  });
-  ["#adminCierreSection", "#adminReporteSection"].forEach(id => {
-    const sec = $(id);
-    if (sec) sec.remove();
-  });
-
-  // En la tarjeta de Control de Pagos, ocultar botón de Historial (solo dejar Registrar Pago)
-  const cardPagos = $("#cardControlPagos");
-  if (cardPagos) {
-    const historialBtn = cardPagos.querySelector('.btn-secondary');
-    if (historialBtn && historialBtn.textContent.trim().includes('Historial')) {
-      historialBtn.style.display = 'none';
-    }
-    // Hacer el botón de registrar pago full-width
-    const pagoBtn = cardPagos.querySelector('.btn-primary');
-    if (pagoBtn) pagoBtn.style.flex = '1 1 100%';
-  }
-
-  // Actualizar subtítulo
-  const subtitle = document.querySelector('.main-content > div:first-child > p');
-  if (subtitle) subtitle.textContent = 'Registro rápido de pagos, clientes y gestión de plantillas de entrenamiento.';
+  // Menú, indicador "Cobrado hoy" y "Últimos pagos": se quitan
+  document.querySelectorAll("a[data-solo-admin], .kpi[data-solo-admin], #inicioPagosCard").forEach(el => el.remove());
+  const grid = document.querySelector(".kpi-grid");
+  if (grid) grid.classList.add("kpi-3");
+  // Las vistas solo de admin quedan ocultas y el navegador no las abre (ver mostrarVista)
 }
 
 function toggleAdminClientsSection() {
-  const clientsSection = $("#adminClientsSection");
-  const paymentsSection = $("#adminPaymentsSection");
-  if (!clientsSection) return;
-
-  if (clientsSection.classList.contains("hidden")) {
-    if (paymentsSection) paymentsSection.classList.add("hidden");
-    clientsSection.classList.remove("hidden");
-    filterAdminUsers();
-    clientsSection.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    clientsSection.classList.add("hidden");
-  }
+  irAVista("clientes");
 }
 
 function getClientStatusInfo(user) {
@@ -1075,96 +1044,40 @@ function toggleClientCardDetails(headerElem) {
 }
 
 function renderAdminUsersGrid(users) {
-  const grid = $("#adminUsersGrid");
-  if (!grid) return;
-  grid.innerHTML = "";
+  const tbody = $("#adminUsersGrid");
+  if (!tbody) return;
+
+  const conteo = $("#clientesConteo");
+  if (conteo) {
+    const total = adminUsersData.length;
+    conteo.textContent = users.length === total
+      ? `${total} ${total === 1 ? "cliente" : "clientes"}`
+      : `${users.length} de ${total} clientes`;
+  }
 
   if (users.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
-        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay clientes registrados aún.</p>
-        <button class="btn-primary" onclick="openCreateUserModal()" style="width: auto; margin: 0 auto;">
-          + Registrar Primer Cliente
-        </button>
-      </div>
-    `;
+    tbody.innerHTML = adminUsersData.length === 0
+      ? `<tr class="fila-vacia"><td colspan="6" class="report-empty">No hay clientes registrados aún.
+          <button type="button" class="btn-secondary" onclick="openCreateUserModal()" style="width: auto; margin-left: 0.6rem;">+ Registrar cliente</button></td></tr>`
+      : `<tr class="fila-vacia"><td colspan="6" class="report-empty">Ningún cliente coincide con los filtros.</td></tr>`;
     return;
   }
 
-  users.forEach(u => {
+  // Los textos van con esc(); en los atributos solo va el id numérico
+  tbody.innerHTML = users.map(u => {
     const status = getClientStatusInfo(u);
-    const card = document.createElement("div");
-    card.className = "routine-card";
-    const hasDebt = u.tiene_deuda == 1;
-    const borderLeftColor = hasDebt ? "var(--danger)" : status.borderColor;
-    card.style.cssText = `padding: 1.25rem; transition: all 0.2s ease; background: var(--surface-2); border-left: 4px solid ${borderLeftColor};`;
-
-    const cantRutinas = u.rutinas ? u.rutinas.length : 0;
-    const debtBadgeHtml = hasDebt
-      ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-weight: 700;">⚠️ DEUDA</span>`
-      : "";
-    const debtSummaryNotice = hasDebt
-      ? `<div style="font-size: 0.8rem; color: var(--danger); font-weight: 600; margin-top: 0.3rem;">⚠️ Abono Pendiente / Debe Dinero</div>`
-      : "";
-
-    card.innerHTML = `
-      <!-- Encabezado de la Tarjeta (Resumen siempre visible, click para expandir) -->
-      <div class="client-card-header" onclick="toggleClientCardDetails(this)" style="cursor: pointer; user-select: none;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem;">
-          <h3 class="routine-title" style="margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700;">${esc(u.nombre_completo)}</h3>
-          <div style="display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end;">
-            ${debtBadgeHtml}
-            <span class="badge ${esc(status.badgeClass)}">${esc(status.badgeText)}</span>
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.83rem; color: var(--text-muted);">
-          <span>⏳ Vence: <strong style="color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong> <span style="opacity: 0.85;">· ${esc(u.ultimo_plan || "Sin plan")}</span></span>
-          <span class="accordion-chevron" style="color: var(--link); font-weight: 600; font-size: 0.78rem; background: var(--accent-bg); padding: 0.2rem 0.55rem; border-radius: 6px; transition: all 0.2s ease;">▼ Ver más</span>
-        </div>
-        ${debtSummaryNotice}
-      </div>
-
-      <!-- Detalle desplegable (Oculto por defecto) -->
-      <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid var(--border); padding-top: 0.9rem;">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${esc(u.correo)}</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">🪪 <strong style="color: var(--text-main);">Cédula:</strong> ${esc(u.cedula || "Sin cédula")}</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${esc(u.telefono || "Sin teléfono")}</p>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: var(--surface-2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
-          <div>
-            <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Vencimiento:</span>
-            <strong style="font-size: 0.85rem; color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong>
-          </div>
-          <div>
-            <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Último Pago:</span>
-            <strong style="font-size: 0.85rem; color: var(--ok);">${esc(u.ultimo_pago || 'Sin pagos')}</strong>
-          </div>
-        </div>
-
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">🏋️ <strong style="color: var(--link);">Rutinas Asignadas:</strong> ${cantRutinas}</p>
-
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
-            Registrar Pago
-          </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: transparent; border: 1px solid var(--ok-border); color: var(--ok); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
-            WhatsApp
-          </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 100px; text-align: center; justify-content: center;">
-            Ver Rutinas
-          </button>
-          <button class="btn-secondary" onclick="event.stopPropagation(); editUserByAdmin(${esc(u.id_usuario)})" title="Editar datos del cliente" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 80px; text-align: center; justify-content: center;">
-            Editar
-          </button>
-          <button class="btn-danger" onclick="event.stopPropagation(); deleteUserByAdmin(${esc(u.id_usuario)})" title="Eliminar cliente" style="padding: 0.5rem 0.75rem; font-size: 0.82rem; flex: 1 1 100%; text-align: center; justify-content: center;">
-            Eliminar Cliente
-          </button>
-        </div>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
+    const id = Number(u.id_usuario);
+    const sub = u.cedula ? `C.I. ${u.cedula}` : (u.correo || "");
+    const seleccionado = id === Number(fichaClienteId) ? " seleccionado" : "";
+    return `<tr tabindex="0" data-id="${id}" class="${seleccionado}" aria-label="Abrir ficha de ${esc(u.nombre_completo)}">
+      <td><span class="cliente-nombre">${esc(u.nombre_completo)}</span><span class="cliente-sub">${esc(sub)}</span></td>
+      <td class="col-md muted">${esc(u.ultimo_plan || "Sin plan")}</td>
+      <td class="hora">${esc(formatFechaCorta(u.membresia && u.membresia.vence))}</td>
+      <td><span class="badge ${esc(status.badgeClass)}">${esc(status.badgeText)}</span></td>
+      <td class="col-md">${u.tiene_deuda == 1 ? `<span class="badge badge-expired">Deuda</span>` : `<span class="muted">—</span>`}</td>
+      <td class="col-md hora">${u.ultimo_pago ? esc(formatFechaCorta(u.ultimo_pago)) : `<span class="muted">Sin pagos</span>`}</td>
+    </tr>`;
+  }).join("");
 }
 
 function filterAdminUsers() {
@@ -1247,6 +1160,9 @@ function filterAdminUsers() {
       return b.id_usuario - a.id_usuario;
     });
   }
+
+  // Si el usuario eligió una columna, ese orden manda sobre el orden del filtro
+  if (clientesOrden.key) list = ordenarClientes(list);
 
   renderAdminUsersGrid(list);
 }
@@ -1688,19 +1604,7 @@ function savePayment(event) {
 let currentPaymentsData = [];
 
 function toggleAdminPaymentsSection() {
-  const clientsSection = $("#adminClientsSection");
-  const paymentsSection = $("#adminPaymentsSection");
-  if (!paymentsSection) return;
-
-  if (paymentsSection.classList.contains("hidden")) {
-    if (clientsSection) clientsSection.classList.add("hidden");
-    paymentsSection.classList.remove("hidden");
-    const today = getLocalTodayStr();
-    loadAdminPaymentsHistory(today);
-    paymentsSection.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    paymentsSection.classList.add("hidden");
-  }
+  irAVista("pagos");
 }
 
 function changePaymentsHistoryDate() {
@@ -2215,21 +2119,7 @@ function exportPaymentsToExcel() {
 let adminTemplatesData = [];
 
 function toggleAdminTemplatesSection() {
-  const clientsSection = $("#adminClientsSection");
-  const paymentsSection = $("#adminPaymentsSection");
-  const templatesSection = $("#adminTemplatesSection");
-
-  if (!templatesSection) return;
-
-  if (templatesSection.classList.contains("hidden")) {
-    if (clientsSection) clientsSection.classList.add("hidden");
-    if (paymentsSection) paymentsSection.classList.add("hidden");
-    templatesSection.classList.remove("hidden");
-    loadAdminTemplates();
-    templatesSection.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    templatesSection.classList.add("hidden");
-  }
+  irAVista("plantillas");
 }
 
 function loadAdminTemplates() {
@@ -2609,24 +2499,7 @@ let adminResourcesData = [];
 let userResourcesData = [];
 
 function toggleAdminResourcesSection() {
-  const sec = $("#adminResourcesSection");
-  if (!sec) return;
-
-  if (sec.classList.contains("hidden")) {
-    const clientsSection = $("#adminClientsSection");
-    const paymentsSection = $("#adminPaymentsSection");
-    const templatesSection = $("#adminTemplatesSection");
-
-    if (clientsSection) clientsSection.classList.add("hidden");
-    if (paymentsSection) paymentsSection.classList.add("hidden");
-    if (templatesSection) templatesSection.classList.add("hidden");
-
-    sec.classList.remove("hidden");
-    loadAdminResources();
-    sec.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    sec.classList.add("hidden");
-  }
+  irAVista("material");
 }
 
 function getCategoryBadge(cat) {
@@ -3249,18 +3122,7 @@ let checkinMatches = [];
 let checkinSelectedId = null;
 
 function toggleCheckinSection(forceOpen) {
-  const sec = $("#adminCheckinSection");
-  if (!sec) return;
-  const open = forceOpen === true || sec.classList.contains("hidden");
-  if (!open) { sec.classList.add("hidden"); return; }
-  ocultarSeccionesPanel("#adminCheckinSection");
-  sec.classList.remove("hidden");
-  const dateInput = $("#checkinDateFilter");
-  if (dateInput && !dateInput.value) dateInput.value = getLocalTodayStr();
-  loadCheckins();
-  if (forceOpen !== true) sec.scrollIntoView({ behavior: "smooth" });
-  const input = $("#checkinSearch");
-  if (input) setTimeout(() => input.focus(), 150);
+  irAVista("entrada");
 }
 
 function buscarClientesEntrada(query) {
@@ -3285,14 +3147,14 @@ function onCheckinInput() {
   checkinMatches = buscarClientesEntrada(input.value);
   if (!input.value.trim()) { box.classList.add("hidden"); box.innerHTML = ""; return; }
   if (checkinMatches.length === 0) {
-    box.innerHTML = `<div style="padding: 0.8rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No se encontró ningún cliente.</div>`;
+    box.innerHTML = `<div class="search-empty">No se encontró ningún cliente.</div>`;
   } else {
     box.innerHTML = checkinMatches.map(u => {
       const st = estadoEntrada(u);
-      return `<div onclick="seleccionarClienteEntrada(${esc(u.id_usuario)})" style="padding: 0.7rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; border-bottom: 1px solid var(--border);" onmouseover="this.style.background='var(--accent-bg)'" onmouseout="this.style.background='transparent'">
-        <span><strong>${esc(u.nombre_completo)}</strong> <span style="color: var(--text-muted); font-size: 0.85rem;">· ${esc(u.cedula || "sin cédula")}</span></span>
-        <span style="color: ${st.color}; font-size: 0.85rem; white-space: nowrap;">${esc(st.titulo.replace("Membresía ", ""))}</span>
-      </div>`;
+      return `<button type="button" class="search-item" onclick="seleccionarClienteEntrada(${Number(u.id_usuario)})">
+        <span class="search-item-main"><strong>${esc(u.nombre_completo)}</strong><small>${esc(u.cedula ? "C.I. " + u.cedula : "Sin cédula")}</small></span>
+        <span class="${claseEstadoEntrada(st.codigo)}">${esc(st.titulo.replace("Membresía ", ""))}</span>
+      </button>`;
     }).join("");
   }
   box.classList.remove("hidden");
@@ -3416,20 +3278,26 @@ function loadCheckins() {
       const rows = (res.ok && res.asistencias) ? res.asistencias : [];
       const count = $("#checkinCount");
       if (count) count.textContent = `${rows.length} ${rows.length === 1 ? "entrada" : "entradas"}`;
+      // Si es el día de hoy, el indicador "Entradas de hoy" se actualiza al momento
+      if (fecha === getLocalTodayStr()) actualizarKpiEntradas(rows.length);
       if (!rows.length) {
-        list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aún no hay entradas registradas este día.</p>`;
+        list.innerHTML = `<p class="report-empty">Aún no hay entradas registradas este día.</p>`;
         return;
       }
-      const etiquetas = { activa: ["Al día", "var(--ok)"], vencida: ["Vencida", "var(--danger)"], sin_membresia: ["Sin membresía", "var(--danger)"] };
-      list.innerHTML = rows.map(a => {
-        const [txt, col] = etiquetas[a.estado_membresia] || ["-", "var(--text-muted)"];
-        return `<div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.55rem 0.8rem; background: var(--surface-2); border-radius: 10px; border-left: 3px solid ${col};">
-          <strong style="font-variant-numeric: tabular-nums; min-width: 3.2rem;">${esc(a.hora)}</strong>
-          <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(a.nombre_completo)} <span style="color: var(--text-muted); font-size: 0.82rem;">· ${esc(a.plan || "sin plan")}</span></span>
-          <span style="color: ${col}; font-size: 0.82rem; white-space: nowrap;">${esc(txt)}${a.tenia_deuda == 1 ? " · deuda" : ""}</span>
-          <button type="button" title="Anular esta entrada" onclick="anularEntrada(${esc(a.id_asistencia)})" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;">✕</button>
-        </div>`;
-      }).join("");
+      const etiquetas = { activa: ["Al día", "estado-ok"], vencida: ["Vencida", "estado-danger"], sin_membresia: ["Sin membresía", "estado-danger"] };
+      list.innerHTML = `<div class="checkin-row checkin-row-head" aria-hidden="true"><span>Hora</span><span>Cliente</span><span class="checkin-plan">Plan</span><span>Estado</span><span></span></div>` +
+        rows.map(a => {
+          const [txt, cls] = etiquetas[a.estado_membresia] || ["-", "muted"];
+          return `<div class="checkin-row">
+            <span class="checkin-hora">${esc(a.hora)}</span>
+            <span class="checkin-nombre">${esc(a.nombre_completo)}</span>
+            <span class="checkin-plan">${esc(a.plan || "Sin plan")}</span>
+            <span class="${cls}">${esc(txt)}${a.tenia_deuda == 1 ? " · deuda" : ""}</span>
+            <button type="button" class="btn-icon" aria-label="Anular la entrada de ${esc(a.nombre_completo)}" title="Anular esta entrada" onclick="anularEntrada(${Number(a.id_asistencia)})">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+            </button>
+          </div>`;
+        }).join("");
     })
     .catch(() => { list.innerHTML = `<p style="color: var(--danger);">No se pudieron cargar las entradas.</p>`; });
 }
@@ -3447,13 +3315,7 @@ let expiryTab = "mensual";
 const EXPIRY_WINDOWS = { mensual: { antes: 7, despues: 30 }, semanal: { antes: 2, despues: 14 } };
 
 function toggleExpirySection() {
-  const sec = $("#adminExpirySection");
-  if (!sec) return;
-  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
-  ocultarSeccionesPanel("#adminExpirySection");
-  sec.classList.remove("hidden");
-  renderExpiry();
-  sec.scrollIntoView({ behavior: "smooth" });
+  irAVista("vencimientos");
 }
 
 function setExpiryTab(tab) {
@@ -3511,14 +3373,15 @@ function renderExpiry() {
     </div>`;
 }
 
-// Contador en la tarjeta: mensualidades por vencer + vencidas recientes
+// Contador del menú: mensualidades por vencer + vencidas recientes
 function actualizarContadorVencimientos() {
   const el = $("#expiryCardCount");
   if (!el) return;
   const { porVencer, vencidos } = calcularVencimientos("mensual");
   const n = porVencer.length + vencidos.length;
-  el.textContent = n ? `${n} mensualidades` : "";
-  el.style.display = n ? "inline-block" : "none";
+  el.textContent = n ? String(n) : "";
+  el.classList.toggle("hidden", !n);
+  el.setAttribute("aria-label", `${n} mensualidades por vencer o vencidas`);
 }
 
 // Se llama cada vez que se recarga la lista de clientes
@@ -3526,21 +3389,13 @@ function refrescarPanelesAsistencia() {
   actualizarContadorVencimientos();
   const exp = $("#adminExpirySection");
   if (exp && !exp.classList.contains("hidden")) renderExpiry();
+  if (vistaActual === "inicio") renderIndicadoresClientes();
 }
 
 /* ---------- Cierre de Caja y Reporte Mensual ---------- */
 const MONEDAS_CAJA = ["USD", "COP", "BS", "Bancolombia", "USDT", "CLP"];
 let cierreData = null;
 let reporteVencidos = [];
-
-// Oculta las demás secciones de este bloque al abrir una
-function ocultarSeccionesPanel(excepto) {
-  ["#adminCheckinSection", "#adminExpirySection", "#adminCierreSection", "#adminReporteSection"].forEach(id => {
-    if (id === excepto) return;
-    const s = $(id);
-    if (s) s.classList.add("hidden");
-  });
-}
 
 function fmtMonto(valor) {
   const n = parseFloat(valor) || 0;
@@ -3565,15 +3420,7 @@ function nombreTurno(t) {
 
 /* ----- Cierre de Caja ----- */
 function toggleCierreSection() {
-  const sec = $("#adminCierreSection");
-  if (!sec) return;
-  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
-  ocultarSeccionesPanel("#adminCierreSection");
-  sec.classList.remove("hidden");
-  const f = $("#cierreFecha");
-  if (f && !f.value) f.value = getLocalTodayStr();
-  loadCierreCaja();
-  sec.scrollIntoView({ behavior: "smooth" });
+  irAVista("cierre");
 }
 
 function loadCierreCaja() {
@@ -3744,14 +3591,7 @@ function llenarSelectorMeses() {
 }
 
 function toggleReporteSection() {
-  const sec = $("#adminReporteSection");
-  if (!sec) return;
-  if (!sec.classList.contains("hidden")) { sec.classList.add("hidden"); return; }
-  ocultarSeccionesPanel("#adminReporteSection");
-  sec.classList.remove("hidden");
-  llenarSelectorMeses();
-  loadReporteMensual();
-  sec.scrollIntoView({ behavior: "smooth" });
+  irAVista("reportes");
 }
 
 function loadReporteMensual() {
@@ -3868,4 +3708,478 @@ function reporteAsistenciaHtml(d) {
     <h5 class="report-h5">Clientes que más vinieron</h5>
     ${top.length ? `<ol class="report-top">${top.map(t => `<li><span>${esc(t.nombre_completo)}</span><strong>${esc(t.visitas)}</strong></li>`).join("")}</ol>`
       : `<p class="report-empty">Sin datos.</p>`}`;
+}
+
+/* =========================================================
+   PANEL ADMINISTRATIVO: VISTAS, RESUMEN DE HOY, BUSCADOR Y FICHA
+   ========================================================= */
+
+function esRecepcionSola() {
+  return localStorage.getItem("esRecepcionista") === "true" && localStorage.getItem("esAdmin") !== "true";
+}
+
+// Cada vista: el elemento que se muestra, si es solo del admin y qué se carga al abrirla
+const VISTAS_PANEL = {
+  inicio: { el: "#viewInicio", titulo: "Inicio", cargar: () => cargarInicio() },
+  entrada: { el: "#viewEntrada", titulo: "Control de entrada", cargar: () => prepararCheckin("#viewEntrada", true) },
+  clientes: { el: "#adminClientsSection", titulo: "Clientes", cargar: () => filterAdminUsers() },
+  pagos: { el: "#adminPaymentsSection", titulo: "Pagos", soloAdmin: true, cargar: () => loadAdminPaymentsHistory(getLocalTodayStr()) },
+  vencimientos: { el: "#adminExpirySection", titulo: "Vencimientos", cargar: () => renderExpiry() },
+  cierre: {
+    el: "#adminCierreSection", titulo: "Cierre de caja", soloAdmin: true,
+    cargar: () => { const f = $("#cierreFecha"); if (f && !f.value) f.value = getLocalTodayStr(); loadCierreCaja(); }
+  },
+  reportes: { el: "#adminReporteSection", titulo: "Reportes", soloAdmin: true, cargar: () => { llenarSelectorMeses(); loadReporteMensual(); } },
+  plantillas: { el: "#adminTemplatesSection", titulo: "Plantillas de rutinas", cargar: () => loadAdminTemplates() },
+  material: { el: "#adminResourcesSection", titulo: "Material", soloAdmin: true, cargar: () => loadAdminResources() }
+};
+
+function vistaPermitida(nombre) {
+  const v = VISTAS_PANEL[nombre];
+  return !!v && !(v.soloAdmin && esRecepcionSola()) && !!$(v.el);
+}
+
+function irAVista(nombre) {
+  if (location.hash === `#${nombre}`) mostrarVista(nombre);
+  else location.hash = nombre;
+}
+
+function mostrarVista(nombre) {
+  if (!vistaPermitida(nombre)) {
+    nombre = "inicio";
+    if (location.hash && location.hash !== "#inicio") history.replaceState(null, "", "#inicio");
+  }
+  const v = VISTAS_PANEL[nombre];
+  document.querySelectorAll("#panelContent > .view").forEach(sec => sec.classList.add("hidden"));
+  const sec = $(v.el);
+  if (sec) sec.classList.remove("hidden");
+
+  document.querySelectorAll("#sideNav .nav-link").forEach(a => {
+    const activo = a.dataset.view === nombre;
+    a.classList.toggle("active", activo);
+    if (activo) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+
+  vistaActual = nombre;
+  document.title = `ATLAS · ${v.titulo}`;
+  cerrarMenuMovil();
+  window.scrollTo(0, 0);
+  v.cargar();
+}
+
+function iniciarNavegacionPanel() {
+  window.addEventListener("hashchange", () => mostrarVista(location.hash.slice(1) || "inicio"));
+  mostrarVista(location.hash.slice(1) || "inicio");
+
+  // Ctrl+K (o Cmd+K) enfoca el buscador; Escape cierra la ficha o el menú
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      const g = $("#globalSearch");
+      if (g) { g.focus(); g.select(); }
+      return;
+    }
+    if (e.key === "Escape") {
+      const modalAbierto = [...document.querySelectorAll(".modal-overlay")].some(m => !m.classList.contains("hidden"));
+      if (modalAbierto) return;
+      if (fichaClienteId !== null) { closeClientDrawer(); return; }
+      cerrarMenuMovil();
+    }
+  });
+
+  // Clic fuera del buscador: se cierran los resultados
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".global-search")) cerrarResultadosGlobal();
+  });
+
+  // Tabla de clientes: ordenar por columna y abrir la ficha
+  const tabla = $("#clientesTabla");
+  if (tabla) {
+    tabla.querySelector("thead").addEventListener("click", (e) => {
+      const b = e.target.closest(".th-sort");
+      if (b) cambiarOrdenClientes(b.dataset.sort);
+    });
+    const tbody = tabla.querySelector("tbody");
+    tbody.addEventListener("click", (e) => {
+      const tr = e.target.closest("tr[data-id]");
+      if (tr) abrirFichaCliente(Number(tr.dataset.id));
+    });
+    tbody.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const tr = e.target.closest("tr[data-id]");
+      if (!tr) return;
+      e.preventDefault();
+      abrirFichaCliente(Number(tr.dataset.id));
+    });
+  }
+}
+
+/* ----- Menú en pantallas angostas ----- */
+function toggleMobileMenu() {
+  const sb = $("#sidebar"), btn = $("#menuToggle");
+  if (!sb || !btn) return;
+  const abrir = !sb.classList.contains("abierto");
+  sb.classList.toggle("abierto", abrir);
+  btn.setAttribute("aria-expanded", abrir ? "true" : "false");
+}
+
+function cerrarMenuMovil() {
+  const sb = $("#sidebar"), btn = $("#menuToggle");
+  if (sb) sb.classList.remove("abierto");
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+/* ----- Control de entrada: el mismo bloque se muestra en Inicio o en su propia vista ----- */
+function prepararCheckin(destino, enfocar) {
+  const card = $("#adminCheckinSection"), cont = $(destino);
+  if (card && cont && card.parentElement !== cont) cont.appendChild(card);
+  const dateInput = $("#checkinDateFilter");
+  if (dateInput && !dateInput.value) dateInput.value = getLocalTodayStr();
+  loadCheckins();
+  const input = $("#checkinSearch");
+  if (enfocar && input) setTimeout(() => input.focus(), 50);
+}
+
+function claseEstadoEntrada(codigo) {
+  return codigo === "activa" ? "estado-ok" : codigo === "por_vencer" ? "estado-warn" : "estado-danger";
+}
+
+/* ----- Inicio: Resumen de hoy ----- */
+let inicioVencerTab = "mensual";
+let entradasAyer = null;
+
+function fechaLargaHoy() {
+  const [y, m, d] = getLocalTodayStr().split("-").map(Number);
+  const txt = new Date(y, m - 1, d).toLocaleDateString("es-VE", { weekday: "long", day: "numeric", month: "long" });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+function sumarDias(fechaStr, n) {
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  const x = new Date(y, m - 1, d + n);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
+function cargarInicio() {
+  const f = $("#inicioFecha");
+  if (f) f.textContent = fechaLargaHoy();
+  // En Inicio, el control de entrada va dentro del resumen; recepción lo tiene listo para escribir
+  prepararCheckin("#inicioCheckinSlot", esRecepcionSola());
+  renderIndicadoresClientes();
+  cargarEntradasAyer();
+  if (!esRecepcionSola()) cargarCobradoHoy();
+}
+
+// Por vencer y deuda salen de la lista de clientes que ya está cargada
+function renderIndicadoresClientes() {
+  const fijar = (sel, n) => {
+    const el = $(sel);
+    if (!el) return;
+    el.textContent = n;
+    const kpi = el.closest(".kpi");
+    if (kpi) kpi.classList.toggle("con-valor", n > 0);
+  };
+  fijar("#kpiPorVencer", calcularVencimientos("mensual").porVencer.length);
+  fijar("#kpiDeuda", adminUsersData.filter(u => u.tiene_deuda == 1).length);
+  renderInicioPorVencer();
+}
+
+function cargarEntradasAyer() {
+  const ayer = sumarDias(getLocalTodayStr(), -1);
+  fetch(`${API_BASE}/admin/asistencias?fecha=${encodeURIComponent(ayer)}`)
+    .then(r => r.json())
+    .then(res => {
+      entradasAyer = (res.ok && res.asistencias) ? res.asistencias.length : null;
+      const actual = $("#kpiEntradas");
+      if (actual && actual.dataset.valor !== undefined) actualizarKpiEntradas(Number(actual.dataset.valor));
+    })
+    .catch(err => console.error("Error cargando entradas de ayer:", err));
+}
+
+function actualizarKpiEntradas(n) {
+  const el = $("#kpiEntradas"), comp = $("#kpiEntradasComp");
+  if (!el) return;
+  el.textContent = n;
+  el.dataset.valor = n;
+  if (!comp || entradasAyer === null) return;
+  const dif = n - entradasAyer;
+  comp.className = "kpi-note" + (dif > 0 ? " estado-ok" : "");
+  comp.textContent = dif === 0 ? "Igual que ayer" : `${Math.abs(dif)} ${dif > 0 ? "más" : "menos"} que ayer`;
+}
+
+// Cobrado hoy y últimos pagos (solo admin): usa la ruta del cierre de caja
+function cargarCobradoHoy() {
+  const box = $("#kpiCobrado");
+  if (!box) return;
+  fetch(`${API_BASE}/admin/cierre-caja?fecha=${encodeURIComponent(getLocalTodayStr())}&turno=todos`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { box.innerHTML = `<span class="kpi-note">${esc(data.msg || "No disponible")}</span>`; return; }
+      // Cada moneda con movimiento en su propia línea, todas iguales; las que están en cero no se muestran
+      const monedas = monedasConMonto(data.resumen.totales);
+      box.innerHTML = monedas.length
+        ? monedas.map(m => `<span>${esc(m)} ${esc(fmtMonto(data.resumen.totales[m]))}</span>`).join("")
+        : `<span class="kpi-note">Sin cobros todavía</span>`;
+      const pagos = (data.grupos || []).flatMap(g => g.pagos || []);
+      renderUltimosPagos(pagos);
+    })
+    .catch(err => {
+      console.error("Error cargando cobrado hoy:", err);
+      box.innerHTML = `<span class="kpi-note">No disponible</span>`;
+    });
+}
+
+function renderUltimosPagos(pagos) {
+  const box = $("#inicioUltimosPagos");
+  if (!box) return;
+  if (!pagos.length) { box.innerHTML = `<p class="report-empty">Aún no hay pagos registrados hoy.</p>`; return; }
+  const orden = [...pagos].sort((a, b) =>
+    String(b.hora_registro || "").localeCompare(String(a.hora_registro || "")) || Number(b.id_pago) - Number(a.id_pago)
+  ).slice(0, 8);
+  box.innerHTML = `<div class="tabla-wrap"><table class="data-table">
+    <thead><tr><th scope="col">Hora</th><th scope="col">Cliente</th><th scope="col" class="col-md">Plan</th><th scope="col" style="text-align: right;">Monto</th><th scope="col" class="col-md">Turno</th></tr></thead>
+    <tbody>${orden.map(p => `<tr>
+      <td class="hora">${esc(p.hora_registro || "—")}</td>
+      <td><span class="cliente-nombre">${esc(p.nombre_cliente)}</span>${Number(p.es_abono) === 1 ? `<span class="tag-abono">ABONO</span>` : ""}</td>
+      <td class="col-md muted">${esc(p.plan)}</td>
+      <td class="num">${esc(p.moneda)} ${esc(fmtMonto(p.monto))}</td>
+      <td class="col-md muted">${esc(p.turno || "Sin turno")}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+function setInicioVencerTab(tab) {
+  inicioVencerTab = tab;
+  const m = $("#inicioTabMensual"), s = $("#inicioTabSemanal");
+  if (m) m.setAttribute("aria-selected", tab === "mensual" ? "true" : "false");
+  if (s) s.setAttribute("aria-selected", tab === "semanal" ? "true" : "false");
+  renderInicioPorVencer();
+}
+
+function renderInicioPorVencer() {
+  const box = $("#inicioPorVencer");
+  if (!box) return;
+  const { porVencer, w } = calcularVencimientos(inicioVencerTab);
+  if (!porVencer.length) {
+    const nombre = inicioVencerTab === "mensual" ? "mensualidades" : "semanas";
+    box.innerHTML = `<p class="report-empty">No hay ${nombre} por vencer en los próximos ${w.antes} días.</p>`;
+    return;
+  }
+  box.innerHTML = porVencer.slice(0, 6).map(({ u, dias }) => {
+    const txt = dias === 0 ? "vence hoy" : dias === 1 ? "vence mañana" : `faltan ${dias} días`;
+    return `<div class="lista-item">
+      <div class="lista-item-main"><strong>${esc(u.nombre_completo)}</strong><span class="${dias <= 2 ? "estado-warn" : "muted"}">${esc(txt)}</span></div>
+      <button type="button" class="btn-wa" aria-label="Enviar recordatorio por WhatsApp a ${esc(u.nombre_completo)}" onclick="sendWhatsAppReminderById(${Number(u.id_usuario)})">${ICONO_WA}</button>
+    </div>`;
+  }).join("") + (porVencer.length > 6 ? `<a href="#vencimientos" class="card-link" style="padding-top: 8px;">Ver los ${porVencer.length}</a>` : "");
+}
+
+const ICONO_WA = `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-13.4 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12z"></path></svg>`;
+
+/* ----- Buscador de clientes de la barra superior ----- */
+let globalMatches = [];
+let globalIndice = -1;
+
+function onGlobalSearchInput() {
+  const input = $("#globalSearch"), box = $("#globalSearchResults");
+  if (!input || !box) return;
+  const q = input.value.trim();
+  if (!q) { cerrarResultadosGlobal(); return; }
+  globalMatches = buscarClientesEntrada(q);
+  globalIndice = globalMatches.length ? 0 : -1;
+  if (!globalMatches.length) {
+    box.innerHTML = `<div class="search-empty">Ningún cliente coincide con “${esc(q)}”.</div>`;
+  } else {
+    box.innerHTML = globalMatches.map((u, i) => {
+      const st = getClientStatusInfo(u);
+      const sub = [u.cedula ? `C.I. ${u.cedula}` : "", u.ultimo_plan || ""].filter(Boolean).join(" · ");
+      return `<button type="button" class="search-item${i === globalIndice ? " activo" : ""}" id="gs-opt-${i}" role="option"
+          aria-selected="${i === globalIndice}" onclick="abrirFichaDesdeBusqueda(${Number(u.id_usuario)})">
+        <span class="search-item-main"><strong>${esc(u.nombre_completo)}</strong><small>${esc(sub || "Sin datos")}</small></span>
+        <span class="badge ${esc(st.badgeClass)}">${esc(st.badgeText)}</span>
+      </button>`;
+    }).join("");
+  }
+  box.classList.remove("hidden");
+  input.setAttribute("aria-expanded", "true");
+  actualizarOpcionActiva();
+}
+
+function onGlobalSearchKeydown(e) {
+  if (e.key === "Escape") { cerrarResultadosGlobal(); e.target.blur(); return; }
+  if (!globalMatches.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const n = globalMatches.length;
+    globalIndice = (globalIndice + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+    actualizarOpcionActiva();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const u = globalMatches[Math.max(0, globalIndice)];
+    if (u) abrirFichaDesdeBusqueda(u.id_usuario);
+  }
+}
+
+function actualizarOpcionActiva() {
+  const input = $("#globalSearch");
+  document.querySelectorAll("#globalSearchResults .search-item").forEach((el, i) => {
+    el.classList.toggle("activo", i === globalIndice);
+    el.setAttribute("aria-selected", i === globalIndice ? "true" : "false");
+    if (i === globalIndice) el.scrollIntoView({ block: "nearest" });
+  });
+  if (input) {
+    if (globalIndice >= 0) input.setAttribute("aria-activedescendant", `gs-opt-${globalIndice}`);
+    else input.removeAttribute("aria-activedescendant");
+  }
+}
+
+function cerrarResultadosGlobal() {
+  const box = $("#globalSearchResults"), input = $("#globalSearch");
+  if (box) { box.classList.add("hidden"); box.innerHTML = ""; }
+  if (input) { input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
+  globalMatches = [];
+  globalIndice = -1;
+}
+
+function abrirFichaDesdeBusqueda(id) {
+  const input = $("#globalSearch");
+  if (input) input.value = "";
+  cerrarResultadosGlobal();
+  abrirFichaCliente(id);
+}
+
+/* ----- Tabla de clientes: orden por columna ----- */
+const clientesOrden = { key: null, dir: 1 };
+
+function cambiarOrdenClientes(key) {
+  if (clientesOrden.key === key) clientesOrden.dir *= -1;
+  else { clientesOrden.key = key; clientesOrden.dir = 1; }
+  document.querySelectorAll("#clientesTabla thead th").forEach(th => {
+    const b = th.querySelector(".th-sort");
+    const activo = b && b.dataset.sort === clientesOrden.key;
+    th.setAttribute("aria-sort", activo ? (clientesOrden.dir === 1 ? "ascending" : "descending") : "none");
+  });
+  filterAdminUsers();
+}
+
+function ordenarClientes(list) {
+  const rangoEstado = { "badge-expired": 0, "badge-warning": 1, "badge-active": 2 };
+  const valor = (u) => {
+    switch (clientesOrden.key) {
+      case "nombre": return (u.nombre_completo || "").toLowerCase();
+      case "plan": return (u.ultimo_plan || "~").toLowerCase();
+      case "vence": return /^\d{4}-\d{2}-\d{2}$/.test(u.membresia && u.membresia.vence) ? u.membresia.vence : "9999-99-99";
+      case "estado": return rangoEstado[getClientStatusInfo(u).badgeClass] ?? 9;
+      case "deuda": return u.tiene_deuda == 1 ? 0 : 1;
+      case "pago": return u.ultimo_pago || "0000-00-00";
+      default: return 0;
+    }
+  };
+  return [...list].sort((a, b) => {
+    const va = valor(a), vb = valor(b);
+    const r = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "es");
+    return r * clientesOrden.dir || (a.nombre_completo || "").localeCompare(b.nombre_completo || "", "es");
+  });
+}
+
+/* ----- Ficha del cliente (panel lateral) ----- */
+let fichaClienteId = null;
+let fichaFocoPrevio = null;
+
+function abrirFichaCliente(id) {
+  const u = adminUsersData.find(x => Number(x.id_usuario) === Number(id));
+  if (!u) { showToast("No se encontró el cliente.", "aviso"); return; }
+  if (fichaClienteId === null) fichaFocoPrevio = document.activeElement;
+  fichaClienteId = Number(u.id_usuario);
+  renderFichaCliente(u);
+  $("#clientDrawer").classList.remove("hidden");
+  $("#clientDrawerBackdrop").classList.remove("hidden");
+  $("#clientDrawer").focus();
+  marcarFilaSeleccionada();
+}
+
+function closeClientDrawer() {
+  const d = $("#clientDrawer"), b = $("#clientDrawerBackdrop");
+  if (d) d.classList.add("hidden");
+  if (b) b.classList.add("hidden");
+  fichaClienteId = null;
+  marcarFilaSeleccionada();
+  if (fichaFocoPrevio && document.contains(fichaFocoPrevio)) fichaFocoPrevio.focus();
+  fichaFocoPrevio = null;
+}
+
+function marcarFilaSeleccionada() {
+  document.querySelectorAll("#adminUsersGrid tr[data-id]").forEach(tr => {
+    tr.classList.toggle("seleccionado", Number(tr.dataset.id) === fichaClienteId);
+  });
+}
+
+// Tras recargar los clientes (pago, edición, borrado), la ficha abierta se actualiza o se cierra
+function refrescarFichaAbierta() {
+  if (fichaClienteId === null) return;
+  const u = adminUsersData.find(x => Number(x.id_usuario) === fichaClienteId);
+  if (u) renderFichaCliente(u);
+  else closeClientDrawer();
+}
+
+function renderFichaCliente(u) {
+  const id = Number(u.id_usuario);
+  const st = getClientStatusInfo(u);
+  const vence = u.membresia && u.membresia.vence;
+  const dias = diasHasta(vence);
+  const rutinas = u.rutinas || [];
+  const nombreEl = $("#drawerNombre");
+  if (nombreEl) nombreEl.textContent = u.nombre_completo;
+
+  $("#drawerBody").innerHTML = `
+    <div class="drawer-badges">
+      <span class="badge ${esc(st.badgeClass)}">${esc(st.badgeText)}</span>
+      ${u.tiene_deuda == 1 ? `<span class="badge badge-expired">Deuda pendiente</span>` : ""}
+    </div>
+
+    <section class="drawer-section" aria-label="Membresía">
+      <h3>Membresía</h3>
+      <dl class="dato-lista">
+        <dt>Plan</dt><dd>${esc(u.ultimo_plan || "Sin plan")}</dd>
+        <dt>Vence</dt><dd>${esc(formatFechaCorta(vence))}${dias !== null ? ` <span class="${esc(claseDias(dias))}">· ${esc(textoDias(dias))}</span>` : ""}</dd>
+        <dt>Último pago</dt><dd>${u.ultimo_pago ? esc(formatFechaCorta(u.ultimo_pago)) : "Sin pagos"}</dd>
+      </dl>
+    </section>
+
+    <section class="drawer-section" aria-label="Acciones">
+      <h3>Acciones</h3>
+      <div class="drawer-acciones">
+        <button type="button" class="btn-primary full" onclick="openRegisterPaymentModal(${id})">Registrar pago</button>
+        <button type="button" class="btn-secondary btn-wa-texto" onclick="sendWhatsAppReminderById(${id})">WhatsApp</button>
+        <button type="button" class="btn-secondary" onclick="editUserByAdmin(${id})">Editar datos</button>
+        <button type="button" class="btn-secondary full" onclick="viewUserProgressModal(${id})">Ver rutinas y progreso</button>
+        ${esRecepcionSola() ? "" : `<button type="button" class="btn-danger full" onclick="deleteUserByAdmin(${id})">Eliminar cliente</button>`}
+      </div>
+    </section>
+
+    <section class="drawer-section" aria-label="Datos de contacto">
+      <h3>Datos</h3>
+      <dl class="dato-lista">
+        <dt>Cédula</dt><dd>${esc(u.cedula || "Sin cédula")}</dd>
+        <dt>Correo</dt><dd>${esc(u.correo || "Sin correo")}</dd>
+        <dt>Teléfono</dt><dd>${esc(u.telefono || "Sin teléfono")}</dd>
+      </dl>
+    </section>
+
+    <section class="drawer-section" aria-label="Rutinas">
+      <h3>Rutinas (${rutinas.length})</h3>
+      ${rutinas.length ? rutinas.map(r => `
+        <div class="rutina-item">
+          <div class="rutina-item-main">
+            <strong>${esc(r.titulo)}</strong>
+            <small>${esc(r.horario || "Horario flexible")} · ${esc((r.ejercicios || []).length)} ejercicios</small>
+          </div>
+          <button type="button" class="btn-secondary" style="width: auto;" onclick="inspectRoutineDetailByAdmin(${id}, ${Number(r.id_rutina)})"
+            aria-label="Ver la rutina ${esc(r.titulo)}">Ver</button>
+        </div>`).join("") : `<p class="report-empty">Este cliente aún no tiene rutinas.</p>`}
+    </section>`;
+}
+
+function claseDias(dias) {
+  return dias < 0 ? "estado-danger" : dias <= 5 ? "estado-warn" : "estado-ok";
 }
