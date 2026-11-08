@@ -234,8 +234,20 @@ function loadDashboard() {
       currentUserData = data;
       $("#userGreeting").textContent = `¡Hola, ${data.nombre}!`;
 
+      // El estado se calcula comparando la fecha de vencimiento con hoy (igual que en el control de entrada),
+      // no solo con el estado guardado, que puede seguir en "activa" después de vencer.
       const memBadge = $("#membershipStatus");
-      memBadge.textContent = `Membresía ${data.membresia.estado} (Vence: ${data.membresia.vence})`;
+      const st = estadoEntrada(data);
+      const fecha = formatFechaCorta(data.membresia && data.membresia.vence);
+      const textos = {
+        activa: `Membresía activa · vence ${fecha}`,
+        por_vencer: st.dias === 0 ? `Por vencer · vence hoy` : `Por vencer · vence ${fecha}`,
+        vencida: `Membresía vencida · venció ${fecha}`,
+        sin: "Sin membresía activa"
+      };
+      const clases = { activa: "badge-active", por_vencer: "badge-warning", vencida: "badge-expired", sin: "badge-expired" };
+      memBadge.className = `badge ${clases[st.codigo]}`;
+      memBadge.textContent = textos[st.codigo];
 
       renderRoutinesGrid(data.rutinas || []);
       restoreActiveSessionIfAny();
