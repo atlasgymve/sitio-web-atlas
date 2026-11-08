@@ -6,3 +6,6 @@ backend/node_modules/
 # Variables de entorno con contraseñas (nunca subir a GitHub)
 .env
 backend/.env
+
+# Capturas de revisión del rediseño (muestran datos de clientes)
+docs/rediseno/capturas/

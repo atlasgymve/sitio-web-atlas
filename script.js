@@ -20,6 +20,49 @@ function esc(value) {
     .replace(/'/g, "&#39;");
 }
 
+/* Mensajes breves (toasts) que reemplazan a alert().
+   tipo: "exito" | "error" | "aviso" | "info". Los errores duran más y se pueden cerrar.
+   El texto se inserta con textContent (nunca como HTML). */
+function showToast(mensaje, tipo) {
+  const t = ["exito", "error", "aviso", "info"].includes(tipo) ? tipo : "info";
+  let cont = document.getElementById("toastContainer");
+  if (!cont) {
+    cont = document.createElement("div");
+    cont.id = "toastContainer";
+    cont.className = "toast-container";
+    document.body.appendChild(cont);
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${t}`;
+  toast.setAttribute("role", t === "error" ? "alert" : "status");
+  toast.setAttribute("aria-live", t === "error" ? "assertive" : "polite");
+
+  const msg = document.createElement("span");
+  msg.className = "toast-msg";
+  msg.textContent = String(mensaje == null ? "" : mensaje);
+
+  const cerrar = document.createElement("button");
+  cerrar.type = "button";
+  cerrar.className = "toast-close";
+  cerrar.setAttribute("aria-label", "Cerrar mensaje");
+  cerrar.textContent = "×";
+
+  toast.append(msg, cerrar);
+  cont.appendChild(toast);
+  // Máximo 4 mensajes a la vez
+  while (cont.children.length > 4) cont.firstElementChild.remove();
+
+  let quitado = false;
+  const quitar = () => {
+    if (quitado) return;
+    quitado = true;
+    toast.classList.add("toast-saliendo");
+    setTimeout(() => toast.remove(), 200);
+  };
+  cerrar.addEventListener("click", quitar);
+  setTimeout(quitar, t === "error" ? 6500 : 3800);
+}
+
 /* ---------- SESIÓN: token firmado por el servidor ----------
    Todas las llamadas a la API llevan el token en la cabecera Authorization.
    Si el servidor responde 401 (sesión vencida o inválida) se vuelve al login. */
@@ -128,7 +171,7 @@ function login(event) {
         errorMsg.textContent = err.message;
         errorMsg.classList.remove("hidden");
       } else {
-        alert(err.message);
+        showToast(err.message, "error");
       }
     });
 }
@@ -209,7 +252,7 @@ function renderRoutinesGrid(rutinas) {
 
   if (rutinas.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
         <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">Aún no tienes rutinas registradas.</p>
         <button class="btn-primary" onclick="openNewRoutineModal()" style="width: auto; margin: 0 auto;">
           + Crear Tu Primera Rutina
@@ -233,8 +276,8 @@ function renderRoutinesGrid(rutinas) {
         <h3 class="routine-title">${esc(r.titulo)}</h3>
         <p class="routine-desc">${esc(r.descripcion || "Sin descripción")}</p>
         
-        <div style="background: rgba(15,23,42,0.5); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          <strong style="color: #60A5FA;">Ejercicios incluidos (${cantEjercicios}):</strong><br>
+        <div style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          <strong style="color: var(--link);">Ejercicios incluidos (${cantEjercicios}):</strong><br>
           <div style="margin-top: 0.4rem; line-height: 1.4;">${listaEjerciciosNombres}</div>
         </div>
       </div>
@@ -332,13 +375,13 @@ function addExerciseRow(nombre = "", series = 3, reps = 10, peso = 0) {
 
   const card = document.createElement("div");
   card.className = "exercise-row exercise-input-card";
-  card.style.cssText = "background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-light); border-radius: 12px; padding: 1rem; position: relative; margin-bottom: 0.8rem;";
+  card.style.cssText = "background: var(--surface-2); border: 1px solid var(--border-light); border-radius: 12px; padding: 1rem; position: relative; margin-bottom: 0.8rem;";
 
   card.innerHTML = `
-    <button type="button" onclick="this.closest('.exercise-input-card').remove()" title="Eliminar ejercicio" style="position: absolute; top: 0.8rem; right: 0.8rem; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;">X</button>
+    <button type="button" onclick="this.closest('.exercise-input-card').remove()" title="Eliminar ejercicio" style="position: absolute; top: 0.8rem; right: 0.8rem; background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); border-radius: 8px; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;">X</button>
     
     <div style="margin-bottom: 0.8rem; padding-right: 2rem;">
-      <label class="form-label" style="font-size: 0.8rem; color: #60A5FA; margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
+      <label class="form-label" style="font-size: 0.8rem; color: var(--link); margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
       <input type="text" class="form-input ex-name" placeholder="Ej: Press de Banca" value="${esc(nombre)}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
     </div>
 
@@ -395,7 +438,7 @@ function saveRoutine(event) {
         closeNewRoutineModal();
         loadDashboard();
       } else {
-        alert(res.msg || "Error al guardar rutina");
+        showToast(res.msg || "Error al guardar rutina", "error");
       }
     })
     .catch(err => console.error(err));
@@ -849,14 +892,14 @@ function finishWorkoutSession() {
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
-        alert("Tu entrenamiento ha sido guardado y registrado exitosamente.");
+        showToast("Tu entrenamiento ha sido guardado y registrado exitosamente.", "exito");
         localStorage.removeItem("atlas_active_workout_session");
         $("#activeSessionSection").classList.add("hidden");
         currentActiveRoutine = null;
         completedSetsState = {};
         loadDashboard();
       } else {
-        alert(res.msg || "Error al guardar sesión");
+        showToast(res.msg || "Error al guardar sesión", "error");
       }
     })
     .catch(err => console.error(err));
@@ -890,7 +933,7 @@ function initAdminDashboard() {
         refrescarPanelesAsistencia();
         if (esRecepcionista === "true" && esAdmin !== "true") toggleCheckinSection(true);
       } else {
-        alert(res.msg || "Error al cargar datos de administración");
+        showToast(res.msg || "Error al cargar datos de administración", "error");
       }
     })
     .catch(err => console.error("Error al cargar panel admin:", err));
@@ -901,9 +944,9 @@ function applyReceptionistRestrictions() {
   const badge = document.querySelector('.header-logo-group .badge');
   if (badge) {
     badge.textContent = 'Modo Recepción';
-    badge.style.background = 'rgba(99, 102, 241, 0.2)';
-    badge.style.color = '#A5B4FC';
-    badge.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+    badge.style.background = 'var(--accent-bg)';
+    badge.style.color = 'var(--accent-soft)';
+    badge.style.borderColor = 'var(--border-strong)';
   }
 
   // Cambiar saludo
@@ -973,24 +1016,24 @@ function getClientStatusInfo(user) {
 
   if (!isActiva || vence < todayStr) {
     return {
-      borderColor: "#EF4444",
+      borderColor: "var(--danger)",
       badgeClass: "badge-expired",
       badgeText: vence < todayStr ? "vencida" : (user.membresia ? user.membresia.estado : "inactiva"),
-      venceColor: "#FCA5A5"
+      venceColor: "var(--danger)"
     };
   } else if (vence <= future5Str) {
     return {
-      borderColor: "#F59E0B",
+      borderColor: "var(--warn)",
       badgeClass: "badge-warning",
       badgeText: "por vencer",
-      venceColor: "#FCD34D"
+      venceColor: "var(--warn)"
     };
   } else {
     return {
-      borderColor: "#10B981",
+      borderColor: "var(--ok)",
       badgeClass: "badge-active",
       badgeText: "activa",
-      venceColor: "#34D399"
+      venceColor: "var(--ok)"
     };
   }
 }
@@ -1009,13 +1052,13 @@ function toggleClientCardDetails(headerElem) {
     if (chevron) {
       chevron.textContent = '▲ Ocultar';
     }
-    card.style.background = 'rgba(30, 41, 59, 0.85)';
+    card.style.background = 'var(--surface)';
   } else {
     details.classList.add('hidden');
     if (chevron) {
       chevron.textContent = '▼ Ver más';
     }
-    card.style.background = 'rgba(15, 23, 42, 0.6)';
+    card.style.background = 'var(--surface-2)';
   }
 }
 
@@ -1026,7 +1069,7 @@ function renderAdminUsersGrid(users) {
 
   if (users.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
         <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay clientes registrados aún.</p>
         <button class="btn-primary" onclick="openCreateUserModal()" style="width: auto; margin: 0 auto;">
           + Registrar Primer Cliente
@@ -1041,15 +1084,15 @@ function renderAdminUsersGrid(users) {
     const card = document.createElement("div");
     card.className = "routine-card";
     const hasDebt = u.tiene_deuda == 1;
-    const borderLeftColor = hasDebt ? "#EF4444" : status.borderColor;
-    card.style.cssText = `padding: 1.25rem; transition: all 0.2s ease; background: rgba(15, 23, 42, 0.6); border-left: 4px solid ${borderLeftColor};`;
+    const borderLeftColor = hasDebt ? "var(--danger)" : status.borderColor;
+    card.style.cssText = `padding: 1.25rem; transition: all 0.2s ease; background: var(--surface-2); border-left: 4px solid ${borderLeftColor};`;
 
     const cantRutinas = u.rutinas ? u.rutinas.length : 0;
     const debtBadgeHtml = hasDebt
-      ? `<span class="badge" style="background: rgba(239, 68, 68, 0.25); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.5); font-weight: 700;">⚠️ DEUDA</span>`
+      ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-weight: 700;">⚠️ DEUDA</span>`
       : "";
     const debtSummaryNotice = hasDebt
-      ? `<div style="font-size: 0.8rem; color: #FCA5A5; font-weight: 600; margin-top: 0.3rem;">⚠️ Abono Pendiente / Debe Dinero</div>`
+      ? `<div style="font-size: 0.8rem; color: var(--danger); font-weight: 600; margin-top: 0.3rem;">⚠️ Abono Pendiente / Debe Dinero</div>`
       : "";
 
     card.innerHTML = `
@@ -1065,35 +1108,35 @@ function renderAdminUsersGrid(users) {
 
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.83rem; color: var(--text-muted);">
           <span>⏳ Vence: <strong style="color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong> <span style="opacity: 0.85;">· ${esc(u.ultimo_plan || "Sin plan")}</span></span>
-          <span class="accordion-chevron" style="color: #60A5FA; font-weight: 600; font-size: 0.78rem; background: rgba(59,130,246,0.15); padding: 0.2rem 0.55rem; border-radius: 6px; transition: all 0.2s ease;">▼ Ver más</span>
+          <span class="accordion-chevron" style="color: var(--link); font-weight: 600; font-size: 0.78rem; background: var(--accent-bg); padding: 0.2rem 0.55rem; border-radius: 6px; transition: all 0.2s ease;">▼ Ver más</span>
         </div>
         ${debtSummaryNotice}
       </div>
 
       <!-- Detalle desplegable (Oculto por defecto) -->
-      <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.9rem;">
+      <div class="client-card-details hidden" style="margin-top: 0.9rem; border-top: 1px solid var(--border); padding-top: 0.9rem;">
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">✉️ <strong style="color: var(--text-main);">Correo:</strong> ${esc(u.correo)}</p>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.3rem; word-break: break-all; overflow-wrap: anywhere;">🪪 <strong style="color: var(--text-main);">Cédula:</strong> ${esc(u.cedula || "Sin cédula")}</p>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; word-break: break-all; overflow-wrap: anywhere;">📞 <strong style="color: var(--text-main);">Teléfono:</strong> ${esc(u.telefono || "Sin teléfono")}</p>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: rgba(15,23,42,0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; background: var(--surface-2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
           <div>
             <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Vencimiento:</span>
             <strong style="font-size: 0.85rem; color: ${esc(status.venceColor)};">${esc(u.membresia.vence)}</strong>
           </div>
           <div>
             <span style="display: block; font-size: 0.75rem; color: var(--text-muted);"> Último Pago:</span>
-            <strong style="font-size: 0.85rem; color: #34D399;">${esc(u.ultimo_pago || 'Sin pagos')}</strong>
+            <strong style="font-size: 0.85rem; color: var(--ok);">${esc(u.ultimo_pago || 'Sin pagos')}</strong>
           </div>
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">🏋️ <strong style="color: #60A5FA;">Rutinas Asignadas:</strong> ${cantRutinas}</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">🏋️ <strong style="color: var(--link);">Rutinas Asignadas:</strong> ${cantRutinas}</p>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
+          <button class="btn-primary" onclick="event.stopPropagation(); openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
             Registrar Pago
           </button>
-          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
+          <button class="btn-primary" onclick="event.stopPropagation(); sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; background: transparent; border: 1px solid var(--ok-border); color: var(--ok); flex: 1 1 calc(50% - 0.5rem); min-width: 120px; text-align: center; justify-content: center;">
             WhatsApp
           </button>
           <button class="btn-primary" onclick="event.stopPropagation(); viewUserProgressModal(${esc(u.id_usuario)})" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; flex: 1 1 calc(50% - 0.5rem); min-width: 100px; text-align: center; justify-content: center;">
@@ -1259,14 +1302,14 @@ function saveNewUser(event) {
     })
     .then(res => {
       const msg = editingAdminUserId ? "¡Datos del cliente actualizados exitosamente!" : "¡Cliente registrado exitosamente!";
-      alert(msg);
+      showToast(msg, "exito");
       closeCreateUserModal();
       initAdminDashboard();
       if (!$("#adminClientsSection").classList.contains("hidden")) {
         renderAdminUsersGrid(adminUsersData);
       }
     })
-    .catch(err => alert(err.message));
+    .catch(err => showToast(err.message, "error"));
 }
 
 let pendingDeleteUserId = null;
@@ -1306,13 +1349,13 @@ function executeDeleteUserByAdmin(event) {
       return data;
     })
     .then(res => {
-      alert("¡Cliente eliminado exitosamente!");
+      showToast("¡Cliente eliminado exitosamente!", "exito");
       closeConfirmDeleteModal();
       initAdminDashboard();
       adminUsersData = adminUsersData.filter(u => u.id_usuario !== pendingDeleteUserId);
       renderAdminUsersGrid(adminUsersData);
     })
-    .catch(err => alert(err.message));
+    .catch(err => showToast(err.message, "error"));
 }
 
 function viewUserProgressModal(id_usuario) {
@@ -1331,7 +1374,7 @@ function viewUserProgressModal(id_usuario) {
   } else {
     user.rutinas.forEach(r => {
       const item = document.createElement("div");
-      item.style.cssText = "background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;";
+      item.style.cssText = "background: var(--surface-2); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;";
 
       const exList = r.ejercicios && r.ejercicios.length > 0
         ? r.ejercicios.map(e => `• ${esc(e.nombre_ejercicio || e.titulo)} (${esc(e.series)} series x ${esc(e.repeticiones)} reps - ${esc(formatExerciseWeights(e))})`).join("<br>")
@@ -1339,7 +1382,7 @@ function viewUserProgressModal(id_usuario) {
 
       item.innerHTML = `
         <div>
-          <h5 style="font-size: 1.05rem; font-weight: 700; color: #60A5FA;">${esc(r.titulo)}</h5>
+          <h5 style="font-size: 1.05rem; font-weight: 700;">${esc(r.titulo)}</h5>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">${esc(r.descripcion || "Sin descripción")} | Horario: ${esc(r.horario || "Flexible")}</p>
           <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4;">${exList}</div>
         </div>
@@ -1395,7 +1438,7 @@ function inspectRoutineDetailByAdmin(id_usuario, id_rutina) {
           <tr>
             <td style="font-weight: 600; color: var(--text-muted);">Serie ${esc(s + 1)}</td>
             <td>
-              <span style="font-size: 1rem; font-weight: 700; color: #60A5FA;">${esc(setWeight)} kg</span>
+              <span style="font-size: 1rem; font-weight: 700; color: var(--link);">${esc(setWeight)} kg</span>
             </td>
             <td>
               <span style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${esc(setReps)} reps</span>
@@ -1509,7 +1552,7 @@ function filterPaymentUserList() {
   matches.forEach(u => {
     const item = document.createElement("div");
     item.style.cssText = "padding: 0.6rem 0.8rem; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: background 0.2s ease;";
-    item.onmouseover = () => item.style.background = "rgba(30, 41, 59, 0.8)";
+    item.onmouseover = () => item.style.background = "var(--surface-3)";
     item.onmouseout = () => item.style.background = "transparent";
 
     const statusInfo = getClientStatusInfo(u);
@@ -1523,7 +1566,7 @@ function filterPaymentUserList() {
 
     item.innerHTML = `
       <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${esc(u.nombre_completo)}</div>
-      <div style="font-size: 0.8rem; color: #60A5FA;">✉️ ${esc(u.correo)} • 🪪 ${esc(u.cedula || 'Sin CI')} • <span style="color: var(--text-muted);">📞 ${esc(u.telefono || 'Sin tel')}</span></div>
+      <div style="font-size: 0.8rem; color: var(--link);">✉️ ${esc(u.correo)} • 🪪 ${esc(u.cedula || 'Sin CI')} • <span style="color: var(--text-muted);">📞 ${esc(u.telefono || 'Sin tel')}</span></div>
       <div style="font-size: 0.8rem; color: ${esc(statusInfo.venceColor)}; margin-top: 0.2rem;">📅 Membresía Vence: <strong>${esc(venceStr)}</strong> (${estadoBadge})</div>
     `;
 
@@ -1547,13 +1590,13 @@ function selectClientForPayment(id_usuario) {
 
   const venceStr = (user.membresia && user.membresia.vence) ? user.membresia.vence : 'Sin fecha registrada';
   const estadoStr = (user.membresia && user.membresia.estado) ? user.membresia.estado : 'Sin membresía';
-  const estadoColor = estadoStr === 'activa' ? '#34D399' : '#F87171';
+  const estadoColor = estadoStr === 'activa' ? 'var(--ok)' : 'var(--danger)';
 
   if (badgeText) {
     badgeText.innerHTML = `
       <div style="line-height: 1.5;">
         <strong style="font-size: 1rem; color: var(--text-main);">${esc(user.nombre_completo)}</strong>
-        <span style="font-size: 0.82rem; color: #60A5FA; display: block;">✉️ ${esc(user.correo)} • 📞 ${esc(user.telefono || 'Sin teléfono')}</span>
+        <span style="font-size: 0.82rem; color: var(--link); display: block;">✉️ ${esc(user.correo)} • 📞 ${esc(user.telefono || 'Sin teléfono')}</span>
         <span style="font-size: 0.85rem; color: ${esc(estadoColor)}; font-weight: 600; margin-top: 0.3rem; display: inline-block;">
           📅 Membresía Vence: <strong>${esc(venceStr)}</strong> (${esc(estadoStr)})
         </span>
@@ -1586,7 +1629,7 @@ function savePayment(event) {
   event.preventDefault();
 
   if (!selectedPaymentUserId) {
-    alert("Por favor selecciona un cliente de la lista de sugerencias.");
+    showToast("Por favor selecciona un cliente de la lista de sugerencias.", "aviso");
     return;
   }
 
@@ -1617,7 +1660,7 @@ function savePayment(event) {
       return data;
     })
     .then(res => {
-      alert(res.msg || "¡Pago registrado exitosamente! La membresía del cliente ha sido actualizada.");
+      showToast(res.msg || "¡Pago registrado exitosamente! La membresía del cliente ha sido actualizada.", "exito");
       closeRegisterPaymentModal();
       initAdminDashboard();
       if (!$("#adminClientsSection").classList.contains("hidden")) {
@@ -1627,7 +1670,7 @@ function savePayment(event) {
         loadAdminPaymentsHistory(fecha_pago);
       }
     })
-    .catch(err => alert(err.message));
+    .catch(err => showToast(err.message, "error"));
 }
 
 let currentPaymentsData = [];
@@ -1752,7 +1795,7 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
       if (currentPaymentsData.length === 0) {
         container.innerHTML = `
-          <div style="text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+          <div style="text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
             <p style="color: var(--text-muted); font-size: 0.95rem;">${emptyMsg}</p>
           </div>
         `;
@@ -1761,31 +1804,31 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
       currentPaymentsData.forEach(p => {
         const item = document.createElement("div");
-        item.style.cssText = "background: rgba(15,23,42,0.6); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; transition: transform 0.2s ease;";
+        item.style.cssText = "background: var(--surface-2); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; transition: transform 0.2s ease;";
 
         const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
-          ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
+          ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
           : "";
 
-        const turnoColor = p.turno === 'AM' ? '#F59E0B' : (p.turno === 'PM' ? '#6366F1' : '#6B7280');
+        const turnoColor = 'var(--text-2)';
         const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
         const turnoBadgeHtml = p.turno
-          ? `<span class="badge" style="background: ${p.turno === 'AM' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color: ${turnoColor}; border: 1px solid ${p.turno === 'AM' ? 'rgba(245,158,11,0.4)' : 'rgba(99,102,241,0.4)'}; font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
+          ? `<span class="badge" style="background: var(--surface-3); color: ${turnoColor}; border: 1px solid var(--border-strong); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
           : '';
 
         item.innerHTML = `
           <div>
             <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
-            <span style="font-size: 0.8rem; color: #60A5FA;">(✉️ ${esc(p.correo)} • 📞 ${esc(p.telefono || 'Sin tel')})</span><br>
+            <span style="font-size: 0.8rem; color: var(--link);">(✉️ ${esc(p.correo)} • 📞 ${esc(p.telefono || 'Sin tel')})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
               Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
-            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
+            <span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
               +${esc(p.monto)} ${esc(p.moneda)}
             </span>
-            <button type="button" class="btn-secondary" onclick="editPayment(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-color: #60A5FA; color: #60A5FA;">
+            <button type="button" class="btn-secondary" onclick="editPayment(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
               Editar
             </button>
             <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
@@ -1884,7 +1927,7 @@ async function saveEditPayment(e) {
     });
     const data = await res.json();
     if (data.ok) {
-      alert("Pago actualizado correctamente.");
+      showToast("Pago actualizado correctamente.", "exito");
       closeEditPaymentModal();
       // Recargar historial
       const dateInput = $("#historyDateFilter");
@@ -1897,11 +1940,11 @@ async function saveEditPayment(e) {
         loadAdminPaymentsHistory(targetDate);
       }
     } else {
-      alert("Error: " + data.msg);
+      showToast("Error: " + data.msg, "error");
     }
   } catch (err) {
     console.error(err);
-    alert("Ocurrió un error al actualizar el pago.");
+    showToast("Ocurrió un error al actualizar el pago.", "error");
   } finally {
     btn.disabled = false;
     btn.textContent = "✓ Actualizar Pago";
@@ -1919,13 +1962,13 @@ function sendWhatsAppReminderById(idUsuario) {
 
 function sendWhatsAppReminder(nombreCompleto, telefono, venceDate, estado) {
   if (!telefono || telefono.trim() === "" || telefono.trim() === "Sin teléfono") {
-    alert("El cliente no tiene un número de teléfono registrado. Puedes agregar uno editando sus datos.");
+    showToast("El cliente no tiene un número de teléfono registrado. Puedes agregar uno editando sus datos.", "aviso");
     return;
   }
 
   const cleanPhone = telefono.replace(/[^0-9]/g, "");
   if (!cleanPhone) {
-    alert("El número de teléfono registrado no es válido.");
+    showToast("El número de teléfono registrado no es válido.", "aviso");
     return;
   }
 
@@ -1960,7 +2003,7 @@ function loadAdminPaymentsRangeHistory() {
   const to = $("#historyDateTo") ? $("#historyDateTo").value : null;
 
   if (!from || !to) {
-    alert("Por favor selecciona ambas fechas del rango.");
+    showToast("Por favor selecciona ambas fechas del rango.", "aviso");
     return;
   }
 
@@ -1984,7 +2027,7 @@ function loadAdminPaymentsRangeHistory() {
 
       if (currentPaymentsData.length === 0) {
         container.innerHTML = `
-          <div style="text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+          <div style="text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
             <p style="color: var(--text-muted); font-size: 0.95rem;">No se registraron pagos en el rango seleccionado (${esc(from)} a ${esc(to)}).</p>
           </div>
         `;
@@ -1993,28 +2036,28 @@ function loadAdminPaymentsRangeHistory() {
 
       currentPaymentsData.forEach(p => {
         const item = document.createElement("div");
-        item.style.cssText = "background: rgba(15,23,42,0.6); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;";
+        item.style.cssText = "background: var(--surface-2); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;";
 
         const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
-          ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
+          ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
           : '';
 
-        const turnoColor = p.turno === 'AM' ? '#F59E0B' : (p.turno === 'PM' ? '#6366F1' : '#6B7280');
+        const turnoColor = 'var(--text-2)';
         const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
         const turnoBadgeHtml = p.turno
-          ? `<span class="badge" style="background: ${p.turno === 'AM' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}; color: ${turnoColor}; border: 1px solid ${p.turno === 'AM' ? 'rgba(245,158,11,0.4)' : 'rgba(99,102,241,0.4)'}; font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
+          ? `<span class="badge" style="background: var(--surface-3); color: ${turnoColor}; border: 1px solid var(--border-strong); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
           : '';
 
         item.innerHTML = `
           <div>
             <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
-            <span style="font-size: 0.8rem; color: #60A5FA;">(${esc(p.correo)} • Tel: ${esc(p.telefono || 'Sin tel')})</span><br>
+            <span style="font-size: 0.8rem; color: var(--link);">(${esc(p.correo)} • Tel: ${esc(p.telefono || 'Sin tel')})</span><br>
             <span style="font-size: 0.82rem; color: var(--text-muted);">
               Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
             </span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.8rem;">
-            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
+            <span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
               +${esc(p.monto)} ${esc(p.moneda)}
             </span>
             <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
@@ -2082,13 +2125,13 @@ function copyPaymentsSummaryToClipboard() {
   const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\n${totalsSection}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
 
   navigator.clipboard.writeText(summaryText)
-    .then(() => alert("El resumen contable ha sido copiado al portapapeles."))
-    .catch(err => alert("Error al copiar resumen contable: " + err));
+    .then(() => showToast("El resumen contable ha sido copiado al portapapeles.", "exito"))
+    .catch(err => showToast("Error al copiar resumen contable: " + err, "error"));
 }
 
 function exportPaymentsToExcel() {
   if (!currentPaymentsData || currentPaymentsData.length === 0) {
-    alert("No hay registros de pagos en el historial actual para exportar.");
+    showToast("No hay registros de pagos en el historial actual para exportar.", "aviso");
     return;
   }
 
@@ -2194,9 +2237,9 @@ function loadAdminTemplates() {
 
       if (adminTemplatesData.length === 0) {
         grid.innerHTML = `
-          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
             <p style="font-size: 1.05rem; color: var(--text-muted); margin-bottom: 1rem;">No hay plantillas de rutinas creadas aún.</p>
-            <button class="btn-primary" onclick="openCreateTemplateModal()" style="width: auto; margin: 0 auto; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+            <button class="btn-primary" onclick="openCreateTemplateModal()" style="width: auto; margin: 0 auto;">
               + Crear Primera Plantilla
             </button>
           </div>
@@ -2214,11 +2257,11 @@ function loadAdminTemplates() {
 
         card.innerHTML = `
           <div>
-            <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); margin-bottom: 0.5rem;">Plantilla</span>
+            <span class="badge" style="background: var(--accent-bg); color: var(--accent-soft); border: 1px solid var(--border-strong); margin-bottom: 0.5rem;">Plantilla</span>
             <h3 class="routine-title">${esc(p.titulo)}</h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">${esc(p.descripcion || "Sin descripción")} | Horario: ${esc(p.horario || "Flexible")}</p>
             
-            <div style="background: rgba(15,23,42,0.5); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.4;">
+            <div style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.4;">
               ${exList}
             </div>
           </div>
@@ -2273,13 +2316,13 @@ function addTemplateExerciseRow(nombre = "", series = 3, reps = 10, peso = 0) {
 
   const card = document.createElement("div");
   card.className = "template-exercise-row template-exercise-card";
-  card.style.cssText = "background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 1rem; position: relative; margin-bottom: 0.8rem;";
+  card.style.cssText = "background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 1rem; position: relative; margin-bottom: 0.8rem;";
 
   card.innerHTML = `
-    <button type="button" onclick="this.closest('.template-exercise-card').remove()" title="Eliminar ejercicio" style="position: absolute; top: 0.8rem; right: 0.8rem; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;">X</button>
+    <button type="button" onclick="this.closest('.template-exercise-card').remove()" title="Eliminar ejercicio" style="position: absolute; top: 0.8rem; right: 0.8rem; background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); border-radius: 8px; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;">X</button>
 
     <div style="margin-bottom: 0.8rem; padding-right: 2rem;">
-      <label class="form-label" style="font-size: 0.8rem; color: #C084FC; margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
+      <label class="form-label" style="font-size: 0.8rem; color: var(--accent-soft); margin-bottom: 0.3rem; font-weight: 600;">Nombre del Ejercicio</label>
       <input type="text" class="form-input template-ex-name" placeholder="Ej: Sentadilla Libre" value="${esc(nombre)}" required style="padding: 0.5rem 0.8rem; font-size: 0.9rem;">
     </div>
 
@@ -2322,7 +2365,7 @@ function saveNewTemplate(event) {
   });
 
   if (ejercicios.length === 0) {
-    alert("Debes agregar al menos un ejercicio a la plantilla.");
+    showToast("Debes agregar al menos un ejercicio a la plantilla.", "aviso");
     return;
   }
 
@@ -2341,17 +2384,17 @@ function saveNewTemplate(event) {
     })
     .then(res => {
       const msg = editingTemplateId ? "¡Plantilla de rutina actualizada con éxito!" : "¡Plantilla de rutina creada con éxito!";
-      alert(msg);
+      showToast(msg, "exito");
       closeCreateTemplateModal();
       loadAdminTemplates();
     })
-    .catch(err => alert(err.message));
+    .catch(err => showToast(err.message, "error"));
 }
 
 function editTemplateByAdmin(id_plantilla) {
   const plantilla = adminTemplatesData.find(p => p.id_plantilla === id_plantilla);
   if (!plantilla) {
-    alert("No se encontró la información de la plantilla.");
+    showToast("No se encontró la información de la plantilla.", "aviso");
     return;
   }
 
@@ -2387,10 +2430,10 @@ function deleteTemplateByAdmin(id_plantilla) {
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
-        alert("Plantilla eliminada.");
+        showToast("Plantilla eliminada.", "exito");
         loadAdminTemplates();
       } else {
-        alert(res.msg || "Error al eliminar plantilla");
+        showToast(res.msg || "Error al eliminar plantilla", "error");
       }
     })
     .catch(err => console.error(err));
@@ -2483,7 +2526,7 @@ function openTemplateSelectorModal() {
     .then(res => {
       if (!res.ok || !res.plantillas || res.plantillas.length === 0) {
         grid.innerHTML = `
-          <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+          <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
             <p style="color: var(--text-muted); font-size: 0.95rem;">No hay plantillas predefinidas disponibles en este momento.</p>
           </div>
         `;
@@ -2495,7 +2538,7 @@ function openTemplateSelectorModal() {
       res.plantillas.forEach(p => {
         const card = document.createElement("div");
         card.className = "routine-card";
-        card.style.cssText = "display: flex; flex-direction: column; justify-content: space-between; height: 100%; border-color: rgba(168, 85, 247, 0.3);";
+        card.style.cssText = "display: flex; flex-direction: column; justify-content: space-between; height: 100%; border-color: var(--border-strong);";
 
         const exList = p.ejercicios && p.ejercicios.length > 0
           ? p.ejercicios.map(e => `• ${esc(e.nombre_ejercicio)} (${esc(e.series)} series × ${esc(e.repeticiones)} reps)`).join("<br>")
@@ -2504,19 +2547,19 @@ function openTemplateSelectorModal() {
         card.innerHTML = `
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <h3 class="routine-title" style="color: #C084FC;">${esc(p.titulo)}</h3>
-              <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4);">${esc(p.horario || "Flexible")}</span>
+              <h3 class="routine-title" style="">${esc(p.titulo)}</h3>
+              <span class="badge" style="background: var(--accent-bg); color: var(--accent-soft); border: 1px solid var(--border-strong);">${esc(p.horario || "Flexible")}</span>
             </div>
             
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">${esc(p.descripcion || "Sin descripción")}</p>
 
-            <div style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1.2rem; line-height: 1.4;">
+            <div style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-main); margin-bottom: 1.2rem; line-height: 1.4;">
               ${exList}
             </div>
           </div>
 
           <div>
-            <button type="button" class="btn-primary" onclick="selectTemplateForRoutine(${esc(p.id_plantilla)})" style="width: 100%; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+            <button type="button" class="btn-primary" onclick="selectTemplateForRoutine(${esc(p.id_plantilla)})" style="width: 100%;">
               Cargar Esta Rutina
             </button>
           </div>
@@ -2577,15 +2620,15 @@ function toggleAdminResourcesSection() {
 function getCategoryBadge(cat) {
   switch (cat) {
     case 'Nutrición':
-      return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">Nutrición</span>`;
+      return `<span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border);">Nutrición</span>`;
     case 'Entrenamiento':
-      return `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3);">Guía</span>`;
+      return `<span class="badge" style="background: var(--accent-bg); color: var(--link); border: 1px solid var(--border-strong);">Guía</span>`;
     case 'Suplementación':
-      return `<span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.3);">Suplementos</span>`;
+      return `<span class="badge" style="background: var(--accent-bg); color: var(--accent-soft); border: 1px solid var(--border-strong);">Suplementos</span>`;
     case 'Reglamento':
-      return `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3);">Reglamento</span>`;
+      return `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);">Reglamento</span>`;
     default:
-      return `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3);">Consejos</span>`;
+      return `<span class="badge" style="background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border);">Consejos</span>`;
   }
 }
 
@@ -2647,17 +2690,17 @@ function openImagePreviewModal(url, title) {
     modal.id = "previewResourceModal";
     modal.className = "modal-overlay hidden";
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 850px; text-align: center; background: #1e293b; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+      <div class="modal-content" style="max-width: 850px; text-align: center; background: var(--surface); border: 1px solid var(--border-light); border-radius: 16px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 id="previewResourceTitle" style="font-size: 1.25rem; font-weight: 700; color: #FBBF24; margin: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
+          <h3 id="previewResourceTitle" style="font-size: 1.25rem; font-weight: 700; margin: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
           <button type="button" onclick="closeImagePreviewModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0 0.4rem;">&times;</button>
         </div>
-        <div style="background: #0f172a; border-radius: 12px; padding: 0.5rem; display: flex; justify-content: center; align-items: center; min-height: 280px; max-height: 70vh; overflow: auto; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="background: var(--surface-2); border-radius: 12px; padding: 0.5rem; display: flex; justify-content: center; align-items: center; min-height: 280px; max-height: 70vh; overflow: auto; margin-bottom: 1.2rem; border: 1px solid var(--border);">
           <img id="previewResourceImg" src="" alt="Vista previa" style="max-width: 100%; max-height: 65vh; object-fit: contain; border-radius: 8px;" />
           <iframe id="previewResourceIframe" src="" style="width: 100%; height: 65vh; border: none; border-radius: 8px;" class="hidden"></iframe>
         </div>
         <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex-wrap: wrap;">
-          <button type="button" id="previewResourceFullBtn" class="btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.88rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;"> Ampliar en Pestaña</button>
+          <button type="button" id="previewResourceFullBtn" class="btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.88rem; border: none; display: inline-flex; align-items: center; gap: 0.4rem;"> Ampliar en Pestaña</button>
           <button type="button" class="btn-secondary" onclick="closeImagePreviewModal()" style="padding: 0.55rem 1.2rem; font-size: 0.88rem;">Cerrar</button>
         </div>
       </div>
@@ -2695,7 +2738,7 @@ function openImagePreviewModal(url, title) {
       if (hrefUrl.startsWith('data:image/')) {
         const win = window.open();
         if (win) {
-          win.document.write(`<html><head><title>${esc(title || 'Vista Previa')}</title></head><body style="margin:0;background:#0f172a;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${esc(hrefUrl)}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
+          win.document.write(`<html><head><title>${esc(title || 'Vista Previa')}</title></head><body style="margin:0;background:#0A0F1C;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="${esc(hrefUrl)}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
         }
       } else {
         window.open(hrefUrl, '_blank');
@@ -2738,7 +2781,7 @@ function loadAdminResources() {
     })
     .catch(err => {
       console.error("Error cargando materiales de apoyo admin:", err);
-      grid.innerHTML = `<div style="grid-column: 1 / -1; color: #EF4444; text-align: center;">Error al cargar contenidos.</div>`;
+      grid.innerHTML = `<div style="grid-column: 1 / -1; color: var(--danger); text-align: center;">Error al cargar contenidos.</div>`;
     });
 }
 
@@ -2757,9 +2800,9 @@ function filterAdminResourcesByCategory() {
   grid.innerHTML = "";
   if (list.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(30,41,59,0.4); border-radius: 16px; border: 1px dashed var(--border-light);">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
         <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No hay material registrado en esta categoría aún.</p>
-        <button class="btn-primary" onclick="openCreateResourceModal()" style="width: auto; margin: 0 auto; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+        <button class="btn-primary" onclick="openCreateResourceModal()" style="width: auto; margin: 0 auto; border: none;">
           + Subir Primer Material
         </button>
       </div>
@@ -2770,7 +2813,7 @@ function filterAdminResourcesByCategory() {
   list.forEach(r => {
     const card = document.createElement("div");
     card.className = "routine-card";
-    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #F59E0B;";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--warn);";
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
@@ -2781,22 +2824,22 @@ function filterAdminResourcesByCategory() {
     const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: var(--surface-2); height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
         <img src="${esc(hrefUrl)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${esc(r.titulo)}">
       </div>
     ` : (isPdf ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: var(--surface-2); height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border-strong); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
         <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
-        <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
+        <span style="font-size: 0.82rem; color: var(--link); font-weight: 600;">Documento PDF (Ver en visor)</span>
       </div>
     ` : '');
 
     const actionBtn = (isImage || isPdf) ? `
-      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="flex: 1; text-align: center; font-size: 0.85rem; padding: 0.55rem 0.8rem; border: none;">
         ${esc(isImage ? 'Ver Imagen' : 'Ver PDF')}
       </button>
     ` : `
-      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none; display: inline-flex; align-items: center; justify-content: center;">
+      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; font-size: 0.85rem; padding: 0.55rem 0.8rem; border: none; display: inline-flex; align-items: center; justify-content: center;">
         Abrir Enlace 🔗
       </a>
     `;
@@ -2812,7 +2855,7 @@ function filterAdminResourcesByCategory() {
 
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${esc(r.descripcion || "Sin descripción adicional.")}</p>
 
-        <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.04);">
+        <div style="background: var(--surface-2); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: var(--link); margin-bottom: 1rem; border: 1px solid var(--border);">
           ${iconTag}: <strong style="color: var(--text-main);">${esc(r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : r.url_recurso))}</strong>
         </div>
       </div>
@@ -2929,7 +2972,7 @@ async function saveResource(e) {
 
     if (typeVal === 'archivo') {
       if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        alert("Por favor selecciona un archivo (PDF, Imagen, etc.).");
+        showToast("Por favor selecciona un archivo (PDF, Imagen, etc.).", "aviso");
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Guardar Material"; }
         return;
       }
@@ -2938,7 +2981,7 @@ async function saveResource(e) {
       formData.append('archivo', fileToUpload);
     } else {
       if (!linkInput || !linkInput.value.trim()) {
-        alert("Por favor ingresa la URL del enlace o video.");
+        showToast("Por favor ingresa la URL del enlace o video.", "aviso");
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Guardar Material"; }
         return;
       }
@@ -2974,7 +3017,7 @@ async function saveResource(e) {
       closeCreateResourceModal();
       loadAdminResources();
     } else {
-      alert(res.msg || "Error al guardar el material de apoyo.");
+      showToast(res.msg || "Error al guardar el material de apoyo.", "error");
     }
   } catch (err) {
     if (submitBtn) {
@@ -2982,7 +3025,7 @@ async function saveResource(e) {
       submitBtn.textContent = "Guardar Material";
     }
     console.error("Error guardando recurso:", err);
-    alert(err.message || "Error al conectar con el servidor. Por favor reintenta.");
+    showToast(err.message || "Error al conectar con el servidor. Por favor reintenta.", "error");
   }
 }
 
@@ -2995,7 +3038,7 @@ function deleteResourceByAdmin(id) {
       if (res.ok) {
         loadAdminResources();
       } else {
-        alert(res.msg || "Error al eliminar el material.");
+        showToast(res.msg || "Error al eliminar el material.", "error");
       }
     })
     .catch(err => console.error("Error eliminando recurso:", err));
@@ -3074,7 +3117,7 @@ function filterUserResourcesByCategory() {
   grid.innerHTML = "";
   if (list.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px; border: 1px dashed var(--border-light);">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
         <p style="font-size: 1rem; color: var(--text-muted); margin: 0;">No hay contenido adicional disponible en esta categoría por ahora.</p>
       </div>
     `;
@@ -3084,7 +3127,7 @@ function filterUserResourcesByCategory() {
   list.forEach(r => {
     const card = document.createElement("div");
     card.className = "routine-card";
-    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #F59E0B;";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--warn);";
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
@@ -3095,22 +3138,22 @@ function filterUserResourcesByCategory() {
     const isPdf = isDataPdf || (r.url_recurso && String(r.url_recurso).toLowerCase().endsWith('.pdf'));
 
     const thumbnailHtml = isImage ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: var(--surface-2); height: 160px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ampliar">
         <img src="${esc(hrefUrl)}" style="width: 100%; height: 100%; object-fit: cover;" alt="${esc(r.titulo)}">
       </div>
     ` : (isPdf ? `
-      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: #0f172a; height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
+      <div style="margin-bottom: 0.8rem; border-radius: 8px; overflow: hidden; background: var(--surface-2); height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border-strong); cursor: pointer;" onclick="openResourcePreviewById(${esc(r.id_recurso)})" title="Haz clic para ver PDF">
         <span style="font-size: 2.2rem; margin-bottom: 0.2rem;">📄</span>
-        <span style="font-size: 0.82rem; color: #60A5FA; font-weight: 600;">Documento PDF (Ver en visor)</span>
+        <span style="font-size: 0.82rem; color: var(--link); font-weight: 600;">Documento PDF (Ver en visor)</span>
       </div>
     ` : '');
 
     const userActionBtn = (isImage || isPdf) ? `
-      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+      <button type="button" class="btn-primary" onclick="openResourcePreviewById(${esc(r.id_recurso)})" style="display: block; width: 100%; text-align: center; font-size: 0.88rem; padding: 0.6rem 1rem; border: none;">
         ${esc(isImage ? 'Ver Imagen' : 'Ver PDF')}
       </button>
     ` : `
-      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+      <a href="${esc(hrefUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display: block; width: 100%; text-align: center; text-decoration: none; font-size: 0.88rem; padding: 0.6rem 1rem; border: none;">
         Abrir Enlace 🔗
       </a>
     `;
@@ -3126,7 +3169,7 @@ function filterUserResourcesByCategory() {
 
         <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.8rem; line-height: 1.4;">${esc(r.descripcion || "Sin descripción adicional.")}</p>
 
-        <div style="background: rgba(15,23,42,0.5); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: #60A5FA; margin-bottom: 1.2rem; border: 1px solid rgba(255,255,255,0.04);">
+        <div style="background: var(--surface-2); padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.82rem; color: var(--link); margin-bottom: 1.2rem; border: 1px solid var(--border);">
           ${iconTag}: <strong style="color: var(--text-main);">${esc(r.nombre_archivo_orig || (isDataImg ? 'Imagen Base64' : 'Ver Recurso'))}</strong>
         </div>
       </div>
@@ -3182,11 +3225,11 @@ function estadoEntrada(u) {
   const activa = u.membresia && u.membresia.estado === "activa";
   const dias = diasHasta(vence);
   if (dias === null) {
-    return { codigo: "sin", dias, color: "#F87171", titulo: "Sin membresía registrada" };
+    return { codigo: "sin", dias, color: "var(--danger)", titulo: "Sin membresía registrada" };
   }
-  if (!activa || dias < 0) return { codigo: "vencida", dias, color: "#F87171", titulo: "Membresía vencida" };
-  if (dias <= 3) return { codigo: "por_vencer", dias, color: "#FBBF24", titulo: "Membresía por vencer" };
-  return { codigo: "activa", dias, color: "#34D399", titulo: "Membresía activa" };
+  if (!activa || dias < 0) return { codigo: "vencida", dias, color: "var(--danger)", titulo: "Membresía vencida" };
+  if (dias <= 3) return { codigo: "por_vencer", dias, color: "var(--warn)", titulo: "Membresía por vencer" };
+  return { codigo: "activa", dias, color: "var(--ok)", titulo: "Membresía activa" };
 }
 
 /* ---------- Control de Entrada ---------- */
@@ -3234,7 +3277,7 @@ function onCheckinInput() {
   } else {
     box.innerHTML = checkinMatches.map(u => {
       const st = estadoEntrada(u);
-      return `<div onclick="seleccionarClienteEntrada(${esc(u.id_usuario)})" style="padding: 0.7rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(59,130,246,0.12)'" onmouseout="this.style.background='transparent'">
+      return `<div onclick="seleccionarClienteEntrada(${esc(u.id_usuario)})" style="padding: 0.7rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; border-bottom: 1px solid var(--border);" onmouseover="this.style.background='var(--accent-bg)'" onmouseout="this.style.background='transparent'">
         <span><strong>${esc(u.nombre_completo)}</strong> <span style="color: var(--text-muted); font-size: 0.85rem;">· ${esc(u.cedula || "sin cédula")}</span></span>
         <span style="color: ${st.color}; font-size: 0.85rem; white-space: nowrap;">${esc(st.titulo.replace("Membresía ", ""))}</span>
       </div>`;
@@ -3256,8 +3299,8 @@ function onCheckinKeydown(event) {
   if (exacto) return seleccionarClienteEntrada(exacto.id_usuario);
   if (matches.length === 1) return seleccionarClienteEntrada(matches[0].id_usuario);
   if (matches.length === 0) {
-    mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); text-align: center;">
-      <strong style="color: #FCA5A5;">No hay ningún cliente con “${esc(q)}”.</strong>
+    mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: var(--danger-bg); border: 1px solid var(--danger-border); text-align: center;">
+      <strong style="color: var(--danger);">No hay ningún cliente con “${esc(q)}”.</strong>
       <div style="margin-top: 0.6rem;"><button type="button" class="btn-secondary" onclick="openCreateUserModal()" style="font-size: 0.85rem;">+ Registrar nuevo cliente</button></div>
     </div>`);
   }
@@ -3291,23 +3334,23 @@ function seleccionarClienteEntrada(idUsuario) {
   }
   mostrarPanelEntrada(panelClienteHtml(u, st, `
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.9rem;">
-      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="flex: 1 1 180px; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">💳 Registrar pago</button>
+      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="flex: 1 1 180px;">💳 Registrar pago</button>
       <button type="button" class="btn-secondary" onclick="registrarEntrada(${esc(u.id_usuario)}, false)" style="flex: 1 1 180px;">Dejar pasar de todas formas</button>
-      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="flex: 1 1 120px; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
+      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="flex: 1 1 120px; border-color: var(--ok-border); color: var(--ok);">WhatsApp</button>
     </div>`));
 }
 
 function panelClienteHtml(u, st, extraHtml, encabezado) {
   const deuda = u.tiene_deuda == 1;
   const vence = u.membresia && u.membresia.vence;
-  const bg = st.codigo === "activa" ? "rgba(16,185,129,0.12)" : st.codigo === "por_vencer" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)";
+  const bg = st.codigo === "activa" ? "var(--ok-bg)" : st.codigo === "por_vencer" ? "var(--warn-bg)" : "var(--danger-bg)";
   return `<div style="padding: 1.1rem 1.25rem; border-radius: 14px; background: ${bg}; border: 2px solid ${st.color};">
     <div style="font-size: 0.85rem; font-weight: 700; color: ${st.color}; text-transform: uppercase; letter-spacing: 0.04em;">${esc(encabezado || st.titulo)}</div>
     <div style="font-size: 1.45rem; font-weight: 700; color: var(--text-main); margin-top: 0.2rem;">${esc(u.nombre_completo)}</div>
     <div style="color: var(--text-muted); font-size: 0.92rem; margin-top: 0.3rem;">
       ${esc(u.ultimo_plan || "Sin plan")} · Vence ${esc(formatFechaCorta(vence))} · <strong style="color: ${st.color};">${esc(textoDias(st.dias))}</strong>
     </div>
-    ${deuda ? `<div style="margin-top: 0.5rem; color: #FCA5A5; font-weight: 700;">⚠️ Tiene un abono pendiente (deuda)</div>` : ""}
+    ${deuda ? `<div style="margin-top: 0.5rem; color: var(--danger); font-weight: 700;">⚠️ Tiene un abono pendiente (deuda)</div>` : ""}
     ${extraHtml || ""}
   </div>`;
 }
@@ -3329,7 +3372,7 @@ function registrarEntrada(idUsuario, forzar) {
     .then(res => {
       const st = estadoEntrada(u);
       if (!res.ok) {
-        mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); color: #FCA5A5;">${esc(res.msg || "No se pudo registrar la entrada.")}</div>`);
+        mostrarPanelEntrada(`<div style="padding: 1rem; border-radius: 12px; background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger);">${esc(res.msg || "No se pudo registrar la entrada.")}</div>`);
         return;
       }
       if (res.ya_registrado) {
@@ -3342,12 +3385,12 @@ function registrarEntrada(idUsuario, forzar) {
         return;
       }
       const aviso = st.codigo === "por_vencer"
-        ? `<div style="margin-top: 0.6rem; color: #FCD34D; font-weight: 600;">🔔 Recuérdale que su plan ${esc(textoDias(st.dias))}.</div>`
-        : (st.codigo !== "activa" ? `<div style="margin-top: 0.6rem; color: #FCA5A5; font-weight: 600;">Entrada registrada con la membresía no vigente.</div>` : "");
+        ? `<div style="margin-top: 0.6rem; color: var(--warn); font-weight: 600;">🔔 Recuérdale que su plan ${esc(textoDias(st.dias))}.</div>`
+        : (st.codigo !== "activa" ? `<div style="margin-top: 0.6rem; color: var(--danger); font-weight: 600;">Entrada registrada con la membresía no vigente.</div>` : "");
       mostrarPanelEntrada(panelClienteHtml(u, st, aviso, `✅ Entrada registrada · ${horaLocalStr()}`));
       loadCheckins();
     })
-    .catch(() => mostrarPanelEntrada(`<div style="padding: 1rem; color: #FCA5A5;">Error de conexión. Intenta de nuevo.</div>`));
+    .catch(() => mostrarPanelEntrada(`<div style="padding: 1rem; color: var(--danger);">Error de conexión. Intenta de nuevo.</div>`));
 }
 
 function loadCheckins() {
@@ -3365,10 +3408,10 @@ function loadCheckins() {
         list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aún no hay entradas registradas este día.</p>`;
         return;
       }
-      const etiquetas = { activa: ["Al día", "#34D399"], vencida: ["Vencida", "#F87171"], sin_membresia: ["Sin membresía", "#F87171"] };
+      const etiquetas = { activa: ["Al día", "var(--ok)"], vencida: ["Vencida", "var(--danger)"], sin_membresia: ["Sin membresía", "var(--danger)"] };
       list.innerHTML = rows.map(a => {
         const [txt, col] = etiquetas[a.estado_membresia] || ["-", "var(--text-muted)"];
-        return `<div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.55rem 0.8rem; background: rgba(15,23,42,0.6); border-radius: 10px; border-left: 3px solid ${col};">
+        return `<div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.55rem 0.8rem; background: var(--surface-2); border-radius: 10px; border-left: 3px solid ${col};">
           <strong style="font-variant-numeric: tabular-nums; min-width: 3.2rem;">${esc(a.hora)}</strong>
           <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${esc(a.nombre_completo)} <span style="color: var(--text-muted); font-size: 0.82rem;">· ${esc(a.plan || "sin plan")}</span></span>
           <span style="color: ${col}; font-size: 0.82rem; white-space: nowrap;">${esc(txt)}${a.tenia_deuda == 1 ? " · deuda" : ""}</span>
@@ -3376,7 +3419,7 @@ function loadCheckins() {
         </div>`;
       }).join("");
     })
-    .catch(() => { list.innerHTML = `<p style="color: #FCA5A5;">No se pudieron cargar las entradas.</p>`; });
+    .catch(() => { list.innerHTML = `<p style="color: var(--danger);">No se pudieron cargar las entradas.</p>`; });
 }
 
 function anularEntrada(idAsistencia) {
@@ -3426,15 +3469,15 @@ function calcularVencimientos(categoria) {
 }
 
 function filaVencimientoHtml({ u, dias }) {
-  const col = dias < 0 ? "#F87171" : dias <= 2 ? "#FBBF24" : "#FCD34D";
-  return `<div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding: 0.7rem 0.9rem; background: rgba(15,23,42,0.6); border-radius: 10px; border-left: 3px solid ${col};">
+  const col = dias < 0 ? "var(--danger)" : dias <= 2 ? "var(--warn)" : "var(--warn)";
+  return `<div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding: 0.7rem 0.9rem; background: var(--surface-2); border-radius: 10px; border-left: 3px solid ${col};">
     <div style="flex: 1 1 220px; min-width: 0;">
       <strong>${esc(u.nombre_completo)}</strong>${u.tiene_deuda == 1 ? ` <span class="badge badge-expired" style="font-size: 0.7rem;">deuda</span>` : ""}
       <div style="color: var(--text-muted); font-size: 0.82rem;">${esc(u.ultimo_plan || "")} · vence ${esc(formatFechaCorta(u.membresia.vence))} · <span style="color: ${col}; font-weight: 600;">${esc(textoDias(dias))}</span></div>
     </div>
     <div style="display: flex; gap: 0.4rem;">
-      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
-      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">Renovar</button>
+      <button type="button" class="btn-secondary" onclick="sendWhatsAppReminderById(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: var(--ok-border); color: var(--ok);">WhatsApp</button>
+      <button type="button" class="btn-primary" onclick="openRegisterPaymentModal(${esc(u.id_usuario)})" style="font-size: 0.8rem; padding: 0.4rem 0.7rem;">Renovar</button>
     </div>
   </div>`;
 }
@@ -3446,11 +3489,11 @@ function renderExpiry() {
   const nombre = expiryTab === "mensual" ? "mensualidades" : "semanas";
   const vacio = (t) => `<p style="color: var(--text-muted); font-size: 0.9rem; padding: 0.5rem 0;">${t}</p>`;
   box.innerHTML = `
-    <h4 style="font-size: 1.05rem; font-weight: 700; color: #FBBF24; margin-bottom: 0.6rem;">Por vencer en los próximos ${w.antes} días <span class="badge badge-warning">${porVencer.length}</span></h4>
+    <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.6rem;">Por vencer en los próximos ${w.antes} días <span class="badge badge-warning">${porVencer.length}</span></h4>
     <div style="display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.6rem;">
       ${porVencer.length ? porVencer.map(filaVencimientoHtml).join("") : vacio(`No hay ${nombre} por vencer.`)}
     </div>
-    <h4 style="font-size: 1.05rem; font-weight: 700; color: #F87171; margin-bottom: 0.6rem;">Vencidas en los últimos ${w.despues} días (sin renovar) <span class="badge badge-expired">${vencidos.length}</span></h4>
+    <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.6rem;">Vencidas en los últimos ${w.despues} días (sin renovar) <span class="badge badge-expired">${vencidos.length}</span></h4>
     <div style="display: flex; flex-direction: column; gap: 0.45rem;">
       ${vencidos.length ? vencidos.map(filaVencimientoHtml).join("") : vacio(`No hay ${nombre} vencidas recientemente.`)}
     </div>`;
@@ -3582,11 +3625,11 @@ function renderCierreCaja() {
   if (sub) sub.textContent = `${formatFechaCorta(d.fecha)} · ${nombreTurno(d.turno)} · los montos de cada moneda se suman por separado.`;
 
   let html = `
-    <h4 class="report-h4">Total cobrado <span class="badge badge-active">${esc(r.cantidad)} ${r.cantidad === 1 ? "pago" : "pagos"}</span></h4>
+    <h4 class="report-h4">Total cobrado <span class="badge badge-neutral">${esc(r.cantidad)} ${r.cantidad === 1 ? "pago" : "pagos"}</span></h4>
     ${tilesMonedasHtml(r.totales)}
     <div class="report-two-col">
       <div class="report-box">
-        <h5>Pagos completos <span class="badge badge-active">${esc(r.completos.cantidad)}</span></h5>
+        <h5>Pagos completos <span class="badge badge-neutral">${esc(r.completos.cantidad)}</span></h5>
         <p>${esc(textoTotales(r.completos.totales))}</p>
       </div>
       <div class="report-box">
@@ -3600,7 +3643,7 @@ function renderCierreCaja() {
   if (d.turno === "todos") {
     html += `<h4 class="report-h4">Por turno</h4><div class="report-two-col">${d.grupos.map(g => `
       <div class="report-box">
-        <h5>${esc(nombreTurno(g.turno))} <span class="badge ${g.turno === "Sin turno" ? "badge-warning" : "badge-active"}">${esc(g.cantidad)}</span></h5>
+        <h5>${esc(nombreTurno(g.turno))} <span class="badge badge-neutral">${esc(g.cantidad)}</span></h5>
         <p>${esc(textoTotales(g.totales))}</p>
         ${g.abonos.cantidad ? `<p class="report-muted">Abonos: ${esc(textoTotales(g.abonos.totales))}</p>` : ""}
       </div>`).join("")}</div>`;
@@ -3620,7 +3663,7 @@ function renderCierreCaja() {
 
 function copiarResumenCierre() {
   const d = cierreData;
-  if (!d) { alert("Primero carga el cierre de caja."); return; }
+  if (!d) { showToast("Primero carga el cierre de caja.", "aviso"); return; }
   const r = d.resumen;
   const lineasMonedas = (tot) => {
     const ms = monedasConMonto(tot);
@@ -3640,7 +3683,7 @@ function copiarResumenCierre() {
   }
   t += `\n_Los montos de cada moneda se suman por separado._`;
 
-  const ok = () => alert("Resumen copiado. Ya puedes pegarlo en WhatsApp.");
+  const ok = () => showToast("Resumen copiado. Ya puedes pegarlo en WhatsApp.", "exito");
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(t).then(ok).catch(() => copiarTextoFallback(t, ok));
   } else {
@@ -3769,7 +3812,7 @@ function reporteClientesHtml(d) {
         <span class="cierre-pago-cliente"><strong>${esc(v.nombre_completo)}</strong>
           <small>${esc(v.plan || "Sin plan")} · venció ${esc(formatFechaCorta(v.vence))}${v.telefono ? "" : " · sin teléfono"}</small></span>
         <button type="button" class="btn-secondary" onclick="whatsappVencidoReporte(${esc(Number(v.id_usuario))})"
-          style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: #25D366; color: #4ADE80;">WhatsApp</button>
+          style="font-size: 0.8rem; padding: 0.4rem 0.7rem; border-color: var(--ok-border); color: var(--ok);">WhatsApp</button>
       </div>`).join("")}</div>` : `<p class="report-empty">Nadie quedó vencido sin renovar este mes.</p>`}`;
 }
 

@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ATLAS - Panel de Administración</title>
   <link rel="icon" type="image/png" href="assets/logo-icon-white.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -17,14 +20,13 @@
     <div class="header-container">
       <div class="header-logo-group">
         <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
-        <span class="badge"
-          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo
+        <span class="badge badge-neutral">Modo
           Administrador</span>
       </div>
       <div class="header-nav-actions">
         <span id="adminGreeting" style="font-weight: 600;">Administrador ATLAS</span>
         <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()"
-          style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          style="">
           💳 Registrar Pago
         </button>
         <button type="button" class="btn-primary" onclick="openCreateUserModal()">
@@ -51,13 +53,13 @@
     <section id="adminCheckinSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Control de Entrada</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Escribe la cédula (o el nombre) y presiona <strong>Enter</strong>. Si la membresía está al día, la entrada se registra sola.</p>
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
           <input type="date" id="checkinDateFilter" class="form-input" onchange="loadCheckins()"
             style="width: auto; padding: 0.5rem 0.8rem; font-size: 0.88rem;">
-          <span id="checkinCount" class="badge badge-active" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">0 entradas</span>
+          <span id="checkinCount" class="badge badge-neutral" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">0 entradas</span>
         </div>
       </div>
 
@@ -66,7 +68,7 @@
           placeholder="Cédula o nombre del cliente..." oninput="onCheckinInput()" onkeydown="onCheckinKeydown(event)"
           style="font-size: 1.25rem; padding: 0.9rem 1.1rem; text-align: center;">
         <div id="checkinResults" class="hidden"
-          style="position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: #0f172a; border: 1px solid var(--border-light); border-radius: 10px; margin-top: 0.3rem; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.45);"></div>
+          style="position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--surface-2); border: 1px solid var(--border-light); border-radius: 10px; margin-top: 0.3rem; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.45);"></div>
       </div>
 
       <div id="checkinStatus" style="max-width: 640px; margin: 0 auto 1.5rem auto;"></div>
@@ -83,15 +85,15 @@
 
       <!-- Card 0a: Control de Entrada -->
       <div id="cardControlEntrada" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(16,185,129,0.45);">
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Control de Entrada</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Registra la asistencia con la cédula o el nombre y verifica al instante si la membresía está al día.
           </p>
         </div>
         <button type="button" class="btn-primary" onclick="toggleCheckinSection()"
-          style="width: 100%; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          style="width: 100%;">
           Registrar Entradas
         </button>
       </div>
@@ -100,28 +102,28 @@
       <div id="cardVencimientos" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Vencimientos <span id="expiryCardCount" class="badge badge-warning" style="font-size: 0.75rem; vertical-align: middle;"></span></h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Vencimientos <span id="expiryCardCount" class="badge badge-warning" style="font-size: 0.75rem; vertical-align: middle;"></span></h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Mensualidades y semanas por vencer o vencidas, con recordatorio por WhatsApp y renovación rápida.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="toggleExpirySection()"
-          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
+          style="width: 100%;">
           Ver Vencimientos
         </button>
       </div>
 
       <!-- Card 0c: Cierre de Caja -->
       <div id="cardCierreCaja" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(45,212,191,0.45);">
+        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Cierre de Caja</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Totales cobrados por moneda en el turno AM, PM o todo el día, con resumen listo para enviar por WhatsApp.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="toggleCierreSection()"
-          style="width: 100%; border-color: #2DD4BF; color: #2DD4BF;">
+          style="width: 100%;">
           Ver Cierre de Caja
         </button>
       </div>
@@ -130,13 +132,13 @@
       <div id="cardReporteMensual" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Reporte Mensual</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Ingresos comparados con el mes anterior, clientes activos, nuevos y vencidos, y asistencia por hora.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="toggleReporteSection()"
-          style="width: 100%; border-color: #F472B6; color: #F472B6;">
+          style="width: 100%;">
           Ver Reporte Mensual
         </button>
       </div>
@@ -145,7 +147,7 @@
       <div id="cardDirectorioClientes" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Listado de Clientes</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Listado de Clientes</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Consulta la lista de atletas registrados, su estado de membresía y las rutinas que tienen asignadas.
           </p>
@@ -159,14 +161,14 @@
       <div id="cardControlPagos" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Pagos</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Control de Pagos</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Registra abonos por plan (Mensual, Estudiante, Semana, Diario o Deuda) en la moneda de tu preferencia.
           </p>
         </div>
         <div style="display: flex; gap: 0.5rem; width: 100%;">
           <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()"
-            style="flex: 1; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+            style="flex: 1;">
             Registrar Pago
           </button>
           <button type="button" class="btn-secondary" onclick="toggleAdminPaymentsSection()" style="flex: 1;">
@@ -179,13 +181,13 @@
       <div class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Nuevo Cliente</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Nuevo Cliente</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Registra a un nuevo atleta en el sistema para permitirle el ingreso directo por correo electrónico.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="openCreateUserModal()"
-          style="width: 100%; border-color: var(--primary-blue); color: #60A5FA;">
+          style="width: 100%;">
           + Registrar Nuevo Cliente
         </button>
       </div>
@@ -194,13 +196,13 @@
       <div class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #C084FC;">Plantillas de Rutinas</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Plantillas de Rutinas</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Diseña rutinas predefinidas para que tus clientes puedan cargarlas al crear su plan de entrenamiento.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="toggleAdminTemplatesSection()"
-          style="width: 100%; border-color: #C084FC; color: #C084FC;">
+          style="width: 100%;">
           Gestionar Plantillas
         </button>
       </div>
@@ -209,13 +211,13 @@
       <div id="cardMaterialContenido" class="glass-card"
         style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
+          <h3 style="font-size: 1.3rem; font-weight: 700;">Material y Contenido Adicional</h3>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
             Sube archivos de soporte (PDFs, guías, imágenes) y enlaces de interés para que tus atletas consulten.
           </p>
         </div>
         <button type="button" class="btn-secondary" onclick="toggleAdminResourcesSection()"
-          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
+          style="width: 100%;">
           Gestionar Contenido
         </button>
       </div>
@@ -226,7 +228,7 @@
     <section id="adminExpirySection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Vencimientos</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Vencimientos</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Las mensualidades se muestran aparte de las semanas para darles seguimiento sin mezclar.</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -241,7 +243,7 @@
     <section id="adminCierreSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
       <div class="report-header">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Cierre de Caja</h3>
           <p id="cierreSubtitulo" style="color: var(--text-muted); font-size: 0.85rem;">Los montos de cada moneda se suman por separado.</p>
         </div>
         <div class="report-filters">
@@ -261,7 +263,7 @@
     <section id="adminReporteSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
       <div class="report-header">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Reporte Mensual</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Ingresos, clientes y asistencia del mes seleccionado.</p>
         </div>
         <div class="report-filters">
@@ -283,7 +285,7 @@
 
         <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
           <select id="clientStatusFilterSelect" class="form-input" onchange="filterAdminUsers()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            style="width: auto; padding: 0.5rem 1rem; background: var(--surface-2); cursor: pointer; font-size: 0.88rem;">
             <option value="todos" selected>Todos los Clientes</option>
             <option value="deudores">⚠️ Con Deuda (Abono Pendiente)</option>
             <option value="proximos">⚠️ Próximos a vencer (0-5 días)</option>
@@ -291,7 +293,7 @@
             <option value="activos">Activos</option>
           </select>
           <select id="clientPlanFilterSelect" class="form-input" onchange="filterAdminUsers()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            style="width: auto; padding: 0.5rem 1rem; background: var(--surface-2); cursor: pointer; font-size: 0.88rem;">
             <option value="todos" selected>Todos los planes</option>
             <option value="mensual">Mensualidad (incluye Estudiante)</option>
             <option value="semanal">Semana</option>
@@ -318,7 +320,7 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #34D399;">Historial de Pagos</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Historial de Pagos</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Consulta los pagos por fecha y revisa el total
             recaudado en el día.</p>
         </div>
@@ -326,7 +328,7 @@
         <!-- Filtros de Búsqueda y Rango de Fechas -->
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
           <div
-            style="display: flex; align-items: center; gap: 0.4rem; background: rgba(15,23,42,0.6); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
+            style="display: flex; align-items: center; gap: 0.4rem; background: var(--surface-2); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
             <input type="text" id="historyClientSearch" class="form-input" placeholder="Buscar pagos por cliente..."
               oninput="filterPaymentsHistoryByClient()"
               style="padding: 0.4rem 0.8rem; width: 200px; font-size: 0.85rem;">
@@ -335,9 +337,9 @@
           </div>
 
           <div
-            style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15,23,42,0.6); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
+            style="display: flex; align-items: center; gap: 0.6rem; background: var(--surface-2); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
             <select id="paymentDateMode" class="form-input" onchange="togglePaymentDateMode()"
-              style="padding: 0.4rem 0.6rem; font-size: 0.85rem; background: rgba(15,23,42,0.8); cursor: pointer; width: auto;">
+              style="padding: 0.4rem 0.6rem; font-size: 0.85rem; background: var(--surface-2); cursor: pointer; width: auto;">
               <option value="dia" selected>Día Único</option>
               <option value="rango">Rango de Fechas</option>
             </select>
@@ -358,13 +360,13 @@
 
           <button type="button" class="btn-secondary" onclick="copyPaymentsSummaryToClipboard()"
             title="Copiar resumen contable"
-            style="padding: 0.5rem 0.8rem; font-size: 0.85rem; border-color: #34D399; color: #34D399;">
+            style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
             Copiar Resumen de Caja
           </button>
 
           <button type="button" class="btn-primary" onclick="exportPaymentsToExcel()"
             title="Descargar historial en formato Excel / CSV"
-            style="padding: 0.5rem 0.9rem; font-size: 0.85rem; background: linear-gradient(135deg, #059669 0%, #10B981 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+            style="padding: 0.5rem 0.9rem; font-size: 0.85rem; border: none; display: inline-flex; align-items: center; gap: 0.4rem;">
             Exportar a Excel
           </button>
         </div>
@@ -374,46 +376,46 @@
       <div id="paymentsDailySummary"
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USD</span>
-          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: #34D399; margin-top: 0.2rem;">
+          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">COP</span>
-          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: #60A5FA; margin-top: 0.2rem;">
+          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">BS</span>
-          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: #F59E0B; margin-top: 0.2rem;">
+          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Bancolombia</span>
           <div id="totalBancolombiaSummary"
-            style="font-size: 1.3rem; font-weight: 800; color: #FBBF24; margin-top: 0.2rem;">
+            style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USDT</span>
-          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: #F0B90B; margin-top: 0.2rem;">
+          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">CLP</span>
-          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: #A7F3D0; margin-top: 0.2rem;">
+          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
       </div>
@@ -428,12 +430,12 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #C084FC;">Plantillas de Rutinas Predefinidas</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Plantillas de Rutinas Predefinidas</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Diseña modelos de entrenamiento recomendados para que
             los atletas puedan asignárselos con un clic.</p>
         </div>
         <button type="button" class="btn-primary" onclick="openCreateTemplateModal()"
-          style="width: auto; padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+          style="width: auto; padding: 0.6rem 1.2rem;">
           + Crear Nueva Plantilla
         </button>
       </div>
@@ -450,14 +452,14 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Material y Contenido Adicional</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Sube PDFs, guías nutricionales, imágenes y enlaces de
             interés para que tus atletas consulten en su panel.</p>
         </div>
 
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
           <select id="adminResourceCategoryFilter" class="form-input" onchange="filterAdminResourcesByCategory()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            style="width: auto; padding: 0.5rem 1rem; background: var(--surface-2); cursor: pointer; font-size: 0.88rem;">
             <option value="todas" selected>Todas las Categorías</option>
             <option value="Nutrición">Nutrición</option>
             <option value="Entrenamiento">Guías de Entrenamiento</option>
@@ -467,7 +469,7 @@
           </select>
 
           <button type="button" class="btn-primary" onclick="openCreateResourceModal()"
-            style="width: auto; padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            style="width: auto; padding: 0.6rem 1.2rem; border: none;">
             + Subir Nuevo Material
           </button>
         </div>
@@ -486,7 +488,7 @@
   <div id="createUserModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 500px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="createUserModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Registrar Nuevo
+        <h3 id="createUserModalTitle" style="font-size: 1.4rem; font-weight: 700;">Registrar Nuevo
           Cliente</h3>
         <button type="button" onclick="closeCreateUserModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -528,7 +530,7 @@
     <div class="modal-content" style="max-width: 550px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.4rem; font-weight: 700; color: #34D399;">Registrar Pago de Cliente</h3>
+        <h3 style="font-size: 1.4rem; font-weight: 700;">Registrar Pago de Cliente</h3>
         <button type="button" onclick="closeRegisterPaymentModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -542,13 +544,13 @@
             required>
 
           <div id="paymentUserResultsList"
-            style="background: rgba(15,23,42,0.95); border: 1px solid var(--border-glow); border-radius: var(--radius-md); max-height: 180px; overflow-y: auto; margin-top: 0.4rem;"
+            style="background: var(--surface-2); border: 1px solid var(--border-glow); border-radius: var(--radius-md); max-height: 180px; overflow-y: auto; margin-top: 0.4rem;"
             class="hidden">
             <!-- Items dinámicos -->
           </div>
 
           <div id="paymentSelectedUserBadge" class="hidden"
-            style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; font-size: 0.85rem; color: #34D399; display: flex; justify-content: space-between; align-items: center;">
+            style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: var(--ok-bg); border: 1px solid var(--ok-border); border-radius: 8px; font-size: 0.85rem; color: var(--ok); display: flex; justify-content: space-between; align-items: center;">
             <span id="paymentSelectedUserText">Cliente Seleccionado</span>
             <span style="cursor: pointer; font-weight: bold; font-size: 1rem;"
               onclick="clearSelectedPaymentUser()">&times;</span>
@@ -558,7 +560,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div class="form-group">
             <label class="form-label" for="paymentMoneda">Tipo de Moneda</label>
-            <select id="paymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+            <select id="paymentMoneda" class="form-input" style="background: var(--surface-2); cursor: pointer;"
               required>
               <option value="USD" selected>USD (Dólares)</option>
               <option value="COP">COP (Pesos Colombianos)</option>
@@ -577,7 +579,7 @@
 
         <div class="form-group">
           <label class="form-label" for="paymentPlan">Plan Contratado</label>
-          <select id="paymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;" required>
+          <select id="paymentPlan" class="form-input" style="background: var(--surface-2); cursor: pointer;" required>
             <option value="Mensualidad" selected>Mensualidad (+30 días)</option>
             <option value="Estudiante">Estudiante (+30 días)</option>
             <option value="Semana">Semana (+7 días)</option>
@@ -595,26 +597,26 @@
           <label class="form-label" for="paymentTurno">Turno</label>
           <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="paymentTurno" value="AM" checked
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #F59E0B;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>☀️ Turno AM</span>
             </label>
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="paymentTurno" value="PM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>🌙 Turno PM</span>
             </label>
           </div>
         </div>
 
         <div class="form-group"
-          style="margin-top: 1.2rem; background: rgba(239, 68, 68, 0.08); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+          style="margin-top: 1.2rem; background: var(--danger-bg); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--danger-border);">
           <label
-            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #FCA5A5; font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
+            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--danger); font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
             <input type="checkbox" id="paymentEsAbono"
-              style="width: 18px; height: 18px; cursor: pointer; accent-color: #EF4444;">
+              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--danger);">
             <span>⚠️ Es un Abono / Pago Parcial (El cliente queda debiendo parte del plan)</span>
           </label>
         </div>
@@ -622,7 +624,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeRegisterPaymentModal()">Cancelar</button>
           <button type="submit" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             ✓ Guardar Pago y Actualizar Membresía
           </button>
         </div>
@@ -637,10 +639,10 @@
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
           <span class="badge"
-            style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); margin-bottom: 0.4rem;">Detalles</span>
+            style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); margin-bottom: 0.4rem;">Detalles</span>
           <h3 id="detailClientName" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Detalle de
             Transacción</h3>
-          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: #60A5FA; margin-top: 0.2rem;"></p>
+          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: var(--link); margin-top: 0.2rem;"></p>
         </div>
         <button type="button" onclick="closePaymentDetailModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -648,25 +650,25 @@
 
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+          style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Plan Contratado</span>
-            <div id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: #60A5FA;">Mensualidad</div>
+            <div id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: var(--text);">Mensualidad</div>
           </div>
           <div style="text-align: right;">
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Monto Pagado</span>
-            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: #34D399;">15.00 USD</div>
+            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: var(--text);">15.00 USD</div>
           </div>
         </div>
 
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+          style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Turno de Registro:</span>
-          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: #F59E0B;">☀️ AM</strong>
+          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: var(--text);">☀️ AM</strong>
         </div>
 
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light);">
+          style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light);">
           <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.6rem;">📅
             Auditoría de Fechas:</strong>
 
@@ -674,12 +676,12 @@
             <div
               style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 0.4rem;">
               <span style="color: var(--text-muted);">Fecha de Realización del Pago:</span>
-              <strong id="detailPaymentDate" style="color: #60A5FA;">2026-08-18</strong>
+              <strong id="detailPaymentDate" style="color: var(--text);">2026-08-18</strong>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding-top: 0.2rem;">
               <span style="color: var(--text-muted);">Fecha que Corre el Plan (Membresía):</span>
-              <strong id="detailPlanDateRange" style="color: #34D399;">2026-08-18 ➔ 2026-09-17</strong>
+              <strong id="detailPlanDateRange" style="color: var(--text);">2026-08-18 ➔ 2026-09-17</strong>
             </div>
           </div>
         </div>
@@ -696,7 +698,7 @@
     <div class="modal-content" style="max-width: 550px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Editar Registro de Pago</h3>
+        <h3 style="font-size: 1.4rem; font-weight: 700;">Editar Registro de Pago</h3>
         <button type="button" onclick="closeEditPaymentModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -713,7 +715,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div class="form-group">
             <label class="form-label" for="editPaymentMoneda">Tipo de Moneda</label>
-            <select id="editPaymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+            <select id="editPaymentMoneda" class="form-input" style="background: var(--surface-2); cursor: pointer;"
               required>
               <option value="USD">USD (Dólares)</option>
               <option value="COP">COP (Pesos Colombianos)</option>
@@ -733,7 +735,7 @@
 
         <div class="form-group">
           <label class="form-label" for="editPaymentPlan">Plan Contratado</label>
-          <select id="editPaymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+          <select id="editPaymentPlan" class="form-input" style="background: var(--surface-2); cursor: pointer;"
             required>
             <option value="Mensualidad">Mensualidad (+30 días)</option>
             <option value="Estudiante">Estudiante (+30 días)</option>
@@ -765,26 +767,26 @@
           <label class="form-label" for="editPaymentTurno">Turno</label>
           <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="editPaymentTurno" value="AM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #F59E0B;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>☀️ Turno AM</span>
             </label>
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="editPaymentTurno" value="PM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>🌙 Turno PM</span>
             </label>
           </div>
         </div>
 
         <div class="form-group"
-          style="margin-top: 1.2rem; background: rgba(239, 68, 68, 0.08); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+          style="margin-top: 1.2rem; background: var(--danger-bg); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--danger-border);">
           <label
-            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #FCA5A5; font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
+            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--danger); font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
             <input type="checkbox" id="editPaymentEsAbono"
-              style="width: 18px; height: 18px; cursor: pointer; accent-color: #EF4444;">
+              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--danger);">
             <span>⚠️ Es un Abono / Pago Parcial</span>
           </label>
         </div>
@@ -792,7 +794,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeEditPaymentModal()">Cancelar</button>
           <button type="submit" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             ✓ Actualizar Pago
           </button>
         </div>
@@ -806,7 +808,7 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <h3 id="progressModalUserName" style="font-size: 1.5rem; font-weight: 700; color: #60A5FA;">Rutinas del
+          <h3 id="progressModalUserName" style="font-size: 1.5rem; font-weight: 700;">Rutinas del
             Cliente</h3>
           <p id="progressModalUserEmail" style="font-size: 0.9rem; color: var(--text-muted);"></p>
         </div>
@@ -835,7 +837,7 @@
       <div
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <span class="badge badge-active" style="margin-bottom: 0.5rem;">Vista Completa de Rutina</span>
+          <span class="badge badge-neutral" style="margin-bottom: 0.5rem;">Vista Completa de Rutina</span>
           <h3 id="adminRoutineTitle" style="font-size: 1.6rem; font-weight: 700; color: var(--text-main);">Cargando
             Rutina...</h3>
           <p id="adminRoutineDesc" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;"></p>
@@ -860,7 +862,7 @@
     <div class="modal-content" style="max-width: 450px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.3rem; font-weight: 700; color: #EF4444;">Confirmar Eliminación</h3>
+        <h3 style="font-size: 1.3rem; font-weight: 700;">Confirmar Eliminación</h3>
         <button type="button" onclick="closeConfirmDeleteModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -892,7 +894,7 @@
     <div class="modal-content" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 id="createTemplateModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #C084FC;">Nueva Plantilla
+        <h3 id="createTemplateModalTitle" style="font-size: 1.4rem; font-weight: 700;">Nueva Plantilla
           de Rutina</h3>
         <button type="button" onclick="closeCreateTemplateModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -932,7 +934,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeCreateTemplateModal()">Cancelar</button>
           <button type="submit" id="createTemplateModalSubmitBtn" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             Guardar Plantilla
           </button>
         </div>
@@ -944,7 +946,7 @@
   <div id="createResourceModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 540px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #FBBF24;">Subir Material y
+        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700;">Subir Material y
           Contenido Adicional</h3>
         <button type="button" onclick="closeCreateResourceModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -959,7 +961,7 @@
 
         <div class="form-group">
           <label class="form-label" for="resourceCategory">Categoría</label>
-          <select id="resourceCategory" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;">
+          <select id="resourceCategory" class="form-input" style="background: var(--surface-2); cursor: pointer;">
             <option value="Nutrición" selected>Nutrición</option>
             <option value="Entrenamiento">Guías de Entrenamiento</option>
             <option value="Suplementación">Suplementación</option>
@@ -1006,7 +1008,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeCreateResourceModal()">Cancelar</button>
           <button type="submit" id="createResourceModalSubmitBtn" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            style="width: auto; padding: 0.7rem 1.5rem; border: none;">
             Guardar Material
           </button>
         </div>
