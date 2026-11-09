@@ -90,6 +90,9 @@ function showToast(mensaje, tipo) {
 let currentUserData = null;
 let currentActiveRoutine = null;
 let completedSetsState = {}; // { "ex_0_set_0": true, ... }
+let entrenoPaso = 0;          // ejercicio que se muestra en el modo entrenamiento
+let clienteIniciado = false;
+let rutinaElegidaId = null;   // rutina que el cliente eligió para hoy (si cambió la sugerida)
 let editingRoutineId = null;
 
 /* ---------- ESTADO DEL TEMPORIZADOR DE DESCANSO ---------- */
@@ -218,101 +221,73 @@ function loadDashboard() {
     return;
   }
 
-  const esAdmin = localStorage.getItem("esAdmin");
   const adminBtn = $("#adminPanelBtn");
-  if (adminBtn) {
-    if (esAdmin === "true") {
-      adminBtn.classList.remove("hidden");
-    } else {
-      adminBtn.classList.add("hidden");
-    }
+  if (adminBtn) adminBtn.classList.toggle("hidden", localStorage.getItem("esAdmin") !== "true");
+
+  if (!clienteIniciado) {
+    clienteIniciado = true;
+    iniciarNavegacionCliente();
   }
 
   fetch(`${API_BASE}/usuario/${localStorage.getItem("userId")}`)
     .then(r => r.json())
     .then(data => {
+      if (!data || !data.membresia) {
+        showToast((data && data.msg) || "No se pudieron cargar tus datos.", "error");
+        return;
+      }
       currentUserData = data;
-      $("#userGreeting").textContent = `¡Hola, ${data.nombre}!`;
-
-      // El estado se calcula comparando la fecha de vencimiento con hoy (igual que en el control de entrada),
-      // no solo con el estado guardado, que puede seguir en "activa" después de vencer.
-      const memBadge = $("#membershipStatus");
-      const st = estadoEntrada(data);
-      const fecha = formatFechaCorta(data.membresia && data.membresia.vence);
-      const textos = {
-        activa: `Membresía activa · vence ${fecha}`,
-        por_vencer: st.dias === 0 ? `Por vencer · vence hoy` : `Por vencer · vence ${fecha}`,
-        vencida: `Membresía vencida · venció ${fecha}`,
-        sin: "Sin membresía activa"
-      };
-      const clases = { activa: "badge-active", por_vencer: "badge-warning", vencida: "badge-expired", sin: "badge-expired" };
-      memBadge.className = `badge ${clases[st.codigo]}`;
-      memBadge.textContent = textos[st.codigo];
-
+      renderCabeceraCliente(data);
+      renderHoy(data);
       renderRoutinesGrid(data.rutinas || []);
+      renderProgreso(data.sesiones || []);
+      renderMiPlan(data);
       restoreActiveSessionIfAny();
       loadUserDashboardResources();
     })
     .catch(err => {
       console.error("Error al cargar dashboard:", err);
+      showToast("No se pudieron cargar tus datos. Revisa la conexión.", "error");
     });
 }
 
 function renderRoutinesGrid(rutinas) {
   const grid = $("#routinesGrid");
-  grid.innerHTML = "";
+  if (!grid) return;
 
   if (rutinas.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--surface); border-radius: 16px; border: 1px dashed var(--border-light);">
-        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">Aún no tienes rutinas registradas.</p>
-        <button class="btn-primary" onclick="openNewRoutineModal()" style="width: auto; margin: 0 auto;">
-          + Crear Tu Primera Rutina
-        </button>
-      </div>
-    `;
+      <div class="cliente-card vacio">
+        <p>Aún no tienes rutinas. Crea la primera o carga una de las rutinas sugeridas del gimnasio.</p>
+        <button type="button" class="btn-primary" onclick="openNewRoutineModal()">+ Crear mi primera rutina</button>
+      </div>`;
     return;
   }
 
-  rutinas.forEach(r => {
-    const card = document.createElement("div");
-    card.className = "routine-card";
-
-    const cantEjercicios = r.ejercicios ? r.ejercicios.length : 0;
-    const listaEjerciciosNombres = r.ejercicios && r.ejercicios.length > 0
-      ? r.ejercicios.map(e => `• ${esc(e.nombre_ejercicio)} (${esc(e.series)}x${esc(e.repeticiones)} - ${esc(formatExerciseWeights(e))})`).join("<br>")
-      : "Sin ejercicios aún";
-
-    card.innerHTML = `
-      <div>
-        <h3 class="routine-title">${esc(r.titulo)}</h3>
-        <p class="routine-desc">${esc(r.descripcion || "Sin descripción")}</p>
-        
-        <div style="background: var(--surface-2); padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          <strong style="color: var(--link);">Ejercicios incluidos (${cantEjercicios}):</strong><br>
-          <div style="margin-top: 0.4rem; line-height: 1.4;">${listaEjerciciosNombres}</div>
-        </div>
+  const ultimas = ultimaSesionPorRutina();
+  // Textos con esc(); en los onclick solo va el id numérico
+  grid.innerHTML = rutinas.map(r => {
+    const id = Number(r.id_rutina);
+    const ejercicios = r.ejercicios || [];
+    const ultima = ultimas[id];
+    return `<article class="cliente-card rutina-card">
+      <div class="rutina-card-head">
+        <h2 class="cliente-card-h">${esc(r.titulo)}</h2>
+        <span class="card-hint">${esc(r.horario || "Horario flexible")} · ${ejercicios.length} ${ejercicios.length === 1 ? "ejercicio" : "ejercicios"}</span>
+        ${ultima ? `<span class="card-hint">Última vez: ${esc(formatFechaCorta(ultima))}</span>` : ""}
       </div>
-
-      <div>
-        <div class="routine-meta">
-          <span>Horario: ${esc(r.horario || "Flexible")}</span>
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="btn-primary" onclick="startWorkoutSession(${esc(r.id_rutina)})" style="font-size: 0.85rem; padding: 0.6rem 1rem;">
-            Iniciar Rutina
-          </button>
-          <button class="btn-secondary" onclick="editRoutine(${esc(r.id_rutina)})" title="Editar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
-            Editar
-          </button>
-          <button class="btn-danger" onclick="deleteRoutine(${esc(r.id_rutina)})" title="Eliminar rutina" style="padding: 0.6rem 1rem; font-size: 0.85rem;">
-            Eliminar
-          </button>
-        </div>
+      ${r.descripcion ? `<p class="rutina-desc">${esc(r.descripcion)}</p>` : ""}
+      <ul class="ejercicios-lista">
+        ${ejercicios.length ? ejercicios.map(e => `<li><span>${esc(e.nombre_ejercicio)}</span><span class="ej-dosis">${esc(dosisEjercicio(e))}</span></li>`).join("")
+          : `<li class="report-empty">Sin ejercicios todavía</li>`}
+      </ul>
+      <div class="rutina-acciones">
+        <button type="button" class="btn-primary" onclick="startWorkoutSession(${id})">Empezar</button>
+        <button type="button" class="btn-secondary" onclick="editRoutine(${id})" aria-label="Editar ${esc(r.titulo)}">Editar</button>
+        <button type="button" class="btn-danger" onclick="deleteRoutine(${id})" aria-label="Eliminar ${esc(r.titulo)}">Eliminar</button>
       </div>
-    `;
-    grid.appendChild(card);
-  });
+    </article>`;
+  }).join("");
 }
 
 /* ---------- MODAL DE NUEVA / EDITAR RUTINA ---------- */
@@ -496,6 +471,7 @@ function saveActiveSessionState() {
     inputs: inputs,
     restTimerDuration: restTimerDuration,
     restTimerEnabled: restTimerEnabled,
+    paso: entrenoPaso,
     savedAt: new Date().toISOString()
   };
 
@@ -550,6 +526,7 @@ function startWorkoutSession(id_rutina) {
 function renderActiveWorkoutSession(routine, restoredState = null) {
   currentActiveRoutine = routine;
   completedSetsState = restoredState && restoredState.completedSetsState ? restoredState.completedSetsState : {};
+  entrenoPaso = restoredState && Number.isInteger(restoredState.paso) ? restoredState.paso : 0;
 
   if (restoredState) {
     if (restoredState.restTimerDuration) restTimerDuration = restoredState.restTimerDuration;
@@ -558,132 +535,165 @@ function renderActiveWorkoutSession(routine, restoredState = null) {
 
   const durationSelect = $("#restTimerSecondsSelect");
   if (durationSelect) durationSelect.value = String(restTimerDuration);
-
   const toggleCheckbox = $("#restTimerToggleCheckbox");
   if (toggleCheckbox) toggleCheckbox.checked = restTimerEnabled;
 
   $("#sessionRoutineTitle").textContent = routine.titulo;
-  $("#sessionRoutineDesc").textContent = routine.descripcion || "Ejecución de rutina serie a serie";
+  $("#sessionRoutineDesc").textContent = routine.descripcion || "";
 
   const exercisesContainer = $("#sessionExercisesList");
-  exercisesContainer.innerHTML = "";
-
+  const ejercicios = routine.ejercicios || [];
   let totalSetsInRoutine = 0;
 
-  routine.ejercicios.forEach((ej, exIdx) => {
-    const block = document.createElement("div");
-    block.className = "exercise-block";
-
-    let setsHtml = "";
+  // Un bloque por ejercicio; solo se muestra el del paso actual. Los textos van con esc().
+  exercisesContainer.innerHTML = ejercicios.map((ej, exIdx) => {
     const cantSeries = parseInt(ej.series) || 3;
     const seriesDetalle = getSeriesDetalleArray(ej);
+    let seriesHtml = "";
 
     for (let s = 0; s < cantSeries; s++) {
       totalSetsInRoutine++;
       const setId = `ex_${exIdx}_set_${s}`;
-      const isCompleted = !!completedSetsState[setId];
-
+      const hecho = !!completedSetsState[setId];
       let setWeight = ej.peso_kg || 0;
       let setReps = ej.repeticiones || 10;
-
       if (seriesDetalle && seriesDetalle[s]) {
         if (seriesDetalle[s].peso !== undefined) setWeight = seriesDetalle[s].peso;
         if (seriesDetalle[s].reps !== undefined) setReps = seriesDetalle[s].reps;
       }
-
       if (restoredState && restoredState.inputs) {
-        if (restoredState.inputs[`ex_${exIdx}_set_${s}_weight`] !== undefined) {
-          setWeight = restoredState.inputs[`ex_${exIdx}_set_${s}_weight`];
-        }
-        if (restoredState.inputs[`ex_${exIdx}_set_${s}_reps`] !== undefined) {
-          setReps = restoredState.inputs[`ex_${exIdx}_set_${s}_reps`];
-        }
+        if (restoredState.inputs[`${setId}_weight`] !== undefined) setWeight = restoredState.inputs[`${setId}_weight`];
+        if (restoredState.inputs[`${setId}_reps`] !== undefined) setReps = restoredState.inputs[`${setId}_reps`];
       }
-
-      setsHtml += `
-        <div class="series-row-card">
-          <div class="series-badge">S${esc(s + 1)}</div>
-          <div class="series-inputs-group">
-            <div class="series-input-box">
-              <span class="series-box-label">Peso</span>
-              <div class="series-field-inner">
-                <input type="number" step="0.5" class="set-input set-weight-input" data-ex="${esc(exIdx)}" data-set="${esc(s)}" value="${esc(setWeight)}" oninput="saveActiveSessionState()">
-                <span class="unit-tag">kg</span>
-              </div>
-            </div>
-            <div class="series-input-box">
-              <span class="series-box-label">Reps</span>
-              <div class="series-field-inner">
-                <input type="number" class="set-input set-reps-input" data-ex="${esc(exIdx)}" data-set="${esc(s)}" value="${esc(setReps)}" oninput="saveActiveSessionState()">
-              </div>
+      // Números limpios (la base guarda "40.00"; se muestra 40)
+      setWeight = parseFloat(String(setWeight).replace(",", ".")) || 0;
+      setReps = parseInt(setReps, 10) || 0;
+      const n = s + 1;
+      seriesHtml += `
+        <div class="serie${hecho ? " serie-hecha" : ""}" id="serie_${setId}">
+          <div class="serie-num">Serie ${n}</div>
+          <div class="stepper stepper-peso">
+            <span class="stepper-label">Peso (kg)</span>
+            <div class="stepper-fila">
+              <button type="button" class="stepper-btn" onclick="ajustarValorSerie('peso', ${exIdx}, ${s}, -2.5)" aria-label="Restar 2,5 kg a la serie ${n}">−</button>
+              <input type="number" inputmode="decimal" step="0.5" min="0" class="set-input set-weight-input" data-ex="${exIdx}" data-set="${s}"
+                value="${esc(setWeight)}" aria-label="Peso de la serie ${n}, en kilos" oninput="saveActiveSessionState()">
+              <button type="button" class="stepper-btn" onclick="ajustarValorSerie('peso', ${exIdx}, ${s}, 2.5)" aria-label="Sumar 2,5 kg a la serie ${n}">+</button>
             </div>
           </div>
-          <button type="button" class="btn-check-set ${esc(isCompleted ? 'completed' : '')}" id="btn_set_${esc(setId)}" onclick="toggleSetCompleted('${esc(setId)}')" title="Marcar serie completada">
-            ✓
+          <div class="stepper stepper-reps">
+            <span class="stepper-label">Repeticiones</span>
+            <div class="stepper-fila">
+              <button type="button" class="stepper-btn" onclick="ajustarValorSerie('reps', ${exIdx}, ${s}, -1)" aria-label="Restar una repetición a la serie ${n}">−</button>
+              <input type="number" inputmode="numeric" step="1" min="0" class="set-input set-reps-input" data-ex="${exIdx}" data-set="${s}"
+                value="${esc(setReps)}" aria-label="Repeticiones de la serie ${n}" oninput="saveActiveSessionState()">
+              <button type="button" class="stepper-btn" onclick="ajustarValorSerie('reps', ${exIdx}, ${s}, 1)" aria-label="Sumar una repetición a la serie ${n}">+</button>
+            </div>
+          </div>
+          <button type="button" class="btn-check-set btn-check-grande${hecho ? " completed" : ""}" id="btn_set_${setId}"
+            onclick="toggleSetCompleted('${setId}')" aria-pressed="${hecho}" aria-label="Serie ${n} completada">
+            <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
           </button>
-        </div>
-      `;
+        </div>`;
     }
 
-    block.innerHTML = `
-      <div class="exercise-header">
-        <span class="exercise-name">${esc(ej.nombre_ejercicio || ej.titulo || "Ejercicio")}</span>
-        <span class="exercise-subinfo">${esc(ej.series)} Series × ${esc(ej.repeticiones)} Reps (${esc(formatExerciseWeights(ej))})</span>
-      </div>
-      <div class="series-list-container">
-        ${setsHtml}
-      </div>
-    `;
-    exercisesContainer.appendChild(block);
-  });
+    return `<section class="entreno-ejercicio${exIdx === entrenoPaso ? "" : " hidden"}" data-idx="${exIdx}" aria-label="Ejercicio ${exIdx + 1}">
+      <h3 class="ej-nombre">${esc(ej.nombre_ejercicio || ej.titulo || "Ejercicio")}</h3>
+      <p class="card-hint">${esc(dosisEjercicio(ej))}</p>
+      <div class="series-entreno">${seriesHtml}</div>
+    </section>`;
+  }).join("") || `<p class="report-empty">Esta rutina no tiene ejercicios. Edítala para agregarlos.</p>`;
 
   updateSessionProgressBar(totalSetsInRoutine);
-  $("#activeSessionSection").classList.remove("hidden");
+  mostrarPasoEntreno();
+  entrarModoEntreno();
   saveActiveSessionState();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Botones − y + de peso (pasos de 2,5 kg) y repeticiones (de 1 en 1)
+function ajustarValorSerie(tipo, exIdx, setIdx, delta) {
+  const clase = tipo === "peso" ? "set-weight-input" : "set-reps-input";
+  const input = document.querySelector(`.${clase}[data-ex="${Number(exIdx)}"][data-set="${Number(setIdx)}"]`);
+  if (!input) return;
+  const actual = parseFloat(String(input.value).replace(",", ".")) || 0;
+  let nuevo = Math.max(0, actual + delta);
+  nuevo = tipo === "peso" ? Math.round(nuevo * 2) / 2 : Math.round(nuevo);
+  input.value = nuevo;
+  saveActiveSessionState();
+}
+
+function mostrarPasoEntreno() {
+  const bloques = document.querySelectorAll("#sessionExercisesList .entreno-ejercicio");
+  const total = bloques.length;
+  entrenoPaso = Math.min(Math.max(0, entrenoPaso), Math.max(0, total - 1));
+  bloques.forEach((b, i) => b.classList.toggle("hidden", i !== entrenoPaso));
+
+  const paso = $("#entrenoPaso");
+  if (paso) {
+    paso.innerHTML = total ? `<span>Ejercicio ${entrenoPaso + 1} de ${total}</span>
+      <span class="puntos" aria-hidden="true">${[...bloques].map((b, i) => {
+        const hecho = [...b.querySelectorAll(".btn-check-set")].every(x => x.classList.contains("completed"));
+        return `<i class="${i === entrenoPaso ? "actual" : ""}${hecho ? " hecho" : ""}"></i>`;
+      }).join("")}</span>` : "";
+  }
+
+  const ant = $("#entrenoAnterior"), sig = $("#entrenoSiguiente"), fin = $("#entrenoTerminar");
+  const ultimo = total === 0 || entrenoPaso >= total - 1;
+  if (ant) ant.disabled = entrenoPaso === 0;
+  if (sig) sig.classList.toggle("hidden", ultimo);
+  if (fin) fin.classList.toggle("hidden", !ultimo);
+}
+
+function moverEjercicio(delta) {
+  entrenoPaso += delta;
+  mostrarPasoEntreno();
+  saveActiveSessionState();
+  const cuerpo = document.querySelector(".entreno-cuerpo");
+  if (cuerpo) cuerpo.scrollTop = 0;
 }
 
 function toggleSetCompleted(setId) {
   unlockAudioContext();
-  const btn = $(`#btn_set_${setId}`);
+  const btn = document.getElementById(`btn_set_${setId}`);
   if (!btn) return;
 
-  if (completedSetsState[setId]) {
-    delete completedSetsState[setId];
-    btn.classList.remove("completed");
-    stopRestTimer();
-  } else {
+  const marcar = !completedSetsState[setId];
+  if (marcar) {
     completedSetsState[setId] = true;
-    btn.classList.add("completed");
     startRestTimer();
+  } else {
+    delete completedSetsState[setId];
+    stopRestTimer();
   }
+  btn.classList.toggle("completed", marcar);
+  btn.setAttribute("aria-pressed", marcar ? "true" : "false");
+  const fila = document.getElementById(`serie_${setId}`);
+  if (fila) fila.classList.toggle("serie-hecha", marcar);
+  // Vibración corta solo si el teléfono la permite y el usuario ya tocó la pantalla
+  if (marcar && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(40);
 
-  // Recalcular progreso
-  const totalSets = document.querySelectorAll(".btn-check-set").length;
-  updateSessionProgressBar(totalSets);
-
-  // Guardar estado en localStorage
+  updateSessionProgressBar(document.querySelectorAll(".btn-check-set").length);
+  mostrarPasoEntreno();
   saveActiveSessionState();
 }
 
 function updateSessionProgressBar(totalSets) {
   const completedCount = Object.keys(completedSetsState).length;
   const percentage = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
-
   const fill = $("#sessionProgressFill");
   const text = $("#sessionProgressText");
-
-  fill.style.width = `${percentage}%`;
-  text.textContent = `${completedCount} de ${totalSets} series completadas (${percentage}%)`;
+  if (fill) fill.style.width = `${percentage}%`;
+  if (text) text.textContent = `${completedCount} de ${totalSets} series completadas (${percentage}%)`;
 }
 
 function cancelSession() {
-  if (confirm("¿Deseas cancelar la sesión activa de hoy?")) {
+  if (confirm("¿Deseas cancelar el entrenamiento de hoy? No se guardará.")) {
     stopRestTimer();
-    $("#activeSessionSection").classList.add("hidden");
     currentActiveRoutine = null;
     completedSetsState = {};
     localStorage.removeItem("atlas_active_workout_session");
+    salirModoEntreno();
+    if (currentUserData) renderHoy(currentUserData);
   }
 }
 
@@ -904,11 +914,11 @@ function finishWorkoutSession() {
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
-        showToast("Tu entrenamiento ha sido guardado y registrado exitosamente.", "exito");
+        showToast("¡Entrenamiento guardado! Buen trabajo.", "exito");
         localStorage.removeItem("atlas_active_workout_session");
-        $("#activeSessionSection").classList.add("hidden");
         currentActiveRoutine = null;
         completedSetsState = {};
+        salirModoEntreno();
         loadDashboard();
       } else {
         showToast(res.msg || "Error al guardar sesión", "error");
@@ -2503,18 +2513,9 @@ function toggleAdminResourcesSection() {
 }
 
 function getCategoryBadge(cat) {
-  switch (cat) {
-    case 'Nutrición':
-      return `<span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border);">Nutrición</span>`;
-    case 'Entrenamiento':
-      return `<span class="badge" style="background: var(--accent-bg); color: var(--link); border: 1px solid var(--border-strong);">Guía</span>`;
-    case 'Suplementación':
-      return `<span class="badge" style="background: var(--accent-bg); color: var(--accent-soft); border: 1px solid var(--border-strong);">Suplementos</span>`;
-    case 'Reglamento':
-      return `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);">Reglamento</span>`;
-    default:
-      return `<span class="badge" style="background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border);">Consejos</span>`;
-  }
+  // Las categorías no son estados: todas con la insignia neutra
+  const nombres = { 'Nutrición': 'Nutrición', 'Entrenamiento': 'Guía', 'Suplementación': 'Suplementos', 'Reglamento': 'Reglamento' };
+  return `<span class="badge badge-neutral">${esc(nombres[cat] || 'Consejos')}</span>`;
 }
 
 function dataURItoBlob(dataURI) {
@@ -2698,7 +2699,7 @@ function filterAdminResourcesByCategory() {
   list.forEach(r => {
     const card = document.createElement("div");
     card.className = "routine-card";
-    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--warn);";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;";
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
@@ -3012,7 +3013,7 @@ function filterUserResourcesByCategory() {
   list.forEach(r => {
     const card = document.createElement("div");
     card.className = "routine-card";
-    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--warn);";
+    card.style.cssText = "padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;";
 
     const catBadge = getCategoryBadge(r.categoria);
     const iconTag = getResourceIcon(r.tipo_recurso, r.url_recurso);
@@ -4182,4 +4183,366 @@ function renderFichaCliente(u) {
 
 function claseDias(dias) {
   return dias < 0 ? "estado-danger" : dias <= 5 ? "estado-warn" : "estado-ok";
+}
+
+/* =========================================================
+   VISTA DEL CLIENTE (dashboard.html): Hoy, Rutinas, Progreso, Mi plan
+   ========================================================= */
+
+const VISTAS_CLIENTE = {
+  hoy: { el: "#vistaHoy", titulo: "Hoy" },
+  rutinas: { el: "#vistaRutinas", titulo: "Mis rutinas" },
+  progreso: { el: "#vistaProgreso", titulo: "Progreso" },
+  plan: { el: "#vistaPlan", titulo: "Mi plan" }
+};
+
+function iniciarNavegacionCliente() {
+  window.addEventListener("hashchange", () => mostrarVistaCliente(location.hash.slice(1)));
+  mostrarVistaCliente(location.hash.slice(1));
+  // Al volver a la app, se pide de nuevo mantener la pantalla encendida si está entrenando
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && currentActiveRoutine && !wakeLockActivo) pedirWakeLock(false);
+  });
+}
+
+function mostrarVistaCliente(nombre) {
+  if (!VISTAS_CLIENTE[nombre]) nombre = "hoy";
+  Object.entries(VISTAS_CLIENTE).forEach(([k, v]) => {
+    const el = $(v.el);
+    if (el) el.classList.toggle("hidden", k !== nombre);
+  });
+  document.querySelectorAll("#clienteNav a").forEach(a => {
+    const activo = a.dataset.vista === nombre;
+    a.classList.toggle("activo", activo);
+    if (activo) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+  document.title = `ATLAS · ${VISTAS_CLIENTE[nombre].titulo}`;
+  window.scrollTo(0, 0);
+}
+
+function renderCabeceraCliente(data) {
+  const partes = String(data.nombre || "").trim().split(/\s+/).filter(Boolean);
+  const iniciales = ((partes[0] || "")[0] || "") + ((partes[1] || "")[0] || "");
+  const av = $("#avatarIniciales");
+  if (av) av.textContent = (iniciales || "·").toUpperCase();
+}
+
+/* ----- Ayudas ----- */
+// "3 × 10 · 17,5 kg" o, si cambia por serie, "3 × 10 · 40/60/60 kg"
+function dosisEjercicio(e) {
+  const num = (p) => (parseFloat(p) || 0).toLocaleString("es-VE", { maximumFractionDigits: 2 });
+  const detalle = getSeriesDetalleArray(e);
+  const pesos = detalle && detalle.length ? detalle.map(s => (s.peso !== undefined ? s.peso : e.peso_kg)) : [e.peso_kg];
+  const iguales = pesos.every(p => Number(p) === Number(pesos[0]));
+  const peso = iguales ? num(pesos[0]) : pesos.map(num).join("/");
+  return `${e.series || 0} × ${e.repeticiones || 0} · ${peso} kg`;
+}
+
+// Fecha (YYYY-MM-DD) de la última sesión de cada rutina
+function ultimaSesionPorRutina() {
+  const mapa = {};
+  ((currentUserData && currentUserData.sesiones) || []).forEach(s => {
+    const id = Number(s.id_rutina);
+    if (!mapa[id] || s.fecha > mapa[id]) mapa[id] = s.fecha;
+  });
+  return mapa;
+}
+
+function normalizarTexto(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+const DIAS_SEMANA = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+const DIAS_ABREV = ["dom", "lun", "mar", "mie", "jue", "vie", "sab"];
+
+function diaSemanaHoy() {
+  const [y, m, d] = getLocalTodayStr().split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+// ¿El horario de la rutina menciona el día de hoy? ("Martes y Jueves", "lun/mié/vie"...)
+function rutinaTocaHoy(r, dia) {
+  const h = normalizarTexto(r.horario);
+  if (!h) return false;
+  return new RegExp(`(^|[^a-z])(${DIAS_SEMANA[dia]}|${DIAS_ABREV[dia]})([^a-z]|$)`).test(h);
+}
+
+// Sugerencia: la que toca hoy según el horario; si no, la que hace más tiempo que no hace
+function sugerirRutina(rutinas) {
+  if (!rutinas.length) return null;
+  const ultimas = ultimaSesionPorRutina();
+  const masAntigua = (lista) => [...lista].sort((a, b) =>
+    String(ultimas[Number(a.id_rutina)] || "").localeCompare(String(ultimas[Number(b.id_rutina)] || "")))[0];
+
+  const hoy = rutinas.filter(r => rutinaTocaHoy(r, diaSemanaHoy()));
+  if (hoy.length) return { rutina: masAntigua(hoy), motivo: "Te toca hoy según tu horario" };
+  if (rutinas.length === 1) return { rutina: rutinas[0], motivo: "" };
+  const r = masAntigua(rutinas);
+  return { rutina: r, motivo: ultimas[Number(r.id_rutina)] ? "Es la que hace más tiempo que no haces" : "Aún no la has hecho" };
+}
+
+/* ----- Hoy ----- */
+function renderHoy(data) {
+  const f = $("#hoyFecha");
+  if (f) f.textContent = fechaLargaHoy();
+  const saludo = $("#userGreeting");
+  if (saludo) saludo.textContent = `Hola, ${String(data.nombre || "").trim().split(/\s+/)[0] || ""}`;
+  renderTarjetaMembresia(data);
+  renderRutinaHoy(data);
+  renderSemana(data.sesiones || []);
+}
+
+function renderTarjetaMembresia(data) {
+  const st = estadoEntrada(data);
+  const vence = data.membresia && data.membresia.vence;
+  const inicio = data.membresia && data.membresia.inicio;
+
+  const plan = $("#memPlan");
+  if (plan) plan.textContent = data.ultimo_plan || "Membresía";
+
+  const textosBadge = { activa: "Activa", por_vencer: "Por vencer", vencida: "Vencida", sin: "Sin membresía" };
+  const clases = { activa: "badge-active", por_vencer: "badge-warning", vencida: "badge-expired", sin: "badge-expired" };
+  const badge = $("#membershipStatus");
+  if (badge) { badge.className = `badge ${clases[st.codigo]}`; badge.textContent = textosBadge[st.codigo]; }
+
+  const num = $("#memDias"), txt = $("#memDiasTexto");
+  const fecha = formatFechaCorta(vence);
+  if (st.codigo === "sin") {
+    num.textContent = "–";
+    txt.textContent = "Acércate a recepción para activar tu plan";
+  } else if (st.dias < 0) {
+    num.textContent = "0";
+    txt.textContent = `días restantes · venció el ${fecha}`;
+  } else {
+    num.textContent = st.dias;
+    txt.textContent = st.dias === 0 ? `vence hoy (${fecha})` : `${st.dias === 1 ? "día restante" : "días restantes"} · vence ${fecha}`;
+  }
+
+  // Barra: días usados del plan actual (de la fecha de inicio a la de vencimiento)
+  const barra = $("#memBarra"), fill = $("#memBarraFill");
+  const total = (inicio && diasHasta(vence) !== null && diasHasta(inicio) !== null) ? diasHasta(vence) - diasHasta(inicio) : 0;
+  if (!barra || total <= 0) { if (barra) barra.classList.add("hidden"); return; }
+  const usados = Math.min(total, Math.max(0, -diasHasta(inicio)));
+  barra.classList.remove("hidden");
+  barra.setAttribute("aria-valuemax", total);
+  barra.setAttribute("aria-valuenow", usados);
+  fill.style.width = `${Math.round((usados / total) * 100)}%`;
+  fill.className = "mem-barra-fill" + (st.codigo === "por_vencer" ? " warn" : st.codigo === "vencida" ? " danger" : "");
+}
+
+function renderRutinaHoy(data) {
+  const box = $("#hoyRutina");
+  if (!box) return;
+  const rutinas = data.rutinas || [];
+
+  // Entrenamiento a medias: se ofrece continuar
+  let guardada = null;
+  try { guardada = JSON.parse(localStorage.getItem("atlas_active_workout_session") || "null"); } catch (e) { guardada = null; }
+  if (guardada && guardada.routine) {
+    box.innerHTML = `
+      <div class="kpi-label">Tienes un entrenamiento a medias</div>
+      <h2 id="hoyRutinaTitulo" class="cliente-card-h">${esc(guardada.routine.titulo)}</h2>
+      <button type="button" class="btn-primary btn-empezar" onclick="restoreActiveSessionIfAny()">${ICONO_PLAY}Continuar entrenamiento</button>`;
+    return;
+  }
+
+  if (!rutinas.length) {
+    box.innerHTML = `
+      <div class="kpi-label">Tu rutina de hoy</div>
+      <h2 id="hoyRutinaTitulo" class="cliente-card-h">Aún no tienes rutinas</h2>
+      <p class="card-hint">Crea una o usa una de las rutinas sugeridas del gimnasio.</p>
+      <button type="button" class="btn-primary btn-empezar" onclick="openNewRoutineModal()">+ Crear mi primera rutina</button>`;
+    return;
+  }
+
+  const sugerida = sugerirRutina(rutinas);
+  const elegida = rutinas.find(r => Number(r.id_rutina) === Number(rutinaElegidaId)) || sugerida.rutina;
+  const motivo = elegida === sugerida.rutina ? sugerida.motivo : "Elegida por ti";
+  const ejercicios = elegida.ejercicios || [];
+  const minutos = Math.max(10, Math.round(ejercicios.reduce((t, e) => t + (parseInt(e.series) || 3), 0) * 2.5));
+  const id = Number(elegida.id_rutina);
+
+  box.innerHTML = `
+    <div class="kpi-label">Tu rutina de hoy</div>
+    <h2 id="hoyRutinaTitulo" class="cliente-card-h">${esc(elegida.titulo)}</h2>
+    <div class="card-hint">${ejercicios.length} ${ejercicios.length === 1 ? "ejercicio" : "ejercicios"} · unos ${minutos} min${motivo ? ` · ${esc(motivo)}` : ""}</div>
+    <ul class="ejercicios-lista" id="hoyEjercicios">
+      ${ejercicios.map((e, i) => `<li class="${i >= 3 ? "extra hidden" : ""}"><span>${esc(e.nombre_ejercicio)}</span><span class="ej-dosis">${esc(dosisEjercicio(e))}</span></li>`).join("")}
+    </ul>
+    ${ejercicios.length > 3 ? `<button type="button" class="link-btn" id="hoyVerTodos" aria-expanded="false" onclick="toggleEjerciciosHoy()">Ver los ${ejercicios.length} ejercicios</button>` : ""}
+    ${rutinas.length > 1 ? `
+      <label for="hoyCambiarRutina" class="form-label" style="margin-top: 12px;">Cambiar rutina</label>
+      <select id="hoyCambiarRutina" class="form-input" onchange="elegirRutinaHoy(this.value)">
+        ${rutinas.map(r => `<option value="${Number(r.id_rutina)}"${Number(r.id_rutina) === id ? " selected" : ""}>${esc(r.titulo)}${r === sugerida.rutina ? " (sugerida)" : ""}</option>`).join("")}
+      </select>` : ""}
+    <button type="button" class="btn-primary btn-empezar" onclick="startWorkoutSession(${id})">${ICONO_PLAY}Empezar entrenamiento</button>`;
+}
+
+const ICONO_PLAY = `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>`;
+
+function toggleEjerciciosHoy() {
+  const btn = $("#hoyVerTodos");
+  const abrir = btn && btn.getAttribute("aria-expanded") !== "true";
+  document.querySelectorAll("#hoyEjercicios .extra").forEach(li => li.classList.toggle("hidden", !abrir));
+  if (btn) {
+    btn.setAttribute("aria-expanded", abrir ? "true" : "false");
+    btn.textContent = abrir ? "Ver menos" : `Ver los ${document.querySelectorAll("#hoyEjercicios li").length} ejercicios`;
+  }
+}
+
+function elegirRutinaHoy(id) {
+  rutinaElegidaId = Number(id);
+  if (currentUserData) renderRutinaHoy(currentUserData);
+  const sel = $("#hoyCambiarRutina");
+  if (sel) sel.focus();
+}
+
+// Semana de lunes a domingo, marcando los días con al menos una sesión
+function renderSemana(sesiones) {
+  const box = $("#semanaDias"), total = $("#semanaTotal");
+  if (!box) return;
+  const hoy = getLocalTodayStr();
+  const dia = diaSemanaHoy();
+  const lunes = sumarDias(hoy, -((dia + 6) % 7));
+  const nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const fechas = nombres.map((_, i) => sumarDias(lunes, i));
+  const conSesion = new Set(sesiones.map(s => s.fecha));
+  const cantidad = sesiones.filter(s => s.fecha >= fechas[0] && s.fecha <= fechas[6]).length;
+  if (total) total.textContent = `${cantidad} ${cantidad === 1 ? "entrenamiento" : "entrenamientos"}`;
+
+  box.innerHTML = fechas.map((f, i) => {
+    const entreno = conSesion.has(f);
+    const esHoy = f === hoy;
+    const estado = entreno ? "entrenaste" : (f > hoy ? "pendiente" : "sin entrenar");
+    return `<div class="semana-dia${esHoy ? " hoy" : ""}" aria-label="${nombres[i]} ${Number(f.slice(8))}: ${estado}${esHoy ? " (hoy)" : ""}" role="img">
+      <span aria-hidden="true">${nombres[i][0]}</span>
+      <span class="semana-punto${entreno ? " lleno" : ""}" aria-hidden="true"></span>
+    </div>`;
+  }).join("");
+}
+
+/* ----- Progreso ----- */
+function renderProgreso(sesiones) {
+  const resumen = $("#progresoResumen"), lista = $("#progresoLista");
+  if (!resumen || !lista) return;
+  const hoy = getLocalTodayStr();
+  const mes = hoy.slice(0, 7);
+  const delMes = sesiones.filter(s => String(s.fecha).startsWith(mes)).length;
+  const hace30 = sumarDias(hoy, -29);
+  const ult30 = sesiones.filter(s => s.fecha >= hace30).length;
+  const ultima = sesiones[0];
+
+  resumen.innerHTML = `
+    <div class="kpi"><div class="kpi-label">Este mes</div><div class="kpi-value">${delMes}</div><div class="kpi-note">entrenamientos</div></div>
+    <div class="kpi"><div class="kpi-label">Últimos 30 días</div><div class="kpi-value">${ult30}</div><div class="kpi-note">entrenamientos</div></div>
+    <div class="kpi kpi-ancho"><div class="kpi-label">Último entrenamiento</div>
+      <div class="kpi-note">${ultima ? `${esc(fechaCortaConDia(ultima.fecha))} · ${esc(ultima.rutina || "Rutina")}` : "Todavía no has registrado ninguno"}</div></div>`;
+
+  if (!sesiones.length) {
+    lista.innerHTML = `<div class="cliente-card vacio"><p>Cuando termines un entrenamiento, aparecerá aquí.</p>
+      <a href="#hoy" class="btn-primary">Ir a mi rutina de hoy</a></div>`;
+    return;
+  }
+
+  // Agrupar por mes
+  const grupos = {};
+  sesiones.forEach(s => { (grupos[String(s.fecha).slice(0, 7)] = grupos[String(s.fecha).slice(0, 7)] || []).push(s); });
+  lista.innerHTML = Object.keys(grupos).sort().reverse().map(m => {
+    const titulo = nombreMes(m);
+    return `<section class="progreso-mes" aria-label="${esc(titulo)}">
+      <h2 class="progreso-mes-titulo">${esc(titulo.charAt(0).toUpperCase() + titulo.slice(1))} <span class="card-hint">· ${grupos[m].length}</span></h2>
+      <div class="cliente-card lista-sesiones">
+        ${grupos[m].map(s => {
+          const pct = s.series_totales ? Math.round((s.series_completadas / s.series_totales) * 100) : 0;
+          return `<div class="sesion-item">
+            <div class="sesion-fecha"><strong>${esc(fechaCortaConDia(s.fecha))}</strong><span class="card-hint">${esc(s.hora || "")}</span></div>
+            <div class="sesion-main">
+              <strong>${esc(s.rutina || "Rutina")}</strong>
+              <span class="card-hint">${s.series_completadas} de ${s.series_totales} series</span>
+              <div class="mini-barra" aria-hidden="true"><div style="width: ${pct}%"></div></div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </section>`;
+  }).join("");
+}
+
+function fechaCortaConDia(fechaStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaStr || "")) return "-";
+  const [y, m, d] = fechaStr.split("-").map(Number);
+  const dia = new Date(y, m - 1, d).toLocaleDateString("es-VE", { weekday: "short" }).replace(".", "");
+  return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${d}/${m}`;
+}
+
+/* ----- Mi plan ----- */
+function renderMiPlan(data) {
+  const st = estadoEntrada(data);
+  const mem = $("#planMembresia"), datos = $("#planDatos");
+  const estados = { activa: ["Activa", "estado-ok"], por_vencer: ["Por vencer", "estado-warn"], vencida: ["Vencida", "estado-danger"], sin: ["Sin membresía", "estado-danger"] };
+  const [txt, cls] = estados[st.codigo];
+  if (mem) {
+    mem.innerHTML = `
+      <dt>Plan</dt><dd>${esc(data.ultimo_plan || "Sin plan registrado")}</dd>
+      <dt>Estado</dt><dd class="${cls}">${esc(txt)}</dd>
+      <dt>Desde</dt><dd>${esc(formatFechaCorta(data.membresia.inicio))}</dd>
+      <dt>Vence</dt><dd>${esc(formatFechaCorta(data.membresia.vence))}${st.dias !== null ? ` · ${esc(textoDias(st.dias))}` : ""}</dd>`;
+  }
+  if (datos) {
+    datos.innerHTML = `
+      <dt>Nombre</dt><dd>${esc(data.nombre)}</dd>
+      <dt>Correo</dt><dd>${esc(data.correo || "Sin correo")}</dd>
+      <dt>Teléfono</dt><dd>${esc(data.telefono || "Sin teléfono")}</dd>`;
+  }
+}
+
+/* ----- Modo entrenamiento: pantalla completa y pantalla encendida ----- */
+let wakeLockActivo = null;
+let avisoWakeLockMostrado = false;
+
+function entrarModoEntreno() {
+  const sec = $("#activeSessionSection");
+  if (!sec) return;
+  sec.classList.remove("hidden");
+  document.body.classList.add("entrenando");
+  pedirWakeLock(true);
+  const titulo = $("#sessionRoutineTitle");
+  if (titulo) { titulo.setAttribute("tabindex", "-1"); titulo.focus({ preventScroll: true }); }
+}
+
+function salirModoEntreno() {
+  const sec = $("#activeSessionSection");
+  if (sec) sec.classList.add("hidden");
+  document.body.classList.remove("entrenando");
+  const badge = $("#restoredSessionBadge");
+  if (badge) badge.classList.add("hidden");
+  soltarWakeLock();
+}
+
+async function pedirWakeLock(avisar) {
+  const estado = $("#wakeLockEstado");
+  if (!("wakeLock" in navigator)) {
+    if (estado) estado.textContent = "Tu teléfono no permite mantener la pantalla encendida desde la web.";
+    if (avisar && !avisoWakeLockMostrado) {
+      avisoWakeLockMostrado = true;
+      showToast("Tu teléfono no permite mantener la pantalla encendida; puede que se apague entre series.", "aviso");
+    }
+    return;
+  }
+  try {
+    wakeLockActivo = await navigator.wakeLock.request("screen");
+    if (estado) estado.textContent = "La pantalla se mantendrá encendida mientras entrenas.";
+    wakeLockActivo.addEventListener("release", () => { wakeLockActivo = null; });
+  } catch (e) {
+    wakeLockActivo = null;
+    if (estado) estado.textContent = "No se pudo mantener la pantalla encendida (por ejemplo, con el ahorro de batería activo).";
+  }
+}
+
+function soltarWakeLock() {
+  if (wakeLockActivo) {
+    wakeLockActivo.release().catch(() => {});
+    wakeLockActivo = null;
+  }
 }

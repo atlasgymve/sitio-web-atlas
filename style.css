@@ -1726,3 +1726,368 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--text); }
   .filtro-texto { min-width: 0; }
   .drawer { width: 100vw; border-left: none; }
 }
+
+/* En teléfonos, todo campo con letra de al menos 16 px (así el iPhone no hace zoom al tocarlo) */
+@media (max-width: 1023px) {
+  input, select, textarea, .form-input, .input-compacto, .global-search input { font-size: 16px; }
+}
+
+/* =========================================================
+   VISTA DEL CLIENTE (etapa 3): pensada para el teléfono
+   ========================================================= */
+.cliente-body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+.cliente-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 20px 4px;
+}
+.cliente-logo { height: 28px; width: auto; }
+.cliente-header-acciones { display: flex; align-items: center; gap: 10px; }
+
+.avatar-btn {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--accent-soft);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.avatar-btn:hover { color: var(--text); border-color: var(--border-input); }
+
+.cliente-main {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 20px 24px;
+  flex: 1;
+}
+
+.cliente-vista { display: flex; flex-direction: column; gap: 18px; }
+.cliente-vista.hidden { display: none !important; }
+.cliente-vista-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.cliente-saludo { font-size: 38px; font-weight: 800; line-height: 1; margin-top: 2px; }
+.cliente-titulo { font-size: 34px; font-weight: 800; line-height: 1; }
+
+.cliente-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.cliente-card.vacio { align-items: flex-start; }
+.cliente-card.vacio p { color: var(--text-2); }
+.cliente-card-h { font-size: 28px; line-height: 1.05; overflow-wrap: anywhere; }
+.cliente-card-titulo {
+  font-family: var(--font-family);
+  font-style: normal;
+  text-transform: none;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Tarjeta de membresía */
+.mem-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mem-dias { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.mem-dias-num {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 42px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.mem-dias-texto { color: var(--text-2); }
+.mem-barra { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.mem-barra-fill { height: 100%; width: 0; border-radius: 999px; background: var(--primary); }
+.mem-barra-fill.warn { background: var(--warn); }
+.mem-barra-fill.danger { background: var(--danger); }
+
+/* Rutina de hoy y lista de ejercicios */
+.ejercicios-lista { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; }
+.ejercicios-lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.ejercicios-lista li:last-child { border-bottom: none; }
+.ejercicios-lista li > span:first-child { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ej-dosis { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.link-btn {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--link);
+  font-size: 14px;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--link-hover); }
+
+.btn-empezar { min-height: 56px; border-radius: 14px; font-size: 17px; font-weight: 700; margin-top: 6px; }
+
+/* Esta semana */
+.semana { display: flex; flex-direction: column; gap: 10px; }
+.semana-head { display: flex; justify-content: space-between; align-items: baseline; }
+.semana-titulo {
+  font-family: var(--font-family);
+  font-style: normal;
+  text-transform: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+.semana-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.semana-dia { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+.semana-dia.hoy { color: var(--text); font-weight: 700; }
+.semana-punto { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-strong); }
+.semana-punto.lleno { background: var(--primary); border-color: var(--primary); }
+.semana-dia.hoy .semana-punto:not(.lleno) { border: 2px dashed var(--primary); }
+
+/* Rutinas */
+.rutinas-lista { display: flex; flex-direction: column; gap: 14px; }
+.rutina-card-head { display: flex; flex-direction: column; gap: 2px; }
+.rutina-desc { color: var(--text-2); font-size: 14px; }
+.rutina-acciones { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+.rutina-acciones .btn-primary,
+.rutina-acciones .btn-secondary,
+.rutina-acciones .btn-danger { width: 100%; padding-left: 8px; padding-right: 8px; }
+
+/* Progreso */
+.progreso-resumen { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.progreso-resumen .kpi { padding: 14px 16px; }
+.progreso-resumen .kpi-value { font-size: 38px; }
+.kpi-ancho { grid-column: 1 / -1; }
+.progreso-mes { display: flex; flex-direction: column; gap: 8px; }
+.progreso-mes-titulo {
+  font-family: var(--font-family);
+  font-style: normal;
+  text-transform: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+.lista-sesiones { gap: 0; padding-top: 6px; padding-bottom: 6px; }
+.sesion-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--divider); }
+.sesion-item:last-child { border-bottom: none; }
+.sesion-fecha { display: flex; flex-direction: column; min-width: 64px; }
+.sesion-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sesion-main strong { overflow-wrap: anywhere; }
+.mini-barra { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; margin-top: 4px; }
+.mini-barra > div { height: 100%; background: var(--primary); border-radius: 999px; }
+
+/* Material de apoyo dentro de "Mi plan" */
+.material-grid { grid-template-columns: 1fr; margin-top: 0; }
+
+/* Menú inferior */
+.cliente-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+}
+.cliente-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 52px;
+  color: var(--text-3);
+  text-decoration: none;
+  font-size: 12px;
+  border-radius: 10px;
+}
+.cliente-nav a:hover { color: var(--text); }
+.cliente-nav a.activo { color: #FFFFFF; font-weight: 700; }
+.cliente-nav a.activo svg { stroke: var(--primary); stroke-width: 2.4; }
+
+@media (min-width: 720px) {
+  .cliente-nav { left: 50%; right: auto; width: 640px; transform: translateX(-50%); border: 1px solid var(--border); border-bottom: none; border-radius: 16px 16px 0 0; }
+}
+
+/* Modo entrenamiento: pantalla completa, un ejercicio a la vez */
+body.entrenando { overflow: hidden; }
+body.entrenando .cliente-nav { display: none; }
+
+.modo-entreno {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.modo-entreno.hidden { display: none !important; }
+
+.entreno-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 12px 8px;
+}
+.entreno-head-texto { flex: 1; min-width: 0; }
+.entreno-titulo { font-size: 26px; line-height: 1.05; overflow-wrap: anywhere; }
+.entreno-titulo:focus { outline: none; }
+.entreno-progreso { max-width: 616px; width: calc(100% - 24px); margin: 0 auto; }
+
+.entreno-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 16px 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.entreno-paso { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-2); font-size: 14px; }
+.entreno-paso .puntos { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.entreno-paso .puntos i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
+.entreno-paso .puntos i.hecho { background: var(--accent-soft); }
+.entreno-paso .puntos i.actual { background: var(--primary); box-shadow: 0 0 0 2px var(--accent-bg); }
+
+.entreno-ejercicio { display: flex; flex-direction: column; gap: 6px; }
+.ej-nombre { font-size: 32px; line-height: 1.05; overflow-wrap: anywhere; }
+.series-entreno { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+
+/* Cada serie: peso y repeticiones uno debajo del otro (a todo el ancho), la marca grande a la derecha */
+.serie {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-areas: "num check" "peso check" "reps check";
+  gap: 8px 12px;
+  align-items: end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.serie-hecha { border-color: var(--ok-border); }
+.serie-num { grid-area: num; color: var(--text-3); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.serie .stepper-peso { grid-area: peso; }
+.serie .stepper-reps { grid-area: reps; }
+.serie .btn-check-grande { grid-area: check; align-self: center; }
+
+.stepper { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stepper-label { color: var(--text-3); font-size: 12px; }
+.stepper-fila {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-input);
+  border-radius: 12px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.stepper-btn {
+  flex: 0 0 56px;
+  min-height: 52px;
+  border: none;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.stepper-btn:active { background: var(--accent-bg); }
+.stepper-fila input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper-fila input::-webkit-outer-spin-button,
+.stepper-fila input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper-fila:focus-within { border-color: var(--primary); }
+.stepper-fila input:focus { outline: none; }
+
+.btn-check-grande {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 18px;
+  border: 2px solid var(--border-input);
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+.btn-check-grande.completed { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+
+.entreno-ajustes {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0 14px;
+  margin-top: 6px;
+}
+.entreno-ajustes summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.entreno-ajustes-cuerpo { display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; }
+.check-grande { display: flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; }
+.check-grande input { width: 22px; height: 22px; accent-color: var(--primary); }
+
+.entreno-pie {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 190;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.entreno-pie .btn-primary, .entreno-pie .btn-secondary { min-height: 52px; font-size: 16px; }
+
+/* Temporizador de descanso: siempre visible encima de los botones mientras entrena */
+body.entrenando .floating-timer-widget {
+  z-index: 195;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 608px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+}
+body.entrenando .floating-timer-widget { animation: none; }
