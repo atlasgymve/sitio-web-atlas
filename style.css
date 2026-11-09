@@ -1075,6 +1075,7 @@ select.form-input option { background: var(--surface); color: var(--text); }
 .stat-tile-alert .stat-value { color: var(--danger); }
 .stat-label { color: var(--text-3); font-size: 0.8rem; font-weight: 500; }
 .stat-value { font-size: 1.9rem; line-height: 1; color: var(--text); overflow-wrap: anywhere; }
+.stat-tile .stat-value { overflow-wrap: normal; white-space: nowrap; }
 
 .report-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 0.8rem; }
 .report-box { padding: 0.9rem 1rem; background: var(--surface-2); border-radius: 12px; border: 1px solid var(--border); }
@@ -1399,6 +1400,10 @@ select.form-input option { background: var(--surface); color: var(--text); }
   font-variant-numeric: tabular-nums;
 }
 .kpi-monedas .kpi-note { font-family: var(--font-family); font-style: normal; font-weight: 400; font-size: 13px; }
+/* La moneda y su monto nunca se separan en dos líneas */
+.kpi-monedas span, .monto-nowrap { white-space: nowrap; }
+/* La letra de "Cobrado hoy" se ajusta al ancho de la tarjeta para que "Bancolombia 1.200.000" quepa en el teléfono */
+#kpiCobradoCard { container-type: inline-size; }
 
 /* Inicio */
 .inicio-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
@@ -1711,7 +1716,7 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--text); }
   .kpi-grid, .kpi-grid.kpi-3 { grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi { padding: 14px; }
   .kpi-value { font-size: 36px; }
-  .kpi-monedas { font-size: 20px; }
+  .kpi-monedas { font-size: min(20px, 11cqi); }
   .topbar-actions { flex: 1 1 100%; order: 4; }
   .topbar-actions .btn-primary, .topbar-actions .btn-secondary { flex: 1; }
   .card-title { font-size: 24px; }
@@ -2091,3 +2096,11 @@ body.entrenando .floating-timer-widget {
   bottom: calc(88px + env(safe-area-inset-bottom));
 }
 body.entrenando .floating-timer-widget { animation: none; }
+
+/* Totales por plan del cierre: una moneda por línea */
+.monto-linea { display: block; white-space: nowrap; }
+@media (max-width: 640px) {
+  .report-table { font-size: 0.82rem; }
+  .report-table th, .report-table td { padding: 0.5rem 0.35rem; }
+  .report-table th { font-size: 0.68rem; letter-spacing: 0.02em; }
+}

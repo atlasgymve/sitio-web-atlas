@@ -120,6 +120,16 @@ function parseLocalYYYYMMDD(str) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Cabeceras de seguridad
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  // Los PDF viejos de /uploads se muestran dentro de la propia página (iframe del mismo sitio)
+  res.setHeader('X-Frame-Options', req.path.startsWith('/uploads/') ? 'SAMEORIGIN' : 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
+
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -411,6 +421,60 @@ app.post('/api/registro', requireRole('admin', 'recepcion'), async (req, res) =>
 });
 
 // ---------- LOGIN (CORREO O CÉDULA) ----------
+// Bloqueo temporal de las cuentas del personal (admin y recepción) tras varias contraseñas
+// incorrectas seguidas. Contador en memoria: se reinicia si el servidor se reinicia.
+const MAX_FALLOS_CUENTA = 5;
+const BLOQUEO_CUENTA_MS = 15 * 60 * 1000;
+const MSG_DEMASIADOS_INTENTOS = 'Demasiados intentos. Espera unos minutos.';
+const MSG_LOGIN_GENERICO = 'No pudimos iniciar sesión con esos datos';
+const fallosCuenta = new Map(); // id_usuario -> { fallos, bloqueadaHasta, ultimo }
+
+function cuentaBloqueada(idUsuario) {
+  const e = fallosCuenta.get(idUsuario);
+  return !!(e && e.bloqueadaHasta > Date.now());
+}
+
+// Suma un fallo; devuelve true si con este fallo la cuenta queda bloqueada
+function registrarFalloCuenta(idUsuario) {
+  const ahora = Date.now();
+  let e = fallosCuenta.get(idUsuario);
+  if (!e || (e.bloqueadaHasta && e.bloqueadaHasta <= ahora)) e = { fallos: 0, bloqueadaHasta: 0, ultimo: ahora };
+  e.fallos += 1;
+  e.ultimo = ahora;
+  if (e.fallos >= MAX_FALLOS_CUENTA) {
+    e.fallos = 0;
+    e.bloqueadaHasta = ahora + BLOQUEO_CUENTA_MS;
+    console.warn(`Cuenta del personal ${idUsuario} bloqueada 15 minutos por contraseñas incorrectas.`);
+  }
+  fallosCuenta.set(idUsuario, e);
+  return e.bloqueadaHasta > ahora;
+}
+
+function limpiarFallosCuenta(idUsuario) {
+  fallosCuenta.delete(idUsuario);
+}
+
+// Limpieza periódica para que el contador no crezca: se borran las entradas
+// sin bloqueo vigente y sin fallos en los últimos 15 minutos
+setInterval(() => {
+  const ahora = Date.now();
+  for (const [id, e] of fallosCuenta) {
+    if (e.bloqueadaHasta <= ahora && ahora - e.ultimo > BLOQUEO_CUENTA_MS) fallosCuenta.delete(id);
+  }
+}, 5 * 60 * 1000).unref();
+
+function respuestaStaff(res, user, rol) {
+  limpiarFallosCuenta(user.id_usuario);
+  return res.json({
+    ok: true,
+    token: signToken(user.id_usuario, rol),
+    id_usuario: user.id_usuario,
+    nombre: user.nombre_completo || (rol === 'admin' ? 'Administrador' : 'Recepción'),
+    esAdmin: rol === 'admin',
+    esRecepcionista: rol === 'recepcion'
+  });
+}
+
 app.post('/api/login', async (req, res) => {
   const { email, password, loginInput } = req.body;
   const inputVal = String(loginInput || email || '').trim();
@@ -422,54 +486,45 @@ app.post('/api/login', async (req, res) => {
   const cleanInput = inputVal.toLowerCase();
 
   try {
-    // Si es el correo del gimnasio, verificar tanto admin como recepcionista
+    // Correo del gimnasio: sirve para admin y para recepción (cada uno con su contraseña)
     if (cleanInput === ADMIN_EMAIL) {
       if (!password) {
         return res.status(400).json({ msg: 'Por favor ingresa la contraseña de acceso.' });
       }
 
-      // Buscar cuenta de administrador
       const [adminRows] = await pool.execute(
         'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? AND id_rol = 1',
         [cleanInput]
       );
-
-      // Buscar cuenta de recepcionista
       const [recepRows] = await pool.execute(
         'SELECT id_usuario, nombre_completo, hash_contrasena, id_rol FROM usuarios WHERE correo = ? AND id_rol = 3',
         [RECEPCION_EMAIL]
       );
+      const cuentas = [
+        adminRows.length ? { user: adminRows[0], rol: 'admin' } : null,
+        recepRows.length ? { user: recepRows[0], rol: 'recepcion' } : null
+      ].filter(Boolean);
 
-      // Intentar contraseña de admin
-      if (adminRows.length > 0) {
-        const adminMatch = await bcrypt.compare(password, adminRows[0].hash_contrasena);
-        if (adminMatch) {
-          return res.json({
-            ok: true,
-            token: signToken(adminRows[0].id_usuario, 'admin'),
-            id_usuario: adminRows[0].id_usuario,
-            nombre: adminRows[0].nombre_completo || 'Administrador',
-            esAdmin: true,
-            esRecepcionista: false
-          });
+      // Una cuenta bloqueada no se prueba: así no se puede seguir adivinando su contraseña
+      const disponibles = cuentas.filter(c => !cuentaBloqueada(c.user.id_usuario));
+      if (cuentas.length && !disponibles.length) {
+        return res.status(429).json({ msg: MSG_DEMASIADOS_INTENTOS });
+      }
+
+      for (const c of disponibles) {
+        if (await bcrypt.compare(String(password), c.user.hash_contrasena)) {
+          return respuestaStaff(res, c.user, c.rol);
         }
       }
 
-      // Intentar contraseña de recepcionista
-      if (recepRows.length > 0) {
-        const recepMatch = await bcrypt.compare(password, recepRows[0].hash_contrasena);
-        if (recepMatch) {
-          return res.json({
-            ok: true,
-            token: signToken(recepRows[0].id_usuario, 'recepcion'),
-            id_usuario: recepRows[0].id_usuario,
-            nombre: recepRows[0].nombre_completo || 'Recepción',
-            esAdmin: false,
-            esRecepcionista: true
-          });
-        }
+      // Contraseña incorrecta para todas las cuentas disponibles
+      let quedaronBloqueadas = disponibles.length > 0;
+      for (const c of disponibles) {
+        if (!registrarFalloCuenta(c.user.id_usuario)) quedaronBloqueadas = false;
       }
-
+      if (quedaronBloqueadas) {
+        return res.status(429).json({ msg: MSG_DEMASIADOS_INTENTOS });
+      }
       return res.status(401).json({ msg: 'Contraseña incorrecta. Verifica e intenta de nuevo.' });
     }
 
@@ -478,8 +533,9 @@ app.post('/api/login', async (req, res) => {
       [cleanInput, inputVal, cleanInput]
     );
 
+    // Mismo mensaje y mismo código exista o no la cédula/correo
     if (rows.length === 0) {
-      return res.status(404).json({ msg: 'Usuario no registrado. Por favor verifica tu correo o cédula.' });
+      return res.status(401).json({ msg: MSG_LOGIN_GENERICO });
     }
 
     const user = rows[0];
@@ -489,18 +545,17 @@ app.post('/api/login', async (req, res) => {
       if (!password) {
         return res.status(400).json({ msg: 'Por favor ingresa la contraseña de acceso.' });
       }
-      const match = await bcrypt.compare(password, user.hash_contrasena);
+      if (cuentaBloqueada(user.id_usuario)) {
+        return res.status(429).json({ msg: MSG_DEMASIADOS_INTENTOS });
+      }
+      const match = await bcrypt.compare(String(password), user.hash_contrasena);
       if (!match) {
+        if (registrarFalloCuenta(user.id_usuario)) {
+          return res.status(429).json({ msg: MSG_DEMASIADOS_INTENTOS });
+        }
         return res.status(401).json({ msg: 'Contraseña incorrecta.' });
       }
-      return res.json({
-        ok: true,
-        token: signToken(user.id_usuario, user.id_rol === 1 ? 'admin' : 'recepcion'),
-        id_usuario: user.id_usuario,
-        nombre: user.nombre_completo || (user.id_rol === 1 ? 'Administrador' : 'Recepción'),
-        esAdmin: user.id_rol === 1,
-        esRecepcionista: user.id_rol === 3
-      });
+      return respuestaStaff(res, user, user.id_rol === 1 ? 'admin' : 'recepcion');
     }
 
     // Para clientes regulares: Inicio de sesión directo con correo o cédula
