@@ -6,227 +6,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ATLAS - Panel de Administración</title>
   <link rel="icon" type="image/png" href="assets/logo-icon-white.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body onload="initAdminDashboard()">
+<body class="panel-body" onload="initAdminDashboard()">
 
-  <!-- NAVBAR -->
-  <!-- NAVBAR -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="header-logo-group">
-        <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
-        <span class="badge"
-          style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4);">Modo
-          Administrador</span>
+<div class="app-shell">
+
+  <!-- MENÚ LATERAL (en pantallas angostas se abre desde el botón "Menú") -->
+  <aside id="sidebar" class="sidebar" aria-label="Menú principal">
+    <img src="assets/logo-white.png" alt="ATLAS Gym" class="sidebar-logo">
+    <nav id="sideNav" class="side-nav" aria-label="Secciones">
+      <a href="#inicio" class="nav-link" data-view="inicio">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg>
+        <span>Inicio</span></a>
+      <a href="#entrada" class="nav-link" data-view="entrada">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path></svg>
+        <span>Control de entrada</span></a>
+      <a href="#clientes" class="nav-link" data-view="clientes">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21c0-4 3-7 7-7s7 3 7 7"></path><path d="M17 4a4 4 0 0 1 0 8"></path><path d="M22 21c0-3-1.5-5.5-4-6.5"></path></svg>
+        <span>Clientes</span></a>
+      <a href="#pagos" class="nav-link" data-view="pagos" data-solo-admin>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path><path d="M6 15h4"></path></svg>
+        <span>Pagos</span></a>
+      <a href="#vencimientos" class="nav-link" data-view="vencimientos">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M12 14v3l2 1"></path></svg>
+        <span class="nav-label">Vencimientos</span><span id="expiryCardCount" class="nav-count hidden"></span></a>
+      <a href="#cierre" class="nav-link" data-view="cierre" data-solo-admin>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 12h18"></path></svg>
+        <span>Cierre de caja</span></a>
+      <a href="#reportes" class="nav-link" data-view="reportes" data-solo-admin>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+        <span>Reportes</span></a>
+      <div class="nav-divider" role="separator"></div>
+      <a href="#plantillas" class="nav-link" data-view="plantillas">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14M3 9v6M21 9v6M6 12h12"></path></svg>
+        <span>Plantillas de rutinas</span></a>
+      <a href="#material" class="nav-link" data-view="material" data-solo-admin>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10l6 6v10H4z"></path><path d="M14 4v6h6"></path></svg>
+        <span>Material</span></a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" aria-hidden="true" id="sidebarAvatar">A</div>
+      <div class="sidebar-user-info">
+        <div id="adminGreeting" class="sidebar-user-name">Administrador</div>
+        <div id="sidebarRole" class="sidebar-user-role">Administrador</div>
       </div>
-      <div class="header-nav-actions">
-        <span id="adminGreeting" style="font-weight: 600;">Administrador ATLAS</span>
-        <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()"
-          style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-          💳 Registrar Pago
-        </button>
-        <button type="button" class="btn-primary" onclick="openCreateUserModal()">
-          + Nuevo Cliente
-        </button>
-        <button type="button" class="btn-secondary" onclick="logout()">
-          Salir
-        </button>
-      </div>
+      <button type="button" class="btn-salir" onclick="logout()">Salir</button>
     </div>
-  </header>
+  </aside>
 
-  <!-- CONTENIDO PRINCIPAL -->
-  <main class="main-content">
+  <div class="app-main">
 
-    <div style="text-align: center; margin-bottom: 2rem;">
-      <h2 style="font-size: 2.2rem; font-weight: 700; color: var(--text-main);">Panel de Administración</h2>
-      <p style="color: var(--text-muted); font-size: 1rem; max-width: 600px; margin: 0.5rem auto 0 auto;">
-        Gestión centralizada de miembros, registro de pagos y consulta de rutinas de entrenamiento.
-      </p>
-    </div>
+    <!-- BARRA SUPERIOR -->
+    <header class="topbar">
+      <button type="button" id="menuToggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false" onclick="toggleMobileMenu()">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <span id="menuToggleLabel">Menú</span>
+      </button>
+      <img src="assets/logo-white.png" alt="ATLAS Gym" class="topbar-logo">
+      <div class="global-search" role="search">
+        <label for="globalSearch" class="sr-only">Buscar cliente</label>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.5-4.5"></path></svg>
+        <input id="globalSearch" type="search" autocomplete="off" placeholder="Buscar cliente por nombre o cédula…"
+          role="combobox" aria-expanded="false" aria-controls="globalSearchResults" aria-autocomplete="list"
+          oninput="onGlobalSearchInput()" onkeydown="onGlobalSearchKeydown(event)" onfocus="onGlobalSearchInput()">
+        <kbd class="kbd-hint">Ctrl K</kbd>
+        <div id="globalSearchResults" class="search-results hidden" role="listbox" aria-label="Clientes encontrados"></div>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="btn-secondary" onclick="openCreateUserModal()">+ Nuevo cliente</button>
+        <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()">Registrar pago</button>
+      </div>
+    </header>
 
-    <!-- SECCIÓN: CONTROL DE ENTRADA (ASISTENCIA) -->
-    <section id="adminCheckinSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
-        <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Escribe la cédula (o el nombre) y presiona <strong>Enter</strong>. Si la membresía está al día, la entrada se registra sola.</p>
+  <!-- CONTENIDO PRINCIPAL: se muestra una vista a la vez -->
+  <main class="main-content panel-content" id="panelContent">
+
+    <!-- VISTA: INICIO (RESUMEN DE HOY) -->
+    <section id="viewInicio" class="view hidden" data-view="inicio" aria-labelledby="tInicio">
+      <div class="view-head">
+        <h1 id="tInicio" class="view-title">Resumen de hoy</h1>
+        <div id="inicioFecha" class="view-sub"></div>
+      </div>
+
+      <section class="kpi-grid" aria-label="Indicadores del día">
+        <div class="kpi">
+          <div class="kpi-label">Entradas de hoy</div>
+          <div id="kpiEntradas" class="kpi-value">–</div>
+          <div id="kpiEntradasComp" class="kpi-note"></div>
         </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-          <input type="date" id="checkinDateFilter" class="form-input" onchange="loadCheckins()"
-            style="width: auto; padding: 0.5rem 0.8rem; font-size: 0.88rem;">
-          <span id="checkinCount" class="badge badge-active" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">0 entradas</span>
+        <div class="kpi" id="kpiCobradoCard" data-solo-admin>
+          <div class="kpi-label">Cobrado hoy</div>
+          <div id="kpiCobrado" class="kpi-monedas"><span class="kpi-note">Cargando…</span></div>
         </div>
+        <div class="kpi kpi-warn">
+          <div class="kpi-label">Mensualidades por vencer</div>
+          <div id="kpiPorVencer" class="kpi-value">–</div>
+          <div class="kpi-note">en los próximos 7 días</div>
+        </div>
+        <div class="kpi kpi-danger">
+          <div class="kpi-label">Clientes con deuda</div>
+          <div id="kpiDeuda" class="kpi-value">–</div>
+          <div class="kpi-note">abonos pendientes</div>
+        </div>
+      </section>
+
+      <div class="inicio-grid">
+        <!-- Aquí se coloca el Control de Entrada cuando se está en Inicio -->
+        <div id="inicioCheckinSlot" class="inicio-checkin"></div>
+
+        <section class="glass-card inicio-vencer" aria-labelledby="tPorVencer">
+          <div class="card-head">
+            <h2 id="tPorVencer" class="card-title">Por vencer</h2>
+            <a href="#vencimientos" class="card-link">Ver todos</a>
+          </div>
+          <div class="segmented" role="tablist" aria-label="Tipo de plan">
+            <button type="button" role="tab" id="inicioTabMensual" aria-selected="true" onclick="setInicioVencerTab('mensual')">Mensualidades</button>
+            <button type="button" role="tab" id="inicioTabSemanal" aria-selected="false" onclick="setInicioVencerTab('semanal')">Semanas</button>
+          </div>
+          <div id="inicioPorVencer" class="lista-simple"></div>
+        </section>
       </div>
 
-      <div style="position: relative; max-width: 640px; margin: 0 auto 1rem auto;">
-        <input type="text" id="checkinSearch" class="form-input" autocomplete="off" inputmode="search"
-          placeholder="Cédula o nombre del cliente..." oninput="onCheckinInput()" onkeydown="onCheckinKeydown(event)"
-          style="font-size: 1.25rem; padding: 0.9rem 1.1rem; text-align: center;">
-        <div id="checkinResults" class="hidden"
-          style="position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: #0f172a; border: 1px solid var(--border-light); border-radius: 10px; margin-top: 0.3rem; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.45);"></div>
-      </div>
-
-      <div id="checkinStatus" style="max-width: 640px; margin: 0 auto 1.5rem auto;"></div>
-
-      <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.6rem;">Entradas del día</h4>
-      <div id="checkinList" style="display: flex; flex-direction: column; gap: 0.4rem;">
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Aún no hay entradas registradas.</p>
-      </div>
+      <section class="glass-card" id="inicioPagosCard" data-solo-admin aria-labelledby="tUltimosPagos">
+        <div class="card-head">
+          <h2 id="tUltimosPagos" class="card-title">Últimos pagos</h2>
+          <a href="#cierre" class="card-link">Ver cierre de caja</a>
+        </div>
+        <div id="inicioUltimosPagos"></div>
+      </section>
     </section>
 
-    <!-- TARJETAS DE ACCIONES RÁPIDAS -->
-    <div
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
-
-      <!-- Card 0a: Control de Entrada -->
-      <div id="cardControlEntrada" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(16,185,129,0.45);">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Entrada</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Registra la asistencia con la cédula o el nombre y verifica al instante si la membresía está al día.
-          </p>
-        </div>
-        <button type="button" class="btn-primary" onclick="toggleCheckinSection()"
-          style="width: 100%; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-          Registrar Entradas
-        </button>
-      </div>
-
-      <!-- Card 0b: Vencimientos -->
-      <div id="cardVencimientos" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Vencimientos <span id="expiryCardCount" class="badge badge-warning" style="font-size: 0.75rem; vertical-align: middle;"></span></h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Mensualidades y semanas por vencer o vencidas, con recordatorio por WhatsApp y renovación rápida.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="toggleExpirySection()"
-          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
-          Ver Vencimientos
-        </button>
-      </div>
-
-      <!-- Card 0c: Cierre de Caja -->
-      <div id="cardCierreCaja" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem; border: 1px solid rgba(45,212,191,0.45);">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Totales cobrados por moneda en el turno AM, PM o todo el día, con resumen listo para enviar por WhatsApp.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="toggleCierreSection()"
-          style="width: 100%; border-color: #2DD4BF; color: #2DD4BF;">
-          Ver Cierre de Caja
-        </button>
-      </div>
-
-      <!-- Card 0d: Reporte Mensual (solo admin) -->
-      <div id="cardReporteMensual" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Ingresos comparados con el mes anterior, clientes activos, nuevos y vencidos, y asistencia por hora.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="toggleReporteSection()"
-          style="width: 100%; border-color: #F472B6; color: #F472B6;">
-          Ver Reporte Mensual
-        </button>
-      </div>
-
-      <!-- Card 1: Directorio Clientes -->
-      <div id="cardDirectorioClientes" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Listado de Clientes</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Consulta la lista de atletas registrados, su estado de membresía y las rutinas que tienen asignadas.
-          </p>
-        </div>
-        <button type="button" class="btn-primary" onclick="toggleAdminClientsSection()" style="width: 100%;">
-          Ver Listado de Clientes
-        </button>
-      </div>
-
-      <!-- Card 2: Control de Pagos -->
-      <div id="cardControlPagos" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #34D399;">Control de Pagos</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Registra abonos por plan (Mensual, Estudiante, Semana, Diario o Deuda) en la moneda de tu preferencia.
-          </p>
-        </div>
-        <div style="display: flex; gap: 0.5rem; width: 100%;">
-          <button type="button" class="btn-primary" onclick="openRegisterPaymentModal()"
-            style="flex: 1; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-            Registrar Pago
-          </button>
-          <button type="button" class="btn-secondary" onclick="toggleAdminPaymentsSection()" style="flex: 1;">
-            Historial
-          </button>
+    <!-- VISTA: CONTROL DE ENTRADA (ASISTENCIA). En Inicio se muestra dentro del resumen. -->
+    <section id="viewEntrada" class="view hidden" data-view="entrada">
+    <section id="adminCheckinSection" class="glass-card checkin-card" aria-labelledby="tEntrada">
+      <div class="card-head">
+        <h2 id="tEntrada" class="card-title">Control de entrada</h2>
+        <div class="card-head-tools">
+          <span class="card-hint">Enter para registrar</span>
+          <label for="checkinDateFilter" class="sr-only">Fecha de las entradas</label>
+          <input type="date" id="checkinDateFilter" class="form-input input-compacto" onchange="loadCheckins()">
+          <span id="checkinCount" class="badge badge-neutral">0 entradas</span>
         </div>
       </div>
 
-      <!-- Card 3: Nuevo Cliente -->
-      <div class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #60A5FA;">Nuevo Cliente</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Registra a un nuevo atleta en el sistema para permitirle el ingreso directo por correo electrónico.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="openCreateUserModal()"
-          style="width: 100%; border-color: var(--primary-blue); color: #60A5FA;">
-          + Registrar Nuevo Cliente
-        </button>
+      <div class="checkin-search">
+        <label for="checkinSearch" class="sr-only">Cédula o nombre del cliente</label>
+        <input type="text" id="checkinSearch" class="form-input checkin-input" autocomplete="off" inputmode="search"
+          placeholder="Cédula o nombre del cliente" oninput="onCheckinInput()" onkeydown="onCheckinKeydown(event)">
+        <div id="checkinResults" class="search-results hidden"></div>
       </div>
 
-      <!-- Card 4: Plantillas de Rutinas -->
-      <div class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #C084FC;">Plantillas de Rutinas</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Diseña rutinas predefinidas para que tus clientes puedan cargarlas al crear su plan de entrenamiento.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="toggleAdminTemplatesSection()"
-          style="width: 100%; border-color: #C084FC; color: #C084FC;">
-          Gestionar Plantillas
-        </button>
-      </div>
+      <div id="checkinStatus"></div>
 
-      <!-- Card 5: Material y Contenido Adicional -->
-      <div id="cardMaterialContenido" class="glass-card"
-        style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-        <div>
-          <h3 style="font-size: 1.3rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem;">
-            Sube archivos de soporte (PDFs, guías, imágenes) y enlaces de interés para que tus atletas consulten.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" onclick="toggleAdminResourcesSection()"
-          style="width: 100%; border-color: #FBBF24; color: #FBBF24;">
-          Gestionar Contenido
-        </button>
+      <h3 class="subtitulo-lista">Entradas del día</h3>
+      <div id="checkinList" class="checkin-list">
+        <p class="report-empty">Aún no hay entradas registradas.</p>
       </div>
-
-    </div>
+    </section>
+    </section>
 
     <!-- SECCIÓN: VENCIMIENTOS -->
-    <section id="adminExpirySection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+    <section id="adminExpirySection" class="glass-card view hidden" data-view="vencimientos">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Vencimientos</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Vencimientos</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Las mensualidades se muestran aparte de las semanas para darles seguimiento sin mezclar.</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -238,10 +186,10 @@
     </section>
 
     <!-- SECCIÓN: CIERRE DE CAJA -->
-    <section id="adminCierreSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+    <section id="adminCierreSection" class="glass-card view hidden" data-view="cierre" data-solo-admin>
       <div class="report-header">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #2DD4BF;">Cierre de Caja</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Cierre de Caja</h3>
           <p id="cierreSubtitulo" style="color: var(--text-muted); font-size: 0.85rem;">Los montos de cada moneda se suman por separado.</p>
         </div>
         <div class="report-filters">
@@ -258,10 +206,10 @@
     </section>
 
     <!-- SECCIÓN: REPORTE MENSUAL (SOLO ADMIN) -->
-    <section id="adminReporteSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
+    <section id="adminReporteSection" class="glass-card view hidden" data-view="reportes" data-solo-admin>
       <div class="report-header">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #F472B6;">Reporte Mensual</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Reporte Mensual</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Ingresos, clientes y asistencia del mes seleccionado.</p>
         </div>
         <div class="report-filters">
@@ -271,54 +219,61 @@
       <div id="reporteContent"></div>
     </section>
 
-    <!-- SECCIÓN: LISTADO DE CLIENTES (OCULTA POR DEFECTO UNTIL BOTÓN CLICKEADO) -->
-    <section id="adminClientsSection" class="glass-card hidden" style="margin-bottom: 2.5rem;">
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
+    <!-- VISTA: CLIENTES (TABLA ORDENABLE + FICHA LATERAL) -->
+    <section id="adminClientsSection" class="glass-card view hidden" data-view="clientes" aria-labelledby="tClientes">
+      <div class="card-head card-head-wrap">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Clientes Registrados</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Selecciona un cliente para ver sus rutinas asignadas
-            o gestionar su cuenta.</p>
+          <h2 id="tClientes" class="card-title">Clientes</h2>
+          <p id="clientesConteo" class="card-hint"></p>
         </div>
-
-        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-          <select id="clientStatusFilterSelect" class="form-input" onchange="filterAdminUsers()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
-            <option value="todos" selected>Todos los Clientes</option>
-            <option value="deudores">⚠️ Con Deuda (Abono Pendiente)</option>
-            <option value="proximos">⚠️ Próximos a vencer (0-5 días)</option>
+        <div class="filtros">
+          <label for="clientStatusFilterSelect" class="sr-only">Estado</label>
+          <select id="clientStatusFilterSelect" class="form-input input-compacto" onchange="filterAdminUsers()">
+            <option value="todos" selected>Todos los clientes</option>
+            <option value="deudores">Con deuda (abono pendiente)</option>
+            <option value="proximos">Próximos a vencer (0-5 días)</option>
             <option value="vencidos">Vencidos</option>
             <option value="activos">Activos</option>
           </select>
-          <select id="clientPlanFilterSelect" class="form-input" onchange="filterAdminUsers()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+          <label for="clientPlanFilterSelect" class="sr-only">Plan</label>
+          <select id="clientPlanFilterSelect" class="form-input input-compacto" onchange="filterAdminUsers()">
             <option value="todos" selected>Todos los planes</option>
             <option value="mensual">Mensualidad (incluye Estudiante)</option>
             <option value="semanal">Semana</option>
             <option value="diario">Diario</option>
             <option value="sin">Sin plan registrado</option>
           </select>
-          <input type="text" id="searchUserFilter" class="form-input"
-            placeholder="Buscar por nombre, correo, cédula o teléfono..." oninput="filterAdminUsers()"
-            style="width: 260px; padding: 0.5rem 1rem; font-size: 0.88rem;">
+          <label for="searchUserFilter" class="sr-only">Filtrar clientes</label>
+          <input type="search" id="searchUserFilter" class="form-input input-compacto filtro-texto"
+            placeholder="Nombre, correo, cédula o teléfono" oninput="filterAdminUsers()">
         </div>
       </div>
 
-      <!-- Listado de Usuarios Clientes en Tarjetas Desplegables -->
-      <div id="adminUsersGrid"
-        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; align-items: start;">
-        <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
-          Cargando clientes...
-        </div>
+      <div class="tabla-wrap">
+        <table class="data-table tabla-clientes" id="clientesTabla">
+          <thead>
+            <tr>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="nombre">Nombre</button></th>
+              <th scope="col" class="col-md" aria-sort="none"><button type="button" class="th-sort" data-sort="plan">Plan</button></th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="vence">Vence</button></th>
+              <th scope="col" aria-sort="none"><button type="button" class="th-sort" data-sort="estado">Estado</button></th>
+              <th scope="col" class="col-md" aria-sort="none"><button type="button" class="th-sort" data-sort="deuda">Deuda</button></th>
+              <th scope="col" class="col-md" aria-sort="none"><button type="button" class="th-sort" data-sort="pago">Último pago</button></th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersGrid">
+            <tr><td colspan="6" class="report-empty">Cargando clientes…</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
     <!-- SECCIÓN: HISTORIAL DE PAGOS REGISTRADOS -->
-    <section id="adminPaymentsSection" class="glass-card hidden">
+    <section id="adminPaymentsSection" class="glass-card view hidden" data-view="pagos" data-solo-admin>
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #34D399;">Historial de Pagos</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Historial de Pagos</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Consulta los pagos por fecha y revisa el total
             recaudado en el día.</p>
         </div>
@@ -326,7 +281,7 @@
         <!-- Filtros de Búsqueda y Rango de Fechas -->
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
           <div
-            style="display: flex; align-items: center; gap: 0.4rem; background: rgba(15,23,42,0.6); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
+            style="display: flex; align-items: center; gap: 0.4rem; background: var(--surface-2); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
             <input type="text" id="historyClientSearch" class="form-input" placeholder="Buscar pagos por cliente..."
               oninput="filterPaymentsHistoryByClient()"
               style="padding: 0.4rem 0.8rem; width: 200px; font-size: 0.85rem;">
@@ -335,9 +290,9 @@
           </div>
 
           <div
-            style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15,23,42,0.6); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
+            style="display: flex; align-items: center; gap: 0.6rem; background: var(--surface-2); padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid var(--border-light);">
             <select id="paymentDateMode" class="form-input" onchange="togglePaymentDateMode()"
-              style="padding: 0.4rem 0.6rem; font-size: 0.85rem; background: rgba(15,23,42,0.8); cursor: pointer; width: auto;">
+              style="padding: 0.4rem 0.6rem; font-size: 0.85rem; background: var(--surface-2); cursor: pointer; width: auto;">
               <option value="dia" selected>Día Único</option>
               <option value="rango">Rango de Fechas</option>
             </select>
@@ -358,13 +313,13 @@
 
           <button type="button" class="btn-secondary" onclick="copyPaymentsSummaryToClipboard()"
             title="Copiar resumen contable"
-            style="padding: 0.5rem 0.8rem; font-size: 0.85rem; border-color: #34D399; color: #34D399;">
+            style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
             Copiar Resumen de Caja
           </button>
 
           <button type="button" class="btn-primary" onclick="exportPaymentsToExcel()"
             title="Descargar historial en formato Excel / CSV"
-            style="padding: 0.5rem 0.9rem; font-size: 0.85rem; background: linear-gradient(135deg, #059669 0%, #10B981 100%); border: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+            style="width: auto; padding: 0.5rem 0.9rem; font-size: 0.85rem; border: none; display: inline-flex; align-items: center; gap: 0.4rem;">
             Exportar a Excel
           </button>
         </div>
@@ -374,46 +329,46 @@
       <div id="paymentsDailySummary"
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USD</span>
-          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: #34D399; margin-top: 0.2rem;">
+          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">COP</span>
-          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: #60A5FA; margin-top: 0.2rem;">
+          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">BS</span>
-          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: #F59E0B; margin-top: 0.2rem;">
+          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Bancolombia</span>
           <div id="totalBancolombiaSummary"
-            style="font-size: 1.3rem; font-weight: 800; color: #FBBF24; margin-top: 0.2rem;">
+            style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USDT</span>
-          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: #F0B90B; margin-top: 0.2rem;">
+          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             0.00</div>
         </div>
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
+          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
           <span
             style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">CLP</span>
-          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: #A7F3D0; margin-top: 0.2rem;">
+          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
             $0.00</div>
         </div>
       </div>
@@ -424,16 +379,16 @@
     </section>
 
     <!-- SECCIÓN: PLANTILLAS DE RUTINAS PREDEFINIDAS -->
-    <section id="adminTemplatesSection" class="glass-card hidden" style="margin-top: 2rem;">
+    <section id="adminTemplatesSection" class="glass-card view hidden" data-view="plantillas">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #C084FC;">Plantillas de Rutinas Predefinidas</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Plantillas de Rutinas Predefinidas</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Diseña modelos de entrenamiento recomendados para que
             los atletas puedan asignárselos con un clic.</p>
         </div>
         <button type="button" class="btn-primary" onclick="openCreateTemplateModal()"
-          style="width: auto; padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+          style="width: auto; padding: 0.6rem 1.2rem;">
           + Crear Nueva Plantilla
         </button>
       </div>
@@ -446,18 +401,18 @@
     </section>
 
     <!-- SECCIÓN: MATERIAL Y CONTENIDO ADICIONAL -->
-    <section id="adminResourcesSection" class="glass-card hidden" style="margin-top: 2rem;">
+    <section id="adminResourcesSection" class="glass-card view hidden" data-view="material" data-solo-admin>
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h3 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24;">Material y Contenido Adicional</h3>
+          <h3 style="font-size: 1.5rem; font-weight: 700;">Material y Contenido Adicional</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem;">Sube PDFs, guías nutricionales, imágenes y enlaces de
             interés para que tus atletas consulten en su panel.</p>
         </div>
 
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
           <select id="adminResourceCategoryFilter" class="form-input" onchange="filterAdminResourcesByCategory()"
-            style="width: auto; padding: 0.5rem 1rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.88rem;">
+            style="width: auto; padding: 0.5rem 1rem; background: var(--surface-2); cursor: pointer; font-size: 0.88rem;">
             <option value="todas" selected>Todas las Categorías</option>
             <option value="Nutrición">Nutrición</option>
             <option value="Entrenamiento">Guías de Entrenamiento</option>
@@ -467,7 +422,7 @@
           </select>
 
           <button type="button" class="btn-primary" onclick="openCreateResourceModal()"
-            style="width: auto; padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            style="width: auto; padding: 0.6rem 1.2rem; border: none;">
             + Subir Nuevo Material
           </button>
         </div>
@@ -481,12 +436,29 @@
     </section>
 
   </main>
+  </div><!-- /app-main -->
+</div><!-- /app-shell -->
+
+  <!-- FICHA DEL CLIENTE (PANEL LATERAL) -->
+  <div id="clientDrawerBackdrop" class="drawer-backdrop hidden" onclick="closeClientDrawer()"></div>
+  <aside id="clientDrawer" class="drawer hidden" role="dialog" aria-modal="true" aria-labelledby="drawerNombre" tabindex="-1">
+    <div class="drawer-head">
+      <div class="drawer-head-text">
+        <div class="kpi-label">Ficha del cliente</div>
+        <h2 id="drawerNombre" class="drawer-title"></h2>
+      </div>
+      <button type="button" class="btn-icon" onclick="closeClientDrawer()" aria-label="Cerrar ficha">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div id="drawerBody" class="drawer-body"></div>
+  </aside>
 
   <!-- MODAL: REGISTRAR / EDITAR CLIENTE -->
   <div id="createUserModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 500px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="createUserModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Registrar Nuevo
+        <h3 id="createUserModalTitle" style="font-size: 1.4rem; font-weight: 700;">Registrar Nuevo
           Cliente</h3>
         <button type="button" onclick="closeCreateUserModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -528,7 +500,7 @@
     <div class="modal-content" style="max-width: 550px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.4rem; font-weight: 700; color: #34D399;">Registrar Pago de Cliente</h3>
+        <h3 style="font-size: 1.4rem; font-weight: 700;">Registrar Pago de Cliente</h3>
         <button type="button" onclick="closeRegisterPaymentModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -542,13 +514,13 @@
             required>
 
           <div id="paymentUserResultsList"
-            style="background: rgba(15,23,42,0.95); border: 1px solid var(--border-glow); border-radius: var(--radius-md); max-height: 180px; overflow-y: auto; margin-top: 0.4rem;"
+            style="background: var(--surface-2); border: 1px solid var(--border-glow); border-radius: var(--radius-md); max-height: 180px; overflow-y: auto; margin-top: 0.4rem;"
             class="hidden">
             <!-- Items dinámicos -->
           </div>
 
           <div id="paymentSelectedUserBadge" class="hidden"
-            style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; font-size: 0.85rem; color: #34D399; display: flex; justify-content: space-between; align-items: center;">
+            style="margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: var(--ok-bg); border: 1px solid var(--ok-border); border-radius: 8px; font-size: 0.85rem; color: var(--ok); display: flex; justify-content: space-between; align-items: center;">
             <span id="paymentSelectedUserText">Cliente Seleccionado</span>
             <span style="cursor: pointer; font-weight: bold; font-size: 1rem;"
               onclick="clearSelectedPaymentUser()">&times;</span>
@@ -558,7 +530,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div class="form-group">
             <label class="form-label" for="paymentMoneda">Tipo de Moneda</label>
-            <select id="paymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+            <select id="paymentMoneda" class="form-input" style="background: var(--surface-2); cursor: pointer;"
               required>
               <option value="USD" selected>USD (Dólares)</option>
               <option value="COP">COP (Pesos Colombianos)</option>
@@ -577,7 +549,7 @@
 
         <div class="form-group">
           <label class="form-label" for="paymentPlan">Plan Contratado</label>
-          <select id="paymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;" required>
+          <select id="paymentPlan" class="form-input" style="background: var(--surface-2); cursor: pointer;" required>
             <option value="Mensualidad" selected>Mensualidad (+30 días)</option>
             <option value="Estudiante">Estudiante (+30 días)</option>
             <option value="Semana">Semana (+7 días)</option>
@@ -595,26 +567,26 @@
           <label class="form-label" for="paymentTurno">Turno</label>
           <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="paymentTurno" value="AM" checked
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #F59E0B;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>☀️ Turno AM</span>
             </label>
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="paymentTurno" value="PM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>🌙 Turno PM</span>
             </label>
           </div>
         </div>
 
         <div class="form-group"
-          style="margin-top: 1.2rem; background: rgba(239, 68, 68, 0.08); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+          style="margin-top: 1.2rem; background: var(--danger-bg); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--danger-border);">
           <label
-            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #FCA5A5; font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
+            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--danger); font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
             <input type="checkbox" id="paymentEsAbono"
-              style="width: 18px; height: 18px; cursor: pointer; accent-color: #EF4444;">
+              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--danger);">
             <span>⚠️ Es un Abono / Pago Parcial (El cliente queda debiendo parte del plan)</span>
           </label>
         </div>
@@ -622,7 +594,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeRegisterPaymentModal()">Cancelar</button>
           <button type="submit" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             ✓ Guardar Pago y Actualizar Membresía
           </button>
         </div>
@@ -637,10 +609,10 @@
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
           <span class="badge"
-            style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); margin-bottom: 0.4rem;">Detalles</span>
+            style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); margin-bottom: 0.4rem;">Detalles</span>
           <h3 id="detailClientName" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Detalle de
             Transacción</h3>
-          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: #60A5FA; margin-top: 0.2rem;"></p>
+          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: var(--link); margin-top: 0.2rem;"></p>
         </div>
         <button type="button" onclick="closePaymentDetailModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -648,25 +620,25 @@
 
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+          style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Plan Contratado</span>
-            <div id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: #60A5FA;">Mensualidad</div>
+            <div id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: var(--text);">Mensualidad</div>
           </div>
           <div style="text-align: right;">
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Monto Pagado</span>
-            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: #34D399;">15.00 USD</div>
+            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: var(--text);">15.00 USD</div>
           </div>
         </div>
 
         <div
-          style="background: rgba(15,23,42,0.6); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
+          style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Turno de Registro:</span>
-          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: #F59E0B;">☀️ AM</strong>
+          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: var(--text);">☀️ AM</strong>
         </div>
 
         <div
-          style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light);">
+          style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light);">
           <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.6rem;">📅
             Auditoría de Fechas:</strong>
 
@@ -674,12 +646,12 @@
             <div
               style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 0.4rem;">
               <span style="color: var(--text-muted);">Fecha de Realización del Pago:</span>
-              <strong id="detailPaymentDate" style="color: #60A5FA;">2026-08-18</strong>
+              <strong id="detailPaymentDate" style="color: var(--text);">2026-08-18</strong>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding-top: 0.2rem;">
               <span style="color: var(--text-muted);">Fecha que Corre el Plan (Membresía):</span>
-              <strong id="detailPlanDateRange" style="color: #34D399;">2026-08-18 ➔ 2026-09-17</strong>
+              <strong id="detailPlanDateRange" style="color: var(--text);">2026-08-18 ➔ 2026-09-17</strong>
             </div>
           </div>
         </div>
@@ -696,7 +668,7 @@
     <div class="modal-content" style="max-width: 550px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Editar Registro de Pago</h3>
+        <h3 style="font-size: 1.4rem; font-weight: 700;">Editar Registro de Pago</h3>
         <button type="button" onclick="closeEditPaymentModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -713,7 +685,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div class="form-group">
             <label class="form-label" for="editPaymentMoneda">Tipo de Moneda</label>
-            <select id="editPaymentMoneda" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+            <select id="editPaymentMoneda" class="form-input" style="background: var(--surface-2); cursor: pointer;"
               required>
               <option value="USD">USD (Dólares)</option>
               <option value="COP">COP (Pesos Colombianos)</option>
@@ -733,7 +705,7 @@
 
         <div class="form-group">
           <label class="form-label" for="editPaymentPlan">Plan Contratado</label>
-          <select id="editPaymentPlan" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;"
+          <select id="editPaymentPlan" class="form-input" style="background: var(--surface-2); cursor: pointer;"
             required>
             <option value="Mensualidad">Mensualidad (+30 días)</option>
             <option value="Estudiante">Estudiante (+30 días)</option>
@@ -765,26 +737,26 @@
           <label class="form-label" for="editPaymentTurno">Turno</label>
           <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="editPaymentTurno" value="AM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #F59E0B;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>☀️ Turno AM</span>
             </label>
             <label
-              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: rgba(15,23,42,0.6); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
+              style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.92rem; background: var(--surface-2); padding: 0.6rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); flex: 1; justify-content: center; transition: all 0.2s ease;">
               <input type="radio" name="editPaymentTurno" value="PM"
-                style="width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1;">
+                style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary);">
               <span>🌙 Turno PM</span>
             </label>
           </div>
         </div>
 
         <div class="form-group"
-          style="margin-top: 1.2rem; background: rgba(239, 68, 68, 0.08); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
+          style="margin-top: 1.2rem; background: var(--danger-bg); padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--danger-border);">
           <label
-            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: #FCA5A5; font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
+            style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--danger); font-weight: 600; font-size: 0.88rem; margin: 0; user-select: none;">
             <input type="checkbox" id="editPaymentEsAbono"
-              style="width: 18px; height: 18px; cursor: pointer; accent-color: #EF4444;">
+              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--danger);">
             <span>⚠️ Es un Abono / Pago Parcial</span>
           </label>
         </div>
@@ -792,7 +764,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeEditPaymentModal()">Cancelar</button>
           <button type="submit" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             ✓ Actualizar Pago
           </button>
         </div>
@@ -806,7 +778,7 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <h3 id="progressModalUserName" style="font-size: 1.5rem; font-weight: 700; color: #60A5FA;">Rutinas del
+          <h3 id="progressModalUserName" style="font-size: 1.5rem; font-weight: 700;">Rutinas del
             Cliente</h3>
           <p id="progressModalUserEmail" style="font-size: 0.9rem; color: var(--text-muted);"></p>
         </div>
@@ -835,7 +807,7 @@
       <div
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <span class="badge badge-active" style="margin-bottom: 0.5rem;">Vista Completa de Rutina</span>
+          <span class="badge badge-neutral" style="margin-bottom: 0.5rem;">Vista Completa de Rutina</span>
           <h3 id="adminRoutineTitle" style="font-size: 1.6rem; font-weight: 700; color: var(--text-main);">Cargando
             Rutina...</h3>
           <p id="adminRoutineDesc" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;"></p>
@@ -860,7 +832,7 @@
     <div class="modal-content" style="max-width: 450px;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 style="font-size: 1.3rem; font-weight: 700; color: #EF4444;">Confirmar Eliminación</h3>
+        <h3 style="font-size: 1.3rem; font-weight: 700;">Confirmar Eliminación</h3>
         <button type="button" onclick="closeConfirmDeleteModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -892,7 +864,7 @@
     <div class="modal-content" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
       <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.8rem;">
-        <h3 id="createTemplateModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #C084FC;">Nueva Plantilla
+        <h3 id="createTemplateModalTitle" style="font-size: 1.4rem; font-weight: 700;">Nueva Plantilla
           de Rutina</h3>
         <button type="button" onclick="closeCreateTemplateModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -932,7 +904,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeCreateTemplateModal()">Cancelar</button>
           <button type="submit" id="createTemplateModalSubmitBtn" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #A855F7 0%, #7E22CE 100%);">
+            style="width: auto; padding: 0.7rem 1.5rem;">
             Guardar Plantilla
           </button>
         </div>
@@ -944,7 +916,7 @@
   <div id="createResourceModal" class="modal-overlay hidden">
     <div class="modal-content" style="max-width: 540px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #FBBF24;">Subir Material y
+        <h3 id="createResourceModalTitle" style="font-size: 1.4rem; font-weight: 700;">Subir Material y
           Contenido Adicional</h3>
         <button type="button" onclick="closeCreateResourceModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -959,7 +931,7 @@
 
         <div class="form-group">
           <label class="form-label" for="resourceCategory">Categoría</label>
-          <select id="resourceCategory" class="form-input" style="background: rgba(15,23,42,0.8); cursor: pointer;">
+          <select id="resourceCategory" class="form-input" style="background: var(--surface-2); cursor: pointer;">
             <option value="Nutrición" selected>Nutrición</option>
             <option value="Entrenamiento">Guías de Entrenamiento</option>
             <option value="Suplementación">Suplementación</option>
@@ -1006,7 +978,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
           <button type="button" class="btn-secondary" onclick="closeCreateResourceModal()">Cancelar</button>
           <button type="submit" id="createResourceModalSubmitBtn" class="btn-primary"
-            style="width: auto; padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); border: none;">
+            style="width: auto; padding: 0.7rem 1.5rem; border: none;">
             Guardar Material
           </button>
         </div>

@@ -1,0 +1,106 @@
+<!-- MAQUETA DE REFERENCIA (no se ejecuta). Muestra estructura, colores, tipografía y tamaños del rediseño. Datos de ejemplo. -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>ATLAS · Hoy (cliente)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,600;1,700;1,800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A0F1C}
+a{color:#8FB0FF}a:hover{color:#B9CCFF}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0F1C; color: #F3F6FB; font-family: Inter, system-ui, sans-serif; font-size: 15px; display: flex; flex-direction: column; overflow: hidden">
+
+  <div style="flex: 1; min-height: 0; padding: 22px 20px 16px; display: flex; flex-direction: column; gap: 18px">
+
+    <header style="display: flex; align-items: center; justify-content: space-between">
+      <img src="../../assets/logo-white.png" alt="ATLAS Gym" style="height: 28px; width: auto">
+      <button type="button" aria-label="Mi perfil" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #22304F; background: #111A2E; color: #B9CCFF; font: inherit; font-weight: 700; cursor: pointer">AL</button>
+    </header>
+
+    <div>
+      <div style="color: #9AA6BC; font-size: 14px">Sábado 7 de noviembre</div>
+      <h1 style="margin: 2px 0 0; font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 38px; line-height: 1; text-transform: uppercase">Hola, Andrea</h1>
+    </div>
+
+    <section aria-label="Mi membresía" style="background: #111A2E; border: 1px solid #1C2740; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="color: #9AA6BC; font-size: 13px; font-weight: 500">Mensualidad</span>
+        <span style="background: #0F2A1C; color: #4ADE80; border: 1px solid #1F6B42; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px">Activa</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <span style="font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 42px; line-height: 1">12</span>
+        <span style="color: #C3CCDD">días restantes · vence 19/11</span>
+      </div>
+      <div role="progressbar" aria-label="Días usados de la mensualidad" aria-valuemin="0" aria-valuemax="30" aria-valuenow="18" style="height: 8px; border-radius: 999px; background: #1C2740; overflow: hidden">
+        <div style="width: 60%; height: 100%; background: {{accent}}; border-radius: 999px"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="tRutina" style="background: #111A2E; border: 1px solid #1C2740; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+      <div>
+        <div style="color: #9AA6BC; font-size: 13px; font-weight: 500">Tu rutina de hoy</div>
+        <h2 id="tRutina" style="margin: 2px 0 0; font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 700; font-size: 28px; line-height: 1.05; text-transform: uppercase">Pierna y glúteo</h2>
+        <div style="color: #C3CCDD; font-size: 13px; margin-top: 4px">6 ejercicios · unos 55 min</div>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #172138">
+          <span style="font-weight: 600">Sentadilla</span><span style="color: #C3CCDD; font-variant-numeric: tabular-nums">4 × 10 · 60 kg</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #172138">
+          <span style="font-weight: 600">Prensa de piernas</span><span style="color: #C3CCDD; font-variant-numeric: tabular-nums">4 × 12 · 120 kg</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0">
+          <span style="font-weight: 600">Hip thrust</span><span style="color: #C3CCDD; font-variant-numeric: tabular-nums">3 × 12 · 70 kg</span>
+        </div>
+        <a href="#" style="font-size: 13px; padding-top: 4px">Ver los 6 ejercicios</a>
+      </div>
+      <button type="button" style="height: 56px; border-radius: 14px; border: none; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>Empezar entrenamiento</button>
+    </section>
+
+    <section aria-labelledby="tSemana" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="tSemana" style="margin: 0; font-size: 15px; font-weight: 700">Esta semana</h2>
+        <span style="color: #C3CCDD; font-size: 13px">3 entrenamientos</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; font-size: 12px; color: #9AA6BC">
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>L</span><span style="width: 32px; height: 32px; border-radius: 50%; background: {{accent}}"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>M</span><span style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #22304F"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>M</span><span style="width: 32px; height: 32px; border-radius: 50%; background: {{accent}}"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>J</span><span style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #22304F"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>V</span><span style="width: 32px; height: 32px; border-radius: 50%; background: {{accent}}"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span style="color: #F3F6FB; font-weight: 700">S</span><span style="width: 30px; height: 30px; border-radius: 50%; border: 2px dashed {{accent}}"></span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><span>D</span><span style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #22304F"></span></div>
+      </div>
+    </section>
+  </div>
+
+  <nav aria-label="Navegación principal" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #0D1424; border-top: 1px solid #1C2740; padding: 8px 8px 18px">
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center; color: #FFFFFF; text-decoration: none; font-size: 12px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg>Hoy</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center; color: #9AA6BC; text-decoration: none; font-size: 12px">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14M3 9v6M21 9v6M6 12h12"></path></svg>Rutinas</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center; color: #9AA6BC; text-decoration: none; font-size: 12px">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"></path><path d="M15 7h6v6"></path></svg>Progreso</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center; color: #9AA6BC; text-decoration: none; font-size: 12px">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-7 8-7s8 3 8 7"></path></svg>Mi plan</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BD3","options":["#2F5BD3","#1E40AF","#3B82F6"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#2F5BD3' };
+}
+}
+</script>
+</body>
+</html>

@@ -6,192 +6,189 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ATLAS - Dashboard de Entrenamiento</title>
   <link rel="icon" type="image/png" href="assets/logo-icon-white.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,600;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body onload="loadDashboard()">
+<body class="cliente-body" onload="loadDashboard()">
 
-  <!-- NAVBAR -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="header-logo-group">
-        <img src="assets/logo-white.png" alt="ATLAS GYM" style="height: 36px; width: auto;">
-      </div>
-      <div class="header-nav-actions">
-        <span id="userGreeting" style="font-weight: 600;">Cargando...</span>
-        <span id="membershipStatus" class="badge badge-active">-</span>
-        <button type="button" class="btn-primary" onclick="openNewRoutineModal()">
-          + Nueva Rutina
-        </button>
-        <button type="button" class="btn-secondary" onclick="logout()">
-          Salir
-        </button>
-      </div>
+  <!-- CABECERA -->
+  <header class="cliente-header">
+    <img src="assets/logo-white.png" alt="ATLAS Gym" class="cliente-logo">
+    <div class="cliente-header-acciones">
+      <a href="admin.html" id="adminPanelBtn" class="btn-secondary hidden" style="width: auto;">Panel admin</a>
+      <a href="#plan" class="avatar-btn" id="avatarBtn" aria-label="Mi plan">
+        <span id="avatarIniciales" aria-hidden="true">·</span>
+      </a>
     </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL -->
-  <main class="main-content">
+  <main class="cliente-main" id="clienteMain">
 
-    <!-- SECCIÓN: ENTRENAMIENTO ACTIVO (RUTINA DE HOY) -->
-    <section id="activeSessionSection" class="session-card hidden">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span class="badge badge-active" style="margin-bottom: 0.5rem;">Sesión Activa</span>
-            <span id="restoredSessionBadge" class="badge hidden"
-              style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); margin-bottom: 0.5rem;">↺
-              Reanudada automáticamente</span>
-          </div>
-          <h2 id="sessionRoutineTitle" style="font-size: 1.8rem; font-weight: 700; color: var(--text-main);">
-            Cargando Rutina...
-          </h2>
-          <p id="sessionRoutineDesc" style="color: var(--text-muted); font-size: 0.95rem;"></p>
+    <!-- VISTA: HOY -->
+    <section id="vistaHoy" class="cliente-vista hidden" data-vista="hoy" aria-labelledby="userGreeting">
+      <div>
+        <div id="hoyFecha" class="view-sub"></div>
+        <h1 id="userGreeting" class="cliente-saludo">Hola</h1>
+      </div>
+
+      <section class="cliente-card" aria-label="Mi membresía">
+        <div class="mem-top">
+          <span id="memPlan" class="kpi-label">Membresía</span>
+          <span id="membershipStatus" class="badge">-</span>
         </div>
-        <button type="button" class="btn-secondary" onclick="cancelSession()" style="font-size: 0.85rem;">
-          Cancelar Sesión
-        </button>
-      </div>
-
-      <!-- Barra de Progreso -->
-      <div class="workout-progress-bar">
-        <div id="sessionProgressFill" class="workout-progress-fill"></div>
-      </div>
-      <div
-        style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); margin-top: -1.5rem; margin-bottom: 1.25rem;">
-        <span>Progreso del Entrenamiento</span>
-        <span id="sessionProgressText">0 / 0 series completadas (0%)</span>
-      </div>
-
-      <!-- Barra de Configuración de Temporizador de Descanso -->
-      <div class="rest-timer-config-bar">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span style="font-size: 1.1rem;">⏱️</span>
-          <div>
-            <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">Descanso entre Series</span>
-            <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0;">Se iniciará al marcar cada serie
-              completada (✓)</p>
-          </div>
+        <div class="mem-dias">
+          <span id="memDias" class="mem-dias-num">–</span>
+          <span id="memDiasTexto" class="mem-dias-texto"></span>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-          <select id="restTimerSecondsSelect" class="form-input" onchange="setRestTimerDuration(this.value)"
-            style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.82rem; background: rgba(15,23,42,0.85); cursor: pointer; border-color: rgba(56, 189, 248, 0.4);">
-            <option value="30">30 seg</option>
-            <option value="45">45 seg</option>
-            <option value="60" selected>60 seg (1 min)</option>
-            <option value="90">90 seg (1.5 min)</option>
-            <option value="120">120 seg (2 min)</option>
-            <option value="180">180 seg (3 min)</option>
-          </select>
-          <label
-            style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.82rem; color: var(--text-main); user-select: none;">
-            <input type="checkbox" id="restTimerToggleCheckbox" checked onchange="toggleRestTimerEnabled(this.checked)"
-              style="accent-color: #38BDF8; width: 16px; height: 16px; cursor: pointer;">
-            Activo
-          </label>
+        <div id="memBarra" class="mem-barra" role="progressbar" aria-label="Días usados de la membresía" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+          <div id="memBarraFill" class="mem-barra-fill"></div>
         </div>
+      </section>
+
+      <section class="cliente-card" aria-labelledby="hoyRutinaTitulo">
+        <div id="hoyRutina">
+          <p class="report-empty">Cargando tu rutina…</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="tSemana" class="semana">
+        <div class="semana-head">
+          <h2 id="tSemana" class="semana-titulo">Esta semana</h2>
+          <span id="semanaTotal" class="card-hint"></span>
+        </div>
+        <div id="semanaDias" class="semana-dias"></div>
+      </section>
+    </section>
+
+    <!-- VISTA: RUTINAS -->
+    <section id="vistaRutinas" class="cliente-vista hidden" data-vista="rutinas" aria-labelledby="tRutinas">
+      <div class="cliente-vista-head">
+        <h1 id="tRutinas" class="cliente-titulo">Mis rutinas</h1>
+        <button type="button" class="btn-primary" style="width: auto;" onclick="openNewRoutineModal()">+ Crear rutina</button>
       </div>
-
-      <!-- Lista de Ejercicios Interactivas -->
-      <div id="sessionExercisesList"></div>
-
-      <!-- Acciones de Fin de Sesión -->
-      <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
-        <button type="button" class="btn-primary" onclick="finishWorkoutSession()" style="max-width: 320px;">
-          Finalizar y Guardar Entrenamiento
-        </button>
+      <div id="routinesGrid" class="rutinas-lista">
+        <p class="report-empty">Cargando tus rutinas…</p>
       </div>
     </section>
 
-    <!-- SECCIÓN: MIS RUTINAS DE ENTRENAMIENTO (Tarjeta Plegable) -->
-    <section class="glass-card" style="margin-top: 2rem; padding: 1.5rem;">
-      <div onclick="toggleUserRoutinesSection()"
-        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <span class="badge"
-            style="background: rgba(96, 165, 250, 0.15); color: #60A5FA; border: 1px solid rgba(96, 165, 250, 0.3); margin-bottom: 0.5rem; display: inline-block;">Entrenamiento</span>
-          <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0;">Mis Rutinas de
-            Entrenamiento</h2>
-          <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.3rem; margin-bottom: 0;">
-            Selecciona tu rutina de hoy para comenzar a registrar tus series y pesos.
-          </p>
-        </div>
-
-        <div style="display: flex; gap: 0.8rem; align-items: center;" onclick="event.stopPropagation()">
-          <button type="button" class="btn-primary" onclick="openNewRoutineModal()"
-            style="font-size: 0.88rem; padding: 0.55rem 1rem;">
-            + Crear Rutina
-          </button>
-
-          <button type="button" class="btn-secondary" onclick="toggleUserRoutinesSection(); event.stopPropagation();"
-            style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; border-color: #60A5FA; color: #60A5FA;">
-            <span id="userRoutinesToggleBtnText">Ocultar Rutinas</span> <span id="userRoutinesChevron">▲</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Contenedor Desplegable -->
-      <div id="userRoutinesBody"
-        style="margin-top: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
-        <div id="routinesGrid" class="routines-grid">
-          <div style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 3rem;">
-            Cargando tus rutinas desde la base de datos...
-          </div>
-        </div>
-      </div>
+    <!-- VISTA: PROGRESO -->
+    <section id="vistaProgreso" class="cliente-vista hidden" data-vista="progreso" aria-labelledby="tProgreso">
+      <h1 id="tProgreso" class="cliente-titulo">Progreso</h1>
+      <div id="progresoResumen" class="progreso-resumen"></div>
+      <div id="progresoLista"></div>
     </section>
 
-    <!-- SECCIÓN: MATERIAL Y CONTENIDO ADICIONAL (Plegable por defecto) -->
-    <section class="glass-card" style="margin-top: 3rem; padding: 1.5rem;">
-      <div onclick="toggleUserResourcesSection()"
-        style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <span class="badge"
-            style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); margin-bottom: 0.5rem; display: inline-block;">Biblioteca</span>
-          <h2 style="font-size: 1.5rem; font-weight: 700; color: #FBBF24; margin: 0;">Material y Contenido Adicional
-          </h2>
-          <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.3rem; margin-bottom: 0;">
-            Explora guías de nutrición, reglamentos, videos y recursos de apoyo.
-          </p>
-        </div>
+    <!-- VISTA: MI PLAN -->
+    <section id="vistaPlan" class="cliente-vista hidden" data-vista="plan" aria-labelledby="tPlan">
+      <h1 id="tPlan" class="cliente-titulo">Mi plan</h1>
 
-        <div style="display: flex; gap: 1rem; align-items: center;" onclick="event.stopPropagation()">
-          <select id="userResourceCategorySelect" class="form-input" onchange="filterUserResourcesByCategory()"
-            style="width: auto; padding: 0.45rem 0.9rem; background: rgba(15,23,42,0.8); cursor: pointer; font-size: 0.85rem;">
-            <option value="todas" selected>Todas las Categorías</option>
-            <option value="Nutrición">Nutrición</option>
-            <option value="Entrenamiento">Guías de Entrenamiento</option>
-            <option value="Suplementación">Suplementación</option>
-            <option value="Reglamento">Reglamento y Normas</option>
-            <option value="General">Consejos Generales</option>
-          </select>
+      <section class="cliente-card" aria-label="Membresía">
+        <h2 class="cliente-card-titulo">Membresía</h2>
+        <dl id="planMembresia" class="dato-lista"></dl>
+      </section>
 
-          <button type="button" class="btn-secondary" onclick="toggleUserResourcesSection(); event.stopPropagation();"
-            style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; border-color: #FBBF24; color: #FBBF24;">
-            <span id="userResourcesToggleBtnText">Ver Contenido</span> <span id="userResourcesChevron">▼</span>
-          </button>
-        </div>
-      </div>
+      <section class="cliente-card" aria-label="Mis datos">
+        <h2 class="cliente-card-titulo">Mis datos</h2>
+        <dl id="planDatos" class="dato-lista"></dl>
+        <p class="card-hint" style="margin-top: 10px;">Para cambiar tus datos, pídelo en recepción.</p>
+      </section>
 
-      <!-- Contenedor Desplegable (Oculto por defecto) -->
-      <div id="userResourcesBody" class="hidden"
-        style="margin-top: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
-        <div id="userResourcesGrid" class="routines-grid">
-          <div
-            style="color: var(--text-muted); grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: rgba(30,41,59,0.3); border-radius: 12px;">
-            Cargando contenido adicional...
-          </div>
+      <section class="cliente-card" aria-labelledby="tMaterial">
+        <div class="cliente-vista-head">
+          <h2 id="tMaterial" class="cliente-card-titulo">Material de apoyo</h2>
         </div>
-      </div>
+        <label for="userResourceCategorySelect" class="sr-only">Categoría</label>
+        <select id="userResourceCategorySelect" class="form-input" onchange="filterUserResourcesByCategory()" style="margin-bottom: 12px;">
+          <option value="todas" selected>Todas las categorías</option>
+          <option value="Nutrición">Nutrición</option>
+          <option value="Entrenamiento">Guías de entrenamiento</option>
+          <option value="Suplementación">Suplementación</option>
+          <option value="Reglamento">Reglamento y normas</option>
+          <option value="General">Consejos generales</option>
+        </select>
+        <div id="userResourcesGrid" class="routines-grid material-grid">
+          <p class="report-empty">Cargando material…</p>
+        </div>
+      </section>
+
+      <button type="button" class="btn-secondary" onclick="logout()">Cerrar sesión</button>
     </section>
 
   </main>
+
+  <!-- MENÚ INFERIOR -->
+  <nav id="clienteNav" class="cliente-nav" aria-label="Navegación principal">
+    <a href="#hoy" data-vista="hoy">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg>
+      <span>Hoy</span></a>
+    <a href="#rutinas" data-vista="rutinas">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14M3 9v6M21 9v6M6 12h12"></path></svg>
+      <span>Rutinas</span></a>
+    <a href="#progreso" data-vista="progreso">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"></path><path d="M15 7h6v6"></path></svg>
+      <span>Progreso</span></a>
+    <a href="#plan" data-vista="plan">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-7 8-7s8 3 8 7"></path></svg>
+      <span>Mi plan</span></a>
+  </nav>
+
+  <!-- MODO ENTRENAMIENTO (pantalla completa, un ejercicio a la vez) -->
+  <section id="activeSessionSection" class="modo-entreno hidden" role="dialog" aria-modal="true" aria-labelledby="sessionRoutineTitle">
+    <header class="entreno-head">
+      <button type="button" class="btn-icon" onclick="cancelSession()" aria-label="Cancelar entrenamiento">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+      <div class="entreno-head-texto">
+        <h2 id="sessionRoutineTitle" class="entreno-titulo">Rutina</h2>
+        <p id="sessionProgressText" class="card-hint">0 de 0 series</p>
+      </div>
+      <span id="restoredSessionBadge" class="badge badge-neutral hidden">Reanudada</span>
+    </header>
+    <p id="sessionRoutineDesc" class="sr-only"></p>
+
+    <div class="workout-progress-bar entreno-progreso"><div id="sessionProgressFill" class="workout-progress-fill"></div></div>
+
+    <div class="entreno-cuerpo">
+      <div id="entrenoPaso" class="entreno-paso" aria-live="polite"></div>
+      <div id="sessionExercisesList"></div>
+
+      <details class="entreno-ajustes">
+        <summary>Descanso entre series</summary>
+        <div class="entreno-ajustes-cuerpo">
+          <label for="restTimerSecondsSelect" class="sr-only">Duración del descanso</label>
+          <select id="restTimerSecondsSelect" class="form-input" onchange="setRestTimerDuration(this.value)">
+            <option value="30">30 segundos</option>
+            <option value="45">45 segundos</option>
+            <option value="60" selected>1 minuto</option>
+            <option value="90">1 minuto y medio</option>
+            <option value="120">2 minutos</option>
+            <option value="180">3 minutos</option>
+          </select>
+          <label class="check-grande">
+            <input type="checkbox" id="restTimerToggleCheckbox" checked onchange="toggleRestTimerEnabled(this.checked)">
+            Activar al completar cada serie
+          </label>
+          <p id="wakeLockEstado" class="card-hint"></p>
+        </div>
+      </details>
+    </div>
+
+    <footer class="entreno-pie">
+      <button type="button" id="entrenoAnterior" class="btn-secondary" onclick="moverEjercicio(-1)">Anterior</button>
+      <button type="button" id="entrenoSiguiente" class="btn-primary" onclick="moverEjercicio(1)">Siguiente</button>
+      <button type="button" id="entrenoTerminar" class="btn-primary hidden" onclick="finishWorkoutSession()">Terminar y guardar</button>
+    </footer>
+  </section>
+
 
   <!-- MODAL: CREAR NUEVA RUTINA -->
   <div id="routineModal" class="modal-overlay hidden">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3 id="routineModalTitle" style="font-size: 1.4rem; font-weight: 700; color: #60A5FA;">Crear Nueva Rutina</h3>
+        <h3 id="routineModalTitle" style="font-size: 1.4rem; font-weight: 700;">Crear Nueva Rutina</h3>
         <button type="button" onclick="closeNewRoutineModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
@@ -199,16 +196,16 @@
       <form id="createRoutineForm" onsubmit="saveRoutine(event)">
         <!-- Opción de Rutinas Sugeridas -->
         <div
-          style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); padding: 0.8rem 1rem; border-radius: 12px; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+          style="background: var(--accent-bg); border: 1px solid var(--border-strong); padding: 0.8rem 1rem; border-radius: 12px; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
           <div>
             <span
-              style="color: #C084FC; font-weight: 700; font-size: 0.95rem; display: block; margin-bottom: 0.2rem;">¿Quieres
+              style="color: var(--accent-soft); font-weight: 700; font-size: 0.95rem; display: block; margin-bottom: 0.2rem;">¿Quieres
               usar una guía preparada?</span>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Explora las opciones recomendadas e
               impórtalas a tu rutina.</p>
           </div>
           <button type="button" class="btn-secondary" onclick="openTemplateSelectorModal()"
-            style="border-color: #C084FC; color: #C084FC; font-weight: 600; padding: 0.5rem 1rem; font-size: 0.88rem; width: auto; white-space: nowrap;">
+            style=" font-weight: 600; padding: 0.5rem 1rem; font-size: 0.88rem; width: auto; white-space: nowrap;">
             📌 Rutinas Sugeridas
           </button>
         </div>
@@ -258,7 +255,7 @@
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
           <span class="badge"
-            style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); margin-bottom: 0.5rem;">Sugerencias
+            style="background: var(--accent-bg); color: var(--accent-soft); border: 1px solid var(--border-strong); margin-bottom: 0.5rem;">Sugerencias
             Recomendadas</span>
           <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Rutinas Sugeridas</h3>
           <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">Selecciona una rutina sugerida
@@ -290,17 +287,17 @@
         </div>
         <div>
           <div
-            style="font-size: 0.78rem; color: #38BDF8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            style="font-size: 0.78rem; color: var(--link); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
             Descanso entre Series</div>
           <div id="floatingTimerSubtext" style="font-size: 0.78rem; color: var(--text-muted);">Tómate un respiro para la
             siguiente serie 💪</div>
         </div>
       </div>
       <div class="timer-actions-group">
-        <button type="button" class="btn-timer-chip" onclick="addRestTime(30)" title="Agregar 30 segundos">+30s</button>
-        <button type="button" class="btn-timer-chip" id="togglePauseTimerBtn" onclick="togglePauseRestTimer()"
+        <button type="button" class="btn-timer-chip" onclick="addRestTime(30)" title="Agregar 30 segundos" aria-label="Agregar 30 segundos al descanso">+30s</button>
+        <button type="button" class="btn-timer-chip" id="togglePauseTimerBtn" aria-label="Pausar o reanudar el descanso" onclick="togglePauseRestTimer()"
           title="Pausar / Reanudar">⏸️</button>
-        <button type="button" class="btn-timer-chip btn-timer-close" onclick="stopRestTimer()"
+        <button type="button" class="btn-timer-chip btn-timer-close" aria-label="Saltar el descanso" onclick="stopRestTimer()"
           title="Saltar descanso">&times;</button>
       </div>
     </div>

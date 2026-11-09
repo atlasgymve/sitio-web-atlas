@@ -535,10 +535,10 @@ app.get('/api/usuario/:id', requireAuth, async (req, res) => {
     const user = userRows[0];
 
     // Membresía con fallback seguro
-    let membresia = { estado: user.membresia_estado || 'activa', vence: user.membresia_vence ? formatYYYYMMDD(new Date(user.membresia_vence)) : 'Activa' };
+    let membresia = { estado: user.membresia_estado || 'activa', vence: user.membresia_vence ? formatYYYYMMDD(new Date(user.membresia_vence)) : 'Activa', inicio: null };
     try {
       const [memRows] = await pool.execute(
-        "SELECT estado, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
+        "SELECT estado, DATE_FORMAT(fecha_inicio, '%Y-%m-%d') AS inicio, DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS vence FROM membresias WHERE id_usuario = ? ORDER BY fecha_fin DESC LIMIT 1",
         [userId]
       );
       if (memRows.length > 0 && memRows[0].vence) {
@@ -546,6 +546,47 @@ app.get('/api/usuario/:id', requireAuth, async (req, res) => {
       }
     } catch (e) {
       // Usar fallback de campos de usuario en caso de excepción
+    }
+
+    // Último plan pagado (sin contar pagos de deuda)
+    let ultimo_plan = null;
+    try {
+      const [planRows] = await pool.execute(
+        "SELECT plan FROM pagos WHERE id_usuario = ? AND plan <> 'Pago Deuda' ORDER BY fecha_fin_plan DESC, id_pago DESC LIMIT 1",
+        [userId]
+      );
+      if (planRows.length) ultimo_plan = planRows[0].plan;
+    } catch (e) {
+      console.error('Error al obtener último plan:', e.message);
+    }
+
+    // Historial de sesiones del propio cliente (fecha y hora en hora de Venezuela, UTC-4)
+    let sesiones = [];
+    try {
+      const fechaVE = "DATE_ADD(fecha, INTERVAL (-240 - TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), NOW())) MINUTE)";
+      const [sesRows] = await pool.execute(
+        `SELECT id_sesion, id_rutina,
+                DATE_FORMAT(${fechaVE}, '%Y-%m-%d') AS fecha,
+                DATE_FORMAT(${fechaVE}, '%H:%i') AS hora,
+                detalle_json
+           FROM historial_sesiones WHERE id_usuario = ? ORDER BY fecha DESC, id_sesion DESC LIMIT 100`,
+        [userId]
+      );
+      sesiones = sesRows.map(s => {
+        let d = {};
+        try { d = typeof s.detalle_json === 'string' ? JSON.parse(s.detalle_json) : (s.detalle_json || {}); } catch (e) { d = {}; }
+        return {
+          id_sesion: s.id_sesion,
+          id_rutina: s.id_rutina,
+          fecha: s.fecha,
+          hora: s.hora,
+          rutina: typeof d.routineTitle === 'string' ? d.routineTitle : null,
+          series_completadas: Number(d.completedSets) || 0,
+          series_totales: Number(d.totalSets) || 0
+        };
+      });
+    } catch (e) {
+      console.error('Error al obtener historial de sesiones:', e.message);
     }
 
     // Rutinas
@@ -584,7 +625,9 @@ app.get('/api/usuario/:id', requireAuth, async (req, res) => {
       correo: user.correo,
       telefono: user.telefono || '',
       membresia,
-      rutinas: rutinasConEjercicios
+      ultimo_plan,
+      rutinas: rutinasConEjercicios,
+      sesiones
     });
   } catch (err) {
     console.error('Error en /api/usuario:', err);
