@@ -3374,15 +3374,15 @@ function renderExpiry() {
     </div>`;
 }
 
-// Contador del menú: mensualidades por vencer + vencidas recientes
+// Contador del menú: el mismo número que la tarjeta "Por vencer" de Inicio (mensualidades)
 function actualizarContadorVencimientos() {
   const el = $("#expiryCardCount");
   if (!el) return;
-  const { porVencer, vencidos } = calcularVencimientos("mensual");
-  const n = porVencer.length + vencidos.length;
+  const n = calcularVencimientos("mensual").porVencer.length;
   el.textContent = n ? String(n) : "";
   el.classList.toggle("hidden", !n);
-  el.setAttribute("aria-label", `${n} mensualidades por vencer o vencidas`);
+  el.setAttribute("aria-label", `${n} ${n === 1 ? "mensualidad por vencer" : "mensualidades por vencer"}`);
+  el.title = `${n} ${n === 1 ? "mensualidad por vencer" : "mensualidades por vencer"}`;
 }
 
 // Se llama cada vez que se recarga la lista de clientes
@@ -3398,9 +3398,17 @@ const MONEDAS_CAJA = ["USD", "COP", "BS", "Bancolombia", "USDT", "CLP"];
 let cierreData = null;
 let reporteVencidos = [];
 
-function fmtMonto(valor) {
+// COP, Bancolombia (pesos), BS y CLP sin decimales; USD y USDT con 2
+const MONEDAS_SIN_DECIMALES = ["COP", "Bancolombia", "BS", "CLP"];
+function fmtMonto(valor, moneda) {
   const n = parseFloat(valor) || 0;
-  return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dec = MONEDAS_SIN_DECIMALES.includes(moneda) ? 0 : 2;
+  return n.toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+// "COP 120.000" con un espacio que no se parte: moneda y monto quedan en la misma línea
+function montoConMoneda(moneda, valor) {
+  return `${moneda} ${fmtMonto(valor, moneda)}`;
 }
 
 // Monedas con monto distinto de cero (en el orden habitual)
@@ -3412,7 +3420,7 @@ function monedasConMonto(totales) {
 
 function textoTotales(totales, sep) {
   const ms = monedasConMonto(totales);
-  return ms.length ? ms.map(m => `${m} ${fmtMonto(totales[m])}`).join(sep || " · ") : "—";
+  return ms.length ? ms.map(m => montoConMoneda(m, totales[m])).join(sep || " · ") : "—";
 }
 
 function nombreTurno(t) {
@@ -3449,7 +3457,7 @@ function tilesMonedasHtml(totales) {
     const v = parseFloat(totales[m]) || 0;
     return `<div class="stat-tile${v > 0 ? "" : " stat-tile-empty"}">
       <span class="stat-label">${esc(m)}</span>
-      <span class="stat-value">${esc(fmtMonto(v))}</span>
+      <span class="stat-value">${esc(fmtMonto(v, m))}</span>
     </div>`;
   }).join("")}</div>`;
 }
@@ -3459,7 +3467,7 @@ function tablaPlanesHtml(porPlan) {
   return `<div class="report-table-wrap"><table class="report-table">
     <thead><tr><th>Plan</th><th>Pagos</th><th>Total</th></tr></thead>
     <tbody>${porPlan.map(p => `<tr>
-      <td>${esc(p.plan)}</td><td>${esc(p.cantidad)}</td><td>${esc(textoTotales(p.totales))}</td>
+      <td>${esc(p.plan)}</td><td>${esc(p.cantidad)}</td><td>${monedasConMonto(p.totales).map(m => `<span class="monto-linea">${esc(montoConMoneda(m, p.totales[m]))}</span>`).join("") || "—"}</td>
     </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -3472,7 +3480,7 @@ function filaPagoCierreHtml(p) {
     <span class="cierre-pago-hora">${esc(cuando)}</span>
     <span class="cierre-pago-cliente"><strong>${esc(p.nombre_cliente)}</strong>
       <small>${esc(p.plan)}${Number(p.es_abono) === 1 ? ` <span class="badge badge-warning" style="font-size: 0.7rem;">abono</span>` : ""}</small></span>
-    <span class="cierre-pago-monto">${esc(fmtMonto(p.monto))} ${esc(p.moneda)}</span>
+    <span class="cierre-pago-monto">${esc(montoConMoneda(p.moneda, p.monto))}</span>
   </div>`;
 }
 
@@ -3527,7 +3535,7 @@ function copiarResumenCierre() {
   const r = d.resumen;
   const lineasMonedas = (tot) => {
     const ms = monedasConMonto(tot);
-    return ms.length ? ms.map(m => `• ${m}: ${fmtMonto(tot[m])}`).join("\n") : "• Sin ingresos";
+    return ms.length ? ms.map(m => `• ${m}: ${fmtMonto(tot[m], m)}`).join("\n") : "• Sin ingresos";
   };
   let t = `*ATLAS GYM – CIERRE DE CAJA*\n`;
   t += `Fecha: ${formatFechaCorta(d.fecha)} · ${nombreTurno(d.turno)}\n`;
@@ -3629,7 +3637,7 @@ function reporteIngresosHtml(d) {
   const act = d.actual, ant = d.anterior;
   const monedas = MONEDAS_CAJA.filter(m => parseFloat(act.totales[m]) > 0 || parseFloat(ant.totales[m]) > 0);
   const filas = monedas.length
-    ? monedas.map(m => `<tr><td>${esc(m)}</td><td>${esc(fmtMonto(act.totales[m]))}</td><td>${esc(fmtMonto(ant.totales[m]))}</td><td>${variacionHtml(act.totales[m], ant.totales[m])}</td></tr>`).join("")
+    ? monedas.map(m => `<tr><td>${esc(m)}</td><td class="monto-nowrap">${esc(fmtMonto(act.totales[m], m))}</td><td class="monto-nowrap">${esc(fmtMonto(ant.totales[m], m))}</td><td>${variacionHtml(act.totales[m], ant.totales[m])}</td></tr>`).join("")
     : `<tr><td colspan="4" class="report-muted">Sin ingresos en ninguno de los dos meses.</td></tr>`;
   return `
     <h4 class="report-h4 report-section-title">Ingresos</h4>
@@ -3920,7 +3928,7 @@ function cargarCobradoHoy() {
       // Cada moneda con movimiento en su propia línea, todas iguales; las que están en cero no se muestran
       const monedas = monedasConMonto(data.resumen.totales);
       box.innerHTML = monedas.length
-        ? monedas.map(m => `<span>${esc(m)} ${esc(fmtMonto(data.resumen.totales[m]))}</span>`).join("")
+        ? monedas.map(m => `<span>${esc(montoConMoneda(m, data.resumen.totales[m]))}</span>`).join("")
         : `<span class="kpi-note">Sin cobros todavía</span>`;
       const pagos = (data.grupos || []).flatMap(g => g.pagos || []);
       renderUltimosPagos(pagos);
@@ -3944,7 +3952,7 @@ function renderUltimosPagos(pagos) {
       <td class="hora">${esc(p.hora_registro || "—")}</td>
       <td><span class="cliente-nombre">${esc(p.nombre_cliente)}</span>${Number(p.es_abono) === 1 ? `<span class="tag-abono">ABONO</span>` : ""}</td>
       <td class="col-md muted">${esc(p.plan)}</td>
-      <td class="num">${esc(p.moneda)} ${esc(fmtMonto(p.monto))}</td>
+      <td class="num">${esc(montoConMoneda(p.moneda, p.monto))}</td>
       <td class="col-md muted">${esc(p.turno || "Sin turno")}</td>
     </tr>`).join("")}</tbody></table></div>`;
 }
@@ -4306,14 +4314,17 @@ function renderTarjetaMembresia(data) {
   const badge = $("#membershipStatus");
   if (badge) { badge.className = `badge ${clases[st.codigo]}`; badge.textContent = textosBadge[st.codigo]; }
 
-  const num = $("#memDias"), txt = $("#memDiasTexto");
+  const num = $("#memDias"), txt = $("#memDiasTexto"), pre = $("#memDiasPrefijo");
   const fecha = formatFechaCorta(vence);
+  if (pre) pre.classList.toggle("hidden", !(st.codigo !== "sin" && st.dias < 0));
   if (st.codigo === "sin") {
     num.textContent = "–";
     txt.textContent = "Acércate a recepción para activar tu plan";
   } else if (st.dias < 0) {
-    num.textContent = "0";
-    txt.textContent = `días restantes · venció el ${fecha}`;
+    // "Venció hace N días" en lugar de "0 días restantes"
+    const hace = Math.abs(st.dias);
+    num.textContent = hace;
+    txt.textContent = `${hace === 1 ? "día" : "días"} · el ${fecha}`;
   } else {
     num.textContent = st.dias;
     txt.textContent = st.dias === 0 ? `vence hoy (${fecha})` : `${st.dias === 1 ? "día restante" : "días restantes"} · vence ${fecha}`;
