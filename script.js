@@ -1685,7 +1685,7 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
   if (searchQuery && searchQuery.trim() !== "") {
     url += `?q=${encodeURIComponent(searchQuery.trim())}`;
-    emptyMsg = `No se encontraron pagos registrados para el cliente "${esc(searchQuery)}".`;
+    emptyMsg = `No se encontraron pagos del cliente "${searchQuery.trim()}".`;
   } else {
     const dateInput = $("#historyDateFilter");
     const todayStr = getLocalTodayStr();
@@ -1700,7 +1700,7 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
 
     const selectedDate = (dateInput && dateInput.value) ? dateInput.value : todayStr;
     url += `?fecha=${selectedDate}`;
-    emptyMsg = `No se registraron pagos en la fecha seleccionada (${esc(selectedDate)}).`;
+    emptyMsg = `No se registraron pagos el ${formatFechaCorta(selectedDate)}.`;
   }
 
   fetch(url)
@@ -1712,79 +1712,67 @@ function loadAdminPaymentsHistory(targetDate = null, searchQuery = null) {
       }
 
       currentPaymentsData = res.pagos || [];
-
-      // Actualizar Resumen de Totales por Moneda
-      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
-      updatePaymentsSummaryUI(totales);
-
-      container.innerHTML = "";
-
-      if (currentPaymentsData.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
-            <p style="color: var(--text-muted); font-size: 0.95rem;">${emptyMsg}</p>
-          </div>
-        `;
-        return;
-      }
-
-      currentPaymentsData.forEach(p => {
-        const item = document.createElement("div");
-        item.style.cssText = "background: var(--surface-2); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; transition: transform 0.2s ease;";
-
-        const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
-          ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
-          : "";
-
-        const turnoColor = 'var(--text-2)';
-        const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
-        const turnoBadgeHtml = p.turno
-          ? `<span class="badge" style="background: var(--surface-3); color: ${turnoColor}; border: 1px solid var(--border-strong); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
-          : '';
-
-        item.innerHTML = `
-          <div>
-            <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
-            <span style="font-size: 0.8rem; color: var(--link);">(✉️ ${esc(p.correo)} • 📞 ${esc(p.telefono || 'Sin tel')})</span><br>
-            <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
-            </span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 0.8rem;">
-            <span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
-              +${esc(p.monto)} ${esc(p.moneda)}
-            </span>
-            <button type="button" class="btn-secondary" onclick="editPayment(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-              Editar
-            </button>
-            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-              Ver detalle
-            </button>
-          </div>
-        `;
-        container.appendChild(item);
-      });
+      updatePaymentsSummaryUI(res.totales);
+      renderTablaPagos(container, emptyMsg);
     })
     .catch(err => console.error("Error al obtener pagos:", err));
 }
 
+function esPagoAbono(p) {
+  return p.es_abono == 1 || p.es_abono === true;
+}
+
+// Tabla del historial de pagos (los textos van con esc(); en los onclick solo va el id numérico)
+function renderTablaPagos(container, emptyMsg) {
+  const pagos = currentPaymentsData || [];
+  if (!pagos.length) {
+    container.innerHTML = `<p class="report-empty pagos-vacio">${esc(emptyMsg)}</p>`;
+    return;
+  }
+  container.innerHTML = `<div class="tabla-wrap"><table class="data-table tabla-pagos">
+    <thead><tr>
+      <th class="col-md">Fecha</th><th>Cliente</th><th class="col-md">Plan</th><th class="col-md">Turno</th>
+      <th class="num">Monto</th><th class="pagos-acciones-th">Acciones</th>
+    </tr></thead>
+    <tbody>${pagos.map(p => {
+      const id = Number(p.id_pago);
+      const contacto = [p.correo, p.telefono].filter(Boolean).join(" · ");
+      return `<tr>
+        <td class="col-md hora">${esc(formatFechaCorta(p.fecha_pago))}</td>
+        <td>
+          <span class="cliente-nombre">${esc(p.nombre_completo)}</span>${esPagoAbono(p) ? ` <span class="badge badge-neutral">Abono</span>` : ""}
+          ${contacto ? `<span class="cliente-sub col-md">${esc(contacto)}</span>` : ""}
+          <span class="cliente-sub solo-movil">${esc(formatFechaCorta(p.fecha_pago))}</span>
+        </td>
+        <td class="col-md muted">${esc(p.plan)}</td>
+        <td class="col-md muted">${esc(p.turno || "—")}</td>
+        <td class="num">${esc(montoConMoneda(p.moneda, p.monto))}</td>
+        <td><div class="pagos-acciones">
+          <button type="button" class="btn-secondary" onclick="editPayment(${id})">Editar</button>
+          <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${id})"><span class="col-md">Ver detalle</span><span class="solo-movil">Detalle</span></button>
+        </div></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+}
+
 function inspectPaymentDetail(id_pago) {
-  const payment = currentPaymentsData.find(p => p.id_pago === id_pago);
+  const payment = currentPaymentsData.find(p => Number(p.id_pago) === Number(id_pago));
   if (!payment) return;
 
   $("#detailClientName").textContent = payment.nombre_completo;
-  $("#detailClientEmailPhone").textContent = `✉️ ${payment.correo} • 📞 ${payment.telefono || 'Sin teléfono'}`;
+  $("#detailClientEmailPhone").textContent = [payment.correo, payment.telefono || "Sin teléfono"].filter(Boolean).join(" · ");
   $("#detailPlan").textContent = payment.plan;
-  $("#detailMonto").textContent = `${payment.monto} ${payment.moneda}`;
+  $("#detailAbono").classList.toggle("hidden", !esPagoAbono(payment));
+  $("#detailMonto").textContent = montoConMoneda(payment.moneda, payment.monto);
+  $("#detailTurno").textContent = payment.turno || "Sin turno";
 
-  // Fecha de Realización del Pago (Día que se registra en el sistema)
-  $("#detailPaymentDate").textContent = payment.fecha_pago;
+  // Día en que se registró el pago
+  $("#detailPaymentDate").textContent = formatFechaCorta(payment.fecha_pago);
 
-  // Fecha en que corre el plan (La seleccionada por el administrador ➔ Vencimiento)
+  // Período del plan (lo elige el administrador al registrar el pago)
   const inicioPlan = payment.fecha_inicio_plan || payment.fecha_pago;
-  const finPlan = payment.fecha_fin_plan || "Vencimiento no registrado";
-
-  $("#detailPlanDateRange").textContent = `${inicioPlan}  ➔  ${finPlan}`;
+  const finPlan = payment.fecha_fin_plan ? formatFechaCorta(payment.fecha_fin_plan) : "sin vencimiento registrado";
+  $("#detailPlanDateRange").textContent = `${formatFechaCorta(inicioPlan)} al ${finPlan}`;
 
   $("#paymentDetailModal").classList.remove("hidden");
 }
@@ -1794,7 +1782,7 @@ function closePaymentDetailModal() {
 }
 
 function editPayment(id_pago) {
-  const payment = currentPaymentsData.find(p => p.id_pago === id_pago);
+  const payment = currentPaymentsData.find(p => Number(p.id_pago) === Number(id_pago));
   if (!payment) return;
 
   $("#editPaymentId").value = payment.id_pago;
@@ -1855,7 +1843,11 @@ async function saveEditPayment(e) {
     if (data.ok) {
       showToast("Pago actualizado correctamente.", "exito");
       closeEditPaymentModal();
-      // Recargar historial
+      // Recargar historial (en modo rango se vuelve a consultar el rango)
+      if ($("#paymentDateMode") && $("#paymentDateMode").value === "rango") {
+        loadAdminPaymentsRangeHistory();
+        return;
+      }
       const dateInput = $("#historyDateFilter");
       const targetDate = (dateInput && dateInput.value) ? dateInput.value : getLocalTodayStr();
       const clientInput = $("#historyClientSearch");
@@ -1945,114 +1937,49 @@ function loadAdminPaymentsRangeHistory() {
       }
 
       currentPaymentsData = res.pagos || [];
-
-      const totales = res.totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
-      updatePaymentsSummaryUI(totales);
-
-      container.innerHTML = "";
-
-      if (currentPaymentsData.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 2.5rem; background: var(--surface); border-radius: 12px; border: 1px dashed var(--border-light);">
-            <p style="color: var(--text-muted); font-size: 0.95rem;">No se registraron pagos en el rango seleccionado (${esc(from)} a ${esc(to)}).</p>
-          </div>
-        `;
-        return;
-      }
-
-      currentPaymentsData.forEach(p => {
-        const item = document.createElement("div");
-        item.style.cssText = "background: var(--surface-2); padding: 0.9rem 1.2rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;";
-
-        const abonoBadgeHtml = (p.es_abono == 1 || p.es_abono === true)
-          ? `<span class="badge" style="background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">⚠️ Abono Parcial</span>`
-          : '';
-
-        const turnoColor = 'var(--text-2)';
-        const turnoIcon = p.turno === 'AM' ? '☀️' : (p.turno === 'PM' ? '🌙' : '⏰');
-        const turnoBadgeHtml = p.turno
-          ? `<span class="badge" style="background: var(--surface-3); color: ${turnoColor}; border: 1px solid var(--border-strong); font-size: 0.78rem; font-weight: 600; margin-left: 0.3rem;">${turnoIcon} ${p.turno}</span>`
-          : '';
-
-        item.innerHTML = `
-          <div>
-            <strong style="color: var(--text-main); font-size: 1rem;">${esc(p.nombre_completo)}</strong> 
-            <span style="font-size: 0.8rem; color: var(--link);">(${esc(p.correo)} • Tel: ${esc(p.telefono || 'Sin tel')})</span><br>
-            <span style="font-size: 0.82rem; color: var(--text-muted);">
-              Plan: <strong style="color: var(--text-main);">${esc(p.plan)}</strong> ${abonoBadgeHtml} ${turnoBadgeHtml} | Fecha de Pago: <strong>${esc(p.fecha_pago)}</strong>
-            </span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 0.8rem;">
-            <span class="badge" style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); font-size: 0.95rem; font-weight: 700; padding: 0.4rem 0.8rem;">
-              +${esc(p.monto)} ${esc(p.moneda)}
-            </span>
-            <button type="button" class="btn-secondary" onclick="inspectPaymentDetail(${esc(p.id_pago)})" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-              Ver detalle
-            </button>
-          </div>
-        `;
-        container.appendChild(item);
-      });
+      updatePaymentsSummaryUI(res.totales);
+      renderTablaPagos(container, `No se registraron pagos entre el ${formatFechaCorta(from)} y el ${formatFechaCorta(to)}.`);
     })
     .catch(err => console.error("Error al obtener pagos en rango:", err));
 }
 
+// Tarjetas de totales del historial: solo monedas con cobros, mismo formato que "Cobrado hoy"
 function updatePaymentsSummaryUI(totales) {
-  const t = totales || { USD: "0.00", COP: "0.00", BS: "0.00", Bancolombia: "0.00", USDT: "0.00", CLP: "0.00" };
-  if ($("#totalUsdSummary")) $("#totalUsdSummary").textContent = `$${t.USD || '0.00'} USD`;
-  if ($("#totalCopSummary")) $("#totalCopSummary").textContent = `$${t.COP || '0.00'} COP`;
-  if ($("#totalBsSummary")) $("#totalBsSummary").textContent = `$${t.BS || '0.00'} BS`;
-  if ($("#totalBancolombiaSummary")) $("#totalBancolombiaSummary").textContent = `$${t.Bancolombia || '0.00'} COP`;
-  if ($("#totalUsdtSummary")) $("#totalUsdtSummary").textContent = `${t.USDT || '0.00'} USDT`;
-  if ($("#totalClpSummary")) $("#totalClpSummary").textContent = `$${t.CLP || '0.00'} CLP`;
+  const box = $("#paymentsDailySummary");
+  if (box) box.innerHTML = tilesMonedasHtml(totales || {}, "Sin cobros");
+}
+
+// Texto del período consultado en el historial (dd/mm/aaaa)
+function periodoHistorialPagos() {
+  const mode = $("#paymentDateMode") ? $("#paymentDateMode").value : "dia";
+  if (mode === "rango") {
+    const from = ($("#historyDateFrom") && $("#historyDateFrom").value) || getLocalTodayStr();
+    const to = ($("#historyDateTo") && $("#historyDateTo").value) || getLocalTodayStr();
+    return `Del ${formatFechaCorta(from)} al ${formatFechaCorta(to)}`;
+  }
+  return formatFechaCorta(($("#historyDateFilter") && $("#historyDateFilter").value) || getLocalTodayStr());
 }
 
 function copyPaymentsSummaryToClipboard() {
-  const mode = $("#paymentDateMode") ? $("#paymentDateMode").value : "dia";
-  let periodoStr = "";
-
-  if (mode === "rango") {
-    const from = $("#historyDateFrom") ? $("#historyDateFrom").value : getLocalTodayStr();
-    const to = $("#historyDateTo") ? $("#historyDateTo").value : getLocalTodayStr();
-    periodoStr = `Del ${from} al ${to}`;
-  } else {
-    const singleDate = $("#historyDateFilter") ? $("#historyDateFilter").value : getLocalTodayStr();
-    periodoStr = singleDate;
-  }
-
-  const count = currentPaymentsData ? currentPaymentsData.length : 0;
-
-  // Sumar únicamente transacciones existentes
-  const totalsMap = {};
-  if (currentPaymentsData && currentPaymentsData.length > 0) {
-    currentPaymentsData.forEach(p => {
-      const moneda = p.moneda || 'USD';
-      const monto = parseFloat(p.monto) || 0;
-      totalsMap[moneda] = (totalsMap[moneda] || 0) + monto;
-    });
-  }
-
-  const totalsLines = [];
-  Object.keys(totalsMap).forEach(moneda => {
-    const monto = totalsMap[moneda];
-    if (monto > 0) {
-      if (moneda === 'USDT') {
-        totalsLines.push(`Total ${moneda}: ${monto.toFixed(2)} USDT`);
-      } else {
-        totalsLines.push(`Total ${moneda}: $${monto.toFixed(2)} ${moneda}`);
-      }
-    }
+  const pagos = currentPaymentsData || [];
+  const totales = {};
+  pagos.forEach(p => {
+    const moneda = p.moneda || "USD";
+    totales[moneda] = (totales[moneda] || 0) + (parseFloat(p.monto) || 0);
   });
+  const ms = monedasConMonto(totales);
+  const totalsSection = ms.length
+    ? ms.map(m => `Total ${montoConMoneda(m, totales[m])}`).join("\n")
+    : "Sin cobros en este periodo.";
 
-  const totalsSection = totalsLines.length > 0
-    ? totalsLines.join('\n')
-    : "No hay ingresos registrados en este periodo.";
+  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoHistorialPagos()}\n----------------------------------------\n${totalsSection}\n----------------------------------------\nTotal de pagos registrados: ${pagos.length}`;
 
-  const summaryText = `ATLAS GYM - RESUMEN CONTABLE DE CAJA\nPeriodo: ${periodoStr}\n----------------------------------------\n${totalsSection}\n----------------------------------------\nTotal Transacciones Registradas: ${count}`;
-
-  navigator.clipboard.writeText(summaryText)
-    .then(() => showToast("El resumen contable ha sido copiado al portapapeles.", "exito"))
-    .catch(err => showToast("Error al copiar resumen contable: " + err, "error"));
+  const ok = () => showToast("El resumen contable ha sido copiado al portapapeles.", "exito");
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(summaryText).then(ok).catch(() => copiarTextoFallback(summaryText, ok));
+  } else {
+    copiarTextoFallback(summaryText, ok);
+  }
 }
 
 function exportPaymentsToExcel() {
@@ -2083,7 +2010,8 @@ function exportPaymentsToExcel() {
     escapeCsv(p.nombre_completo || 'Cliente'),
     escapeCsv(p.cedula || 'Sin cedula'),
     escapeCsv(p.plan || ''),
-    escapeCsv(p.monto || '0.00'),
+    // Número sin comillas ni separador de miles: Excel lo reconoce y lo puede sumar
+    (parseFloat(p.monto) || 0).toFixed(2).replace('.', ','),
     escapeCsv(p.moneda || ''),
     escapeCsv(p.turno || 'N/A')
   ]);
@@ -3420,7 +3348,7 @@ function monedasConMonto(totales) {
 
 function textoTotales(totales, sep) {
   const ms = monedasConMonto(totales);
-  return ms.length ? ms.map(m => montoConMoneda(m, totales[m])).join(sep || " · ") : "—";
+  return ms.length ? ms.map(m => montoConMoneda(m, totales[m])).join(sep || " · ") : "Sin pagos";
 }
 
 function nombreTurno(t) {
@@ -3452,22 +3380,22 @@ function loadCierreCaja() {
     });
 }
 
-function tilesMonedasHtml(totales) {
-  return `<div class="stat-grid">${MONEDAS_CAJA.map(m => {
-    const v = parseFloat(totales[m]) || 0;
-    return `<div class="stat-tile${v > 0 ? "" : " stat-tile-empty"}">
+// Tarjetas por moneda: solo las que tuvieron movimiento; si ninguna, un texto
+function tilesMonedasHtml(totales, textoVacio) {
+  const ms = monedasConMonto(totales);
+  if (!ms.length) return `<p class="report-empty">${esc(textoVacio || "Sin pagos")}</p>`;
+  return `<div class="stat-grid">${ms.map(m => `<div class="stat-tile">
       <span class="stat-label">${esc(m)}</span>
-      <span class="stat-value">${esc(fmtMonto(v, m))}</span>
-    </div>`;
-  }).join("")}</div>`;
+      <span class="stat-value">${esc(fmtMonto(totales[m], m))}</span>
+    </div>`).join("")}</div>`;
 }
 
 function tablaPlanesHtml(porPlan) {
-  if (!porPlan || !porPlan.length) return `<p class="report-empty">Sin pagos.</p>`;
+  if (!porPlan || !porPlan.length) return `<p class="report-empty">Sin pagos</p>`;
   return `<div class="report-table-wrap"><table class="report-table">
     <thead><tr><th>Plan</th><th>Pagos</th><th>Total</th></tr></thead>
     <tbody>${porPlan.map(p => `<tr>
-      <td>${esc(p.plan)}</td><td>${esc(p.cantidad)}</td><td>${monedasConMonto(p.totales).map(m => `<span class="monto-linea">${esc(montoConMoneda(m, p.totales[m]))}</span>`).join("") || "—"}</td>
+      <td>${esc(p.plan)}</td><td>${esc(p.cantidad)}</td><td>${monedasConMonto(p.totales).map(m => `<span class="monto-linea">${esc(montoConMoneda(m, p.totales[m]))}</span>`).join("") || "Sin pagos"}</td>
     </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -3535,7 +3463,7 @@ function copiarResumenCierre() {
   const r = d.resumen;
   const lineasMonedas = (tot) => {
     const ms = monedasConMonto(tot);
-    return ms.length ? ms.map(m => `• ${m}: ${fmtMonto(tot[m], m)}`).join("\n") : "• Sin ingresos";
+    return ms.length ? ms.map(m => `• ${m}: ${fmtMonto(tot[m], m)}`).join("\n") : "• Sin pagos";
   };
   let t = `*ATLAS GYM – CIERRE DE CAJA*\n`;
   t += `Fecha: ${formatFechaCorta(d.fecha)} · ${nombreTurno(d.turno)}\n`;
@@ -3547,7 +3475,7 @@ function copiarResumenCierre() {
     t += `\n*Por plan*\n` + r.por_plan.map(p => `• ${p.plan}: ${p.cantidad} — ${textoTotales(p.totales, ", ")}`).join("\n") + "\n";
   }
   if (d.turno === "todos") {
-    t += `\n*Por turno*\n` + d.grupos.map(g => `• ${nombreTurno(g.turno)}: ${g.cantidad} — ${textoTotales(g.totales, ", ")}`).join("\n") + "\n";
+    t += `\n*Por turno*\n` + d.grupos.map(g => `• ${nombreTurno(g.turno)}: ${g.cantidad ? `${g.cantidad} — ${textoTotales(g.totales, ", ")}` : "Sin pagos"}`).join("\n") + "\n";
   }
   t += `\n_Los montos de cada moneda se suman por separado._`;
 

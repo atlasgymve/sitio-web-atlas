@@ -326,55 +326,10 @@
       </div>
 
       <!-- Resumen de Totales del Día por Moneda -->
-      <div id="paymentsDailySummary"
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USD</span>
-          <div id="totalUsdSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            $0.00</div>
-        </div>
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">COP</span>
-          <div id="totalCopSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            $0.00</div>
-        </div>
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">BS</span>
-          <div id="totalBsSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            $0.00</div>
-        </div>
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Bancolombia</span>
-          <div id="totalBancolombiaSummary"
-            style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            $0.00</div>
-        </div>
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">USDT</span>
-          <div id="totalUsdtSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            0.00</div>
-        </div>
-        <div
-          style="background: var(--surface-2); padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border-light); text-align: center;">
-          <span
-            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">CLP</span>
-          <div id="totalClpSummary" style="font-size: 1.3rem; font-weight: 800; color: var(--text); margin-top: 0.2rem;">
-            $0.00</div>
-        </div>
-      </div>
+      <div id="paymentsDailySummary" class="pagos-resumen"></div>
 
-      <div id="adminPaymentsList" style="display: flex; flex-direction: column; gap: 0.8rem;">
-        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Cargando historial de pagos...</p>
+      <div id="adminPaymentsList">
+        <p class="report-empty">Cargando historial de pagos...</p>
       </div>
     </section>
 
@@ -608,11 +563,10 @@
       <div
         style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">
         <div>
-          <span class="badge"
-            style="background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); margin-bottom: 0.4rem;">Detalles</span>
+          <span class="badge badge-neutral" style="margin-bottom: 0.4rem;">Detalle del pago</span>
           <h3 id="detailClientName" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">Detalle de
             Transacción</h3>
-          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: var(--link); margin-top: 0.2rem;"></p>
+          <p id="detailClientEmailPhone" style="font-size: 0.85rem; color: var(--text-3); margin-top: 0.2rem; overflow-wrap: anywhere;"></p>
         </div>
         <button type="button" onclick="closePaymentDetailModal()"
           style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
@@ -623,35 +577,37 @@
           style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Plan Contratado</span>
-            <div id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: var(--text);">Mensualidad</div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <span id="detailPlan" style="font-size: 1.1rem; font-weight: 700; color: var(--text);"></span>
+              <span id="detailAbono" class="badge badge-neutral hidden">Abono</span>
+            </div>
           </div>
           <div style="text-align: right;">
             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Monto Pagado</span>
-            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: var(--text);">15.00 USD</div>
+            <div id="detailMonto" style="font-size: 1.4rem; font-weight: 800; color: var(--text); white-space: nowrap;"></div>
           </div>
         </div>
 
         <div
           style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Turno de Registro:</span>
-          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: var(--text);">☀️ AM</strong>
+          <strong id="detailTurno" style="font-size: 1rem; font-weight: 700; color: var(--text);"></strong>
         </div>
 
         <div
           style="background: var(--surface-2); padding: 1rem; border-radius: 10px; border: 1px solid var(--border-light);">
-          <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.6rem;">📅
-            Auditoría de Fechas:</strong>
+          <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.6rem;">Fechas</strong>
 
           <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
             <div
               style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 0.4rem;">
-              <span style="color: var(--text-muted);">Fecha de Realización del Pago:</span>
-              <strong id="detailPaymentDate" style="color: var(--text);">2026-08-18</strong>
+              <span style="color: var(--text-muted);">Fecha del pago</span>
+              <strong id="detailPaymentDate" style="color: var(--text); white-space: nowrap;"></strong>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding-top: 0.2rem;">
-              <span style="color: var(--text-muted);">Fecha que Corre el Plan (Membresía):</span>
-              <strong id="detailPlanDateRange" style="color: var(--text);">2026-08-18 ➔ 2026-09-17</strong>
+              <span style="color: var(--text-muted);">Período del plan</span>
+              <strong id="detailPlanDateRange" style="color: var(--text); text-align: right;"></strong>
             </div>
           </div>
         </div>

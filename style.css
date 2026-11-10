@@ -1570,6 +1570,16 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--text); }
 .cliente-nombre { font-weight: 600; }
 .cliente-sub { display: block; color: var(--text-3); font-size: 12.5px; }
 
+/* Historial de pagos */
+.pagos-resumen { margin-bottom: 1.5rem; }
+.pagos-vacio { text-align: center; padding: 2rem 0; }
+.tabla-pagos .badge { font-size: 0.72rem; vertical-align: middle; }
+.tabla-pagos .pagos-acciones-th { text-align: right; }
+.pagos-acciones { display: flex; justify-content: flex-end; gap: 6px; }
+.pagos-acciones .btn-secondary { padding: 0 12px; font-size: 0.85rem; white-space: nowrap; }
+
+.solo-movil { display: none; }
+
 .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .filtro-texto { min-width: 240px; }
 
@@ -1725,6 +1735,12 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--text); }
   .card-head-tools .card-hint { display: none; }
   .data-table td, .data-table th { padding-left: 6px; padding-right: 6px; }
   .col-md { display: none; }
+  .pagos-acciones { flex-direction: column; align-items: stretch; }
+  .data-table .solo-movil, .data-table td .solo-movil { display: block; }
+  .tabla-pagos .pagos-acciones .solo-movil { display: inline; }
+  .tabla-pagos { font-size: 13px; }
+  .tabla-pagos .pagos-acciones .btn-secondary { padding: 0 10px; font-size: 0.82rem; }
+  .tabla-pagos .pagos-acciones-th { font-size: 0; }
   .checkin-row { grid-template-columns: 52px minmax(0, 1fr) 90px 44px; }
   .checkin-row .checkin-plan { display: none; }
   .filtros, .filtros .form-input { width: 100%; }
