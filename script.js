@@ -3399,15 +3399,18 @@ function tablaPlanesHtml(porPlan) {
     </tr>`).join("")}</tbody></table></div>`;
 }
 
+// Primera columna: la hora de carga si se cargó el mismo día del pago; si no, la fecha de pago
+// y debajo del cliente una nota con cuándo se cargó. Pagos viejos sin hora: la fecha de pago.
 function filaPagoCierreHtml(p) {
-  const mismaFecha = p.fecha_registro === p.fecha_pago;
-  const cuando = p.hora_registro
-    ? (mismaFecha ? p.hora_registro : `${formatFechaCorta(p.fecha_registro)} ${p.hora_registro}`)
-    : "—";
+  const cargadoOtroDia = p.hora_registro && p.fecha_registro && p.fecha_registro !== p.fecha_pago;
+  const cuando = p.hora_registro && !cargadoOtroDia ? p.hora_registro : formatFechaCorta(p.fecha_pago);
+  const nota = cargadoOtroDia
+    ? `<span class="cierre-pago-nota">cargado el ${esc(formatFechaCorta(p.fecha_registro).slice(0, 5))} ${esc(p.hora_registro)}</span>`
+    : "";
   return `<div class="cierre-pago">
     <span class="cierre-pago-hora">${esc(cuando)}</span>
     <span class="cierre-pago-cliente"><strong>${esc(p.nombre_cliente)}</strong>
-      <small>${esc(p.plan)}${Number(p.es_abono) === 1 ? ` <span class="badge badge-warning" style="font-size: 0.7rem;">abono</span>` : ""}</small></span>
+      <small>${esc(p.plan)}${Number(p.es_abono) === 1 ? ` <span class="badge badge-warning" style="font-size: 0.7rem;">abono</span>` : ""}</small>${nota}</span>
     <span class="cierre-pago-monto">${esc(montoConMoneda(p.moneda, p.monto))}</span>
   </div>`;
 }

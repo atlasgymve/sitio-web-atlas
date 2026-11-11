@@ -139,9 +139,32 @@ app.use('/api', authenticate);
 // (Antes se publicaba toda la carpeta del proyecto, incluido backend/server.js con sus credenciales.)
 const publicPath = path.join(__dirname, '..');
 const PUBLIC_FILES = new Set(['index.html', 'admin.html', 'dashboard.html', 'script.js', 'style.css']);
+
+// Versión de script.js y style.css: cambia en cada deploy (Render define RENDER_GIT_COMMIT);
+// en local se usa la hora de arranque. Así el navegador nunca usa archivos viejos.
+const ASSET_VERSION = (process.env.RENDER_GIT_COMMIT || Date.now().toString(36)).slice(0, 8);
+const htmlCache = new Map();
+function enviarHtml(res, archivo) {
+  let html = htmlCache.get(archivo);
+  if (!html) {
+    html = fs.readFileSync(path.join(publicPath, archivo), 'utf8')
+      // Solo en atributos href/src que apuntan exactamente a style.css o script.js (con o sin ?v=)
+      .replace(/(\b(?:href|src)=["'])(style\.css|script\.js)(?:\?v=[^"'#]*)?(["'])/g,
+        (m, antes, nombre, despues) => `${antes}${nombre}?v=${ASSET_VERSION}${despues}`);
+    htmlCache.set(archivo, html);
+  }
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Cache-Control', 'no-cache');
+  res.send(html);
+}
+
 app.get('/:file', (req, res, next) => {
-  if (PUBLIC_FILES.has(req.params.file)) return res.sendFile(path.join(publicPath, req.params.file));
-  next();
+  const file = req.params.file;
+  if (!PUBLIC_FILES.has(file)) return next();
+  if (file.endsWith('.html')) return enviarHtml(res, file);
+  // Con ?v= el archivo no cambia nunca (la versión cambia en cada deploy); sin versión, siempre revalidar
+  const cache = req.query.v ? 'public, max-age=31536000, immutable' : 'no-cache';
+  res.sendFile(path.join(publicPath, file), { cacheControl: false, headers: { 'Cache-Control': cache } });
 });
 app.use('/assets', express.static(path.join(publicPath, 'assets')));
 
@@ -1768,21 +1791,21 @@ app.get('/api/ping', (req, res) => {
 });
 
 // ---------- RUTAS DE PÁGINAS Y FALLBACK ----------
-app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
-app.get('/index', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
-app.get('/index.html', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
+app.get('/', (req, res) => enviarHtml(res, 'index.html'));
+app.get('/index', (req, res) => enviarHtml(res, 'index.html'));
+app.get('/index.html', (req, res) => enviarHtml(res, 'index.html'));
 
-app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
-app.get('/admin.html', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
+app.get('/admin', (req, res) => enviarHtml(res, 'admin.html'));
+app.get('/admin.html', (req, res) => enviarHtml(res, 'admin.html'));
 
-app.get('/dashboard', (req, res) => res.sendFile(path.join(publicPath, 'dashboard.html')));
-app.get('/dashboard.html', (req, res) => res.sendFile(path.join(publicPath, 'dashboard.html')));
+app.get('/dashboard', (req, res) => enviarHtml(res, 'dashboard.html'));
+app.get('/dashboard.html', (req, res) => enviarHtml(res, 'dashboard.html'));
 
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ ok: false, msg: 'Ruta API no encontrada' });
   }
-  res.sendFile(path.join(publicPath, 'index.html'));
+  enviarHtml(res, 'index.html');
 });
 
 // Manejador global de errores Express para evitar cierres 502

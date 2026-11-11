@@ -1100,10 +1100,11 @@ select.form-input option { background: var(--surface); color: var(--text); }
   border-bottom: 1px solid var(--divider);
 }
 .cierre-pago:last-child { border-bottom: none; }
-.cierre-pago-hora { color: var(--text-2); font-size: 0.85rem; min-width: 3.2rem; font-variant-numeric: tabular-nums; }
+.cierre-pago-hora { color: var(--text-2); font-size: 0.85rem; min-width: 5.6rem; font-variant-numeric: tabular-nums; }
 .cierre-pago-cliente { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cierre-pago-cliente strong { overflow-wrap: anywhere; }
 .cierre-pago-cliente small { color: var(--text-2); font-size: 0.82rem; }
+.cierre-pago-nota { color: var(--text-3); font-size: 0.75rem; }
 .cierre-pago-monto { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .bar-chart { display: flex; align-items: stretch; gap: 3px; height: 170px; padding-top: 0.5rem; }
@@ -1125,6 +1126,7 @@ select.form-input option { background: var(--surface); color: var(--text); }
   .report-filters .form-input, .report-filters .btn-primary { flex: 1 1 140px; }
   .cierre-pago { flex-wrap: wrap; gap: 0.3rem 0.8rem; }
   .cierre-pago-cliente { flex-basis: 100%; order: -1; }
+  .cierre-pago-hora { min-width: 0; }
   .stat-value { font-size: 1.6rem; }
   .bar-label { font-size: 0.6rem; }
   .bar-num { font-size: 0.6rem; }
