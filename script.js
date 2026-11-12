@@ -995,16 +995,16 @@ function toggleAdminClientsSection() {
 
 function getClientStatusInfo(user) {
   const todayStr = getLocalTodayStr();
-  const todayObj = new Date();
-  const future5Obj = new Date(todayObj.getTime() + 5 * 24 * 60 * 60 * 1000);
-  const yyyy = future5Obj.getFullYear();
-  const mm = String(future5Obj.getMonth() + 1).padStart(2, '0');
-  const dd = String(future5Obj.getDate()).padStart(2, '0');
-  const future5Str = `${yyyy}-${mm}-${dd}`;
+  // Misma ventana que Vencimientos e Inicio (mensual 7 días, semanal 2)
+  const aviso = diasAvisoPorVencer(user);
+  const diasVence = diasHasta(user.membresia && user.membresia.vence);
 
   const isActiva = user.membresia && user.membresia.estado === "activa";
   const vence = (user.membresia && user.membresia.vence) ? user.membresia.vence : "1970-01-01";
 
+  if (esSinMembresia(user)) {
+    return { borderColor: "var(--danger)", badgeClass: "badge-expired", badgeText: "sin membresía", venceColor: "var(--danger)" };
+  }
   if (!isActiva || vence < todayStr) {
     return {
       borderColor: "var(--danger)",
@@ -1012,7 +1012,7 @@ function getClientStatusInfo(user) {
       badgeText: vence < todayStr ? "vencida" : (user.membresia ? user.membresia.estado : "inactiva"),
       venceColor: "var(--danger)"
     };
-  } else if (vence <= future5Str) {
+  } else if (aviso !== null && diasVence !== null && diasVence <= aviso) {
     return {
       borderColor: "var(--warn)",
       badgeClass: "badge-warning",
@@ -1082,7 +1082,7 @@ function renderAdminUsersGrid(users) {
     return `<tr tabindex="0" data-id="${id}" class="${seleccionado}" aria-label="Abrir ficha de ${esc(u.nombre_completo)}">
       <td><span class="cliente-nombre">${esc(u.nombre_completo)}</span><span class="cliente-sub">${esc(sub)}</span></td>
       <td class="col-md muted">${esc(u.ultimo_plan || "Sin plan")}</td>
-      <td class="hora">${esc(formatFechaCorta(u.membresia && u.membresia.vence))}</td>
+      <td class="hora">${venceMostrado(u) ? esc(formatFechaCorta(venceMostrado(u))) : `<span class="muted">—</span>`}</td>
       <td><span class="badge ${esc(status.badgeClass)}">${esc(status.badgeText)}</span></td>
       <td class="col-md">${u.tiene_deuda == 1 ? `<span class="badge badge-expired">Deuda</span>` : `<span class="muted">—</span>`}</td>
       <td class="col-md hora">${u.ultimo_pago ? esc(formatFechaCorta(u.ultimo_pago)) : `<span class="muted">Sin pagos</span>`}</td>
@@ -1122,17 +1122,11 @@ function filterAdminUsers() {
   if (statusFilter === "deudores") {
     list = list.filter(u => u.tiene_deuda == 1);
   } else if (statusFilter === "proximos") {
-    const todayObj = new Date();
-    const future5Obj = new Date(todayObj.getTime() + 5 * 24 * 60 * 60 * 1000);
-    const future5Str = formatYYYYMMDD(future5Obj);
-
-    list = list.filter(u =>
-      u.membresia &&
-      u.membresia.estado === "activa" &&
-      u.membresia.vence &&
-      u.membresia.vence >= todayStr &&
-      u.membresia.vence <= future5Str
-    );
+    // Los mismos clientes que "Por vencer" en Vencimientos (mensuales y semanales)
+    const ids = new Set(["mensual", "semanal"]
+      .flatMap(cat => calcularVencimientos(cat).porVencer)
+      .map(x => Number(x.u.id_usuario)));
+    list = list.filter(u => ids.has(Number(u.id_usuario)));
 
     list.sort((a, b) => {
       const dateA = a.membresia.vence || '9999-12-31';
@@ -1417,6 +1411,12 @@ function closeAdminRoutineDetailModal() {
 /* ---------- GESTIÓN DE PAGOS Y MEMBRESÍAS ---------- */
 let selectedPaymentUserId = null;
 
+// 02:00 a 13:59 → AM; 14:00 a 01:59 → PM (hora local del navegador)
+function turnoSegunHora(fecha = new Date()) {
+  const h = fecha.getHours();
+  return h >= 2 && h < 14 ? "AM" : "PM";
+}
+
 function openRegisterPaymentModal(preselectUserId = null) {
   const modal = $("#registerPaymentModal");
   if (!modal) return;
@@ -1426,6 +1426,10 @@ function openRegisterPaymentModal(preselectUserId = null) {
 
   const abonoInput = $("#paymentEsAbono");
   if (abonoInput) abonoInput.checked = false;
+
+  // Turno según la hora local al abrir el modal (se puede cambiar a mano)
+  const turnoRadio = document.querySelector(`input[name="paymentTurno"][value="${turnoSegunHora()}"]`);
+  if (turnoRadio) turnoRadio.checked = true;
 
   const searchInput = $("#paymentUserSearch");
   if (searchInput) searchInput.value = "";
@@ -3010,6 +3014,23 @@ function planCategoria(plan) {
   return "otro";
 }
 
+// Cliente creado sin pagos: el servidor le crea una membresía 'sin membresia' con fecha, que no cuenta
+function esSinMembresia(u) {
+  const e = u && u.membresia && u.membresia.estado;
+  return !e || String(e).toLowerCase().replace(/_/g, " ") === "sin membresia";
+}
+
+// Fecha de vencimiento que se muestra (null si el cliente no tiene membresía)
+function venceMostrado(u) {
+  return esSinMembresia(u) ? null : (u.membresia.vence || null);
+}
+
+// Días antes del vencimiento en que se avisa, según el tipo del último plan (como en Vencimientos)
+function diasAvisoPorVencer(u) {
+  const w = EXPIRY_WINDOWS[planCategoria(u.ultimo_plan)];
+  return w ? w.antes : null;
+}
+
 // Días desde hoy hasta la fecha (negativo = ya pasó)
 function diasHasta(fechaStr) {
   if (!fechaStr || !/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return null;
@@ -3035,7 +3056,7 @@ function formatFechaCorta(fechaStr) {
 
 // Estado de membresía de un cliente para la entrada
 function estadoEntrada(u) {
-  const vence = u.membresia && u.membresia.vence;
+  const vence = esSinMembresia(u) ? null : (u.membresia && u.membresia.vence);
   const activa = u.membresia && u.membresia.estado === "activa";
   const dias = diasHasta(vence);
   if (dias === null) {
@@ -3260,7 +3281,8 @@ function calcularVencimientos(categoria) {
   const porVencer = [], vencidos = [];
   adminUsersData.forEach(u => {
     if (planCategoria(u.ultimo_plan) !== categoria) return;
-    const vence = u.membresia && u.membresia.vence;
+    if (esSinMembresia(u)) return;
+    const vence = u.membresia.vence;
     const dias = diasHasta(vence);
     if (dias === null) return;
     if (dias >= 0 && dias <= w.antes) porVencer.push({ u, dias });
@@ -3399,11 +3421,11 @@ function tablaPlanesHtml(porPlan) {
     </tr>`).join("")}</tbody></table></div>`;
 }
 
-// Primera columna: la hora de carga si se cargó el mismo día del pago; si no, la fecha de pago
-// y debajo del cliente una nota con cuándo se cargó. Pagos viejos sin hora: la fecha de pago.
+// Primera columna: la hora de carga (todo el cierre es de un mismo día de pago). Si se cargó otro día,
+// debajo del cliente va la nota "cargado el dd/mm hh:mm". Pagos viejos sin hora: la fecha de pago.
 function filaPagoCierreHtml(p) {
   const cargadoOtroDia = p.hora_registro && p.fecha_registro && p.fecha_registro !== p.fecha_pago;
-  const cuando = p.hora_registro && !cargadoOtroDia ? p.hora_registro : formatFechaCorta(p.fecha_pago);
+  const cuando = p.hora_registro || formatFechaCorta(p.fecha_pago);
   const nota = cargadoOtroDia
     ? `<span class="cierre-pago-nota">cargado el ${esc(formatFechaCorta(p.fecha_registro).slice(0, 5))} ${esc(p.hora_registro)}</span>`
     : "";
@@ -4065,7 +4087,7 @@ function refrescarFichaAbierta() {
 function renderFichaCliente(u) {
   const id = Number(u.id_usuario);
   const st = getClientStatusInfo(u);
-  const vence = u.membresia && u.membresia.vence;
+  const vence = venceMostrado(u);
   const dias = diasHasta(vence);
   const rutinas = u.rutinas || [];
   const nombreEl = $("#drawerNombre");
@@ -4081,7 +4103,7 @@ function renderFichaCliente(u) {
       <h3>Membresía</h3>
       <dl class="dato-lista">
         <dt>Plan</dt><dd>${esc(u.ultimo_plan || "Sin plan")}</dd>
-        <dt>Vence</dt><dd>${esc(formatFechaCorta(vence))}${dias !== null ? ` <span class="${esc(claseDias(dias))}">· ${esc(textoDias(dias))}</span>` : ""}</dd>
+        <dt>Vence</dt><dd>${vence ? esc(formatFechaCorta(vence)) : "—"}${dias !== null ? ` <span class="${esc(claseDias(dias))}">· ${esc(textoDias(dias))}</span>` : ""}</dd>
         <dt>Último pago</dt><dd>${u.ultimo_pago ? esc(formatFechaCorta(u.ultimo_pago)) : "Sin pagos"}</dd>
       </dl>
     </section>
