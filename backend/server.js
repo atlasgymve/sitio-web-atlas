@@ -339,6 +339,35 @@ async function initDatabaseSchema() {
     console.error('⚠️ Error verificando asistencias:', err.message);
   }
 
+  // membresias.estado: al crear un cliente se guarda 'sin membresia'. Si la columna es un ENUM
+  // que no tiene ese valor, se agrega (conservando los valores, NULL y el valor por defecto actuales).
+  // Si es VARCHAR o ya lo tiene, no se cambia nada.
+  try {
+    const [cols] = await pool.query(
+      `SELECT DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'membresias' AND COLUMN_NAME = 'estado'`
+    );
+    const col = cols[0];
+    if (col && String(col.DATA_TYPE).toLowerCase() === 'enum') {
+      const valores = [...String(col.COLUMN_TYPE).matchAll(/'((?:[^']|'')*)'/g)].map(m => m[1].replace(/''/g, "'"));
+      if (!valores.includes('sin membresia')) {
+        valores.push('sin membresia');
+        const lista = valores.map(v => pool.escape(v)).join(', ');
+        const nulo = col.IS_NULLABLE === 'YES' ? 'NULL' : 'NOT NULL';
+        const porDefecto = col.COLUMN_DEFAULT !== null && col.COLUMN_DEFAULT !== undefined
+          ? ` DEFAULT ${pool.escape(String(col.COLUMN_DEFAULT).replace(/^'|'$/g, ''))}`
+          : '';
+        await pool.query(`ALTER TABLE membresias MODIFY COLUMN estado ENUM(${lista}) ${nulo}${porDefecto}`);
+        console.log('✅ Valor "sin membresia" agregado a membresias.estado');
+      }
+      // Clientes creados antes de este cambio: MySQL pudo guardar el estado vacío en lugar de 'sin membresia'
+      const [upd] = await pool.query("UPDATE membresias SET estado = 'sin membresia' WHERE estado = ''");
+      if (upd.affectedRows) console.log(`✅ ${upd.affectedRows} membresías con estado vacío pasaron a "sin membresia"`);
+    }
+  } catch (err) {
+    console.error('⚠️ Error verificando membresias.estado:', err.message);
+  }
+
   // Cuentas de Administrador y Recepción.
   // Las contraseñas YA NO están en el código: se toman de las variables de entorno
   // ADMIN_PASSWORD y RECEPCION_PASSWORD. Si una variable no está definida, la cuenta existente no se modifica.
